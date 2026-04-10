@@ -1,0 +1,234 @@
+@import "tailwindcss";
+
+/* ── CSS custom properties for theme ── */
+:root {
+  --bg-primary: 15 23 42;        /* slate-900 */
+  --bg-secondary: 30 41 59;      /* slate-800 */
+  --text-primary: 248 250 252;   /* slate-50  */
+  --text-secondary: 148 163 184; /* slate-400 */
+  --accent: 99 102 241;          /* indigo-500 */
+  --glass-bg: rgba(255 255 255 / 0.06);
+  --glass-border: rgba(255 255 255 / 0.12);
+
+  /* ── OS Shell tokens ── */
+  --menubar-bg: rgba(15, 23, 42, 0.75);
+  --dock-bg: rgba(255, 255, 255, 0.08);
+  --window-chrome-bg: rgba(30, 41, 59, 0.85);
+  --window-titlebar-bg: rgba(15, 23, 42, 0.9);
+  --traffic-red: #ff5f57;
+  --traffic-yellow: #febc2e;
+  --traffic-green: #28c840;
+}
+
+[data-theme="light"] {
+  --bg-primary: 241 245 249;     /* slate-100 */
+  --bg-secondary: 226 232 240;   /* slate-200 */
+  --text-primary: 15 23 42;      /* slate-900 */
+  --text-secondary: 71 85 105;   /* slate-600 */
+  --accent: 99 102 241;
+  --glass-bg: rgba(255 255 255 / 0.45);
+  --glass-border: rgba(255 255 255 / 0.7);
+
+  /* ── OS Shell tokens (light) ── */
+  --menubar-bg: rgba(241, 245, 249, 0.8);
+  --dock-bg: rgba(255, 255, 255, 0.5);
+  --window-chrome-bg: rgba(226, 232, 240, 0.9);
+  --window-titlebar-bg: rgba(203, 213, 225, 0.95);
+}
+
+/* Smooth theme transition */
+*, *::before, *::after {
+  transition: background-color 0.4s ease, border-color 0.4s ease, color 0.3s ease;
+}
+
+html {
+  scroll-behavior: auto; /* Lenis handles this */
+}
+
+body {
+  background-color: rgb(var(--bg-primary));
+  color: rgb(var(--text-primary));
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+}
+
+/* Parallax layer helpers */
+.parallax-slow  { will-change: transform; }
+.parallax-fast  { will-change: transform; }
+
+/* ── VSCode layout tokens (always dark — never theme-dependent) ── */
+.vscode-layout {
+  --vscode-editor-bg: #1e1e1e;
+  --vscode-sidebar-bg: #252526;
+  --vscode-titlebar-bg: #3c3c3c;
+  --vscode-tab-active-bg: #1e1e1e;
+  --vscode-tab-inactive-bg: #2d2d2d;
+  --vscode-statusbar-bg: #007acc;
+  --vscode-statusbar-test-bg: #6c2fbb;
+  --vscode-terminal-bg: #1e1e1e;
+  --vscode-terminal-green: #4ec9b0;
+  --vscode-terminal-prompt: #569cd6;
+  --vscode-selection: rgba(0, 120, 212, 0.3);
+  --vscode-line-highlight: rgba(255, 255, 255, 0.04);
+}
+
+/* ── OS Shell layout ── */
+.os-shell {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Allow text selection inside app windows */
+.app-window-content {
+  user-select: text;
+}
+
+/* Desktop wallpaper mesh gradient */
+.desktop-wallpaper {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(at 20% 30%, #1e1b4b 0%, transparent 50%),
+    radial-gradient(at 80% 70%, #0f172a 0%, transparent 50%),
+    radial-gradient(at 50% 10%, #312e81 0%, transparent 40%),
+    radial-gradient(at 10% 80%, #1e3a5f 0%, transparent 45%),
+    #0f172a;
+  will-change: transform;
+}
+
+/* Dock pill */
+.dock-pill {
+  background: var(--dock-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: 9999px;
+  padding: 8px 12px;
+}
+
+/* Menu bar */
+.menu-bar {
+  background: var(--menubar-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* App window chrome */
+.app-window {
+  background: var(--window-chrome-bg);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255,255,255,0.08);
+}
+
+.app-window-titlebar {
+  background: var(--window-titlebar-bg);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* Traffic light buttons */
+.traffic-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+  flex-shrink: 0;
+}
+.traffic-light:hover { filter: brightness(1.2); }
+.traffic-light-red    { background: var(--traffic-red); }
+.traffic-light-yellow { background: var(--traffic-yellow); }
+.traffic-light-green  { background: var(--traffic-green); }
+
+/* Dock indicator dot */
+.dock-indicator {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  margin: 0 auto;
+}
+
+/* Fix native select option colors on Windows */
+option {
+  background-color: #1e293b;
+  color: #f8fafc;
+}
+
+/* Reduce motion overrides */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* ── Responsive overrides ── */
+
+/* Tablet mode (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Dock: disable magnification effects on tablet */
+  .dock-pill {
+    padding: 6px 10px;
+  }
+  
+  /* MenuBar: ensure full layout is visible */
+  .menu-bar {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Mobile mode (< 768px) */
+@media (max-width: 767px) {
+  /* Dock: transform to bottom nav bar */
+  .dock-pill {
+    border-radius: 0;
+    padding: 0;
+    width: 100%;
+    background: var(--menubar-bg);
+    border: none;
+    border-top: 1px solid var(--glass-border);
+  }
+  
+  /* MenuBar: compact layout */
+  .menu-bar {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  
+  /* Hide app window drag handles on mobile */
+  .app-window {
+    border-radius: 1.5rem 1.5rem 0 0;
+  }
+}
+
+/* Desktop mode (>= 1024px) */
+@media (min-width: 1024px) {
+  /* Dock: full magnification and pill styling */
+  .dock-pill {
+    padding: 8px 12px;
+  }
+  
+  /* MenuBar: full layout with all elements */
+  .menu-bar {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}

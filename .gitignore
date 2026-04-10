@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Environment variables (NEVER commit these)
+.env
+.env.local
+.env.production
+client/.env
+server/.env
+
+# Build output
+client/dist/
+client/.vite/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Kiro specs (optional — remove if you want to track these)
+# .kiro/
