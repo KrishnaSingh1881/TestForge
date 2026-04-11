@@ -50,6 +50,7 @@ export default function TestSessionApp({ testId, attemptId: initialAttemptId }: 
   const [submitError, setSubmitError] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [testSettings, setTestSettings] = useState<any>({});
 
   // Track answered + review state
   const [answeredIds, setAnsweredIds] = useState<Set<string>>(new Set());
@@ -193,8 +194,39 @@ export default function TestSessionApp({ testId, attemptId: initialAttemptId }: 
     return () => clearInterval(id);
   }, [phase, timeLeft]);
 
-  // Heartbeat + integrity
-  useHeartbeat(attemptId, phase === 'active');
+  // Enforce test settings (copy-paste, right-click) during active test
+  useEffect(() => {
+    if (phase !== 'active') return;
+
+    const handlers: Array<[string, EventListener]> = [];
+
+    if (!testSettings.allow_copy) {
+      const h = (e: Event) => e.preventDefault();
+      document.addEventListener('copy', h);
+      handlers.push(['copy', h]);
+    }
+    if (!testSettings.allow_paste) {
+      const h = (e: Event) => e.preventDefault();
+      document.addEventListener('paste', h);
+      handlers.push(['paste', h]);
+    }
+    if (!testSettings.allow_right_click) {
+      const h = (e: Event) => e.preventDefault();
+      document.addEventListener('contextmenu', h);
+      handlers.push(['contextmenu', h]);
+    }
+
+    return () => {
+      handlers.forEach(([event, handler]) => document.removeEventListener(event, handler));
+    };
+  }, [phase, testSettings]);
+
+  // Load test settings when test is known
+  useEffect(() => {
+    const tid = testId || test?.id;
+    if (!tid) return;
+    api.get(`/tests/${tid}/settings`).then(r => setTestSettings(r.data.settings ?? {})).catch(() => {});
+  }, [testId, test?.id]);
   useIntegrityListeners({
     attemptId,
     active: phase === 'active',
@@ -209,10 +241,10 @@ export default function TestSessionApp({ testId, attemptId: initialAttemptId }: 
 
   async function checkIntegrityViolation() {
     if (!attemptId) return;
+    const maxSwitches = testSettings.max_tab_switches ?? 3;
     try {
       const { data } = await api.get(`/attempts/${attemptId}`);
-      if (data.tab_switch >= 3) {
-        // Auto-submit due to integrity violation
+      if (data.tab_switches >= maxSwitches && testSettings.auto_submit_on_tab_limit !== false) {
         await handleSubmit(true, 'integrity_violation');
       }
     } catch (err) {

@@ -193,6 +193,17 @@ export default function TestManagerApp() {
     setTests(prev => prev.filter(t => t.id !== id));
   }
 
+  async function handleStatusChange(id: string, status: 'active' | 'ended') {
+    const label = status === 'active' ? 'start' : 'end';
+    if (!confirm(`Are you sure you want to ${label} this test?`)) return;
+    try {
+      await api.patch(`/tests/${id}`, { status });
+      load();
+    } catch (e: any) {
+      alert(e.response?.data?.error ?? `Failed to ${label} test`);
+    }
+  }
+
   return (
     <div ref={lenisRef} className="h-full overflow-auto p-6 space-y-6">
 
@@ -385,10 +396,24 @@ export default function TestManagerApp() {
                       <td className="px-4 py-3">
                         <div className="flex gap-1.5 flex-wrap">
                           {t.status === 'draft' && (
-                            <button onClick={() => handleEdit(t)}
+                            <>
+                              <button onClick={() => handleEdit(t)}
+                                className="text-xs px-2 py-1 rounded transition-opacity hover:opacity-80"
+                                style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: 'rgb(var(--accent))' }}>
+                                Edit
+                              </button>
+                              <button onClick={() => handleStatusChange(t.id, 'active')}
+                                className="text-xs px-2 py-1 rounded transition-opacity hover:opacity-80"
+                                style={{ backgroundColor: 'rgba(74,222,128,0.12)', color: '#4ade80' }}>
+                                ▶ Start
+                              </button>
+                            </>
+                          )}
+                          {t.status === 'active' && (
+                            <button onClick={() => handleStatusChange(t.id, 'ended')}
                               className="text-xs px-2 py-1 rounded transition-opacity hover:opacity-80"
-                              style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: 'rgb(var(--accent))' }}>
-                              Edit
+                              style={{ backgroundColor: 'rgba(239,68,68,0.12)', color: '#f87171' }}>
+                              ■ End Test
                             </button>
                           )}
                           <button onClick={() => openWindow('question-bank', { testId: t.id, testTitle: t.title })}
