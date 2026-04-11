@@ -43,7 +43,14 @@
 
 html {
   scroll-behavior: auto; /* Lenis handles this */
+  font-size: 14px; /* base — overridden by JS for font scale */
 }
+
+/* Font scale classes applied to <html> */
+html[data-font="small"]  { font-size: 12px; }
+html[data-font="medium"] { font-size: 14px; }
+html[data-font="large"]  { font-size: 17px; }
+html[data-font="xl"]     { font-size: 20px; }
 
 body {
   background-color: rgb(var(--bg-primary));

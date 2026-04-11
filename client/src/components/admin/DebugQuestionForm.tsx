@@ -174,7 +174,7 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
                 theme={monacoTheme}
                 value={correctCode}
                 onChange={v => setCorrectCode(v ?? '')}
-                options={{ fontSize: 13, minimap: { enabled: false }, scrollBeyondLastLine: false, padding: { top: 8 } }}
+                options={{ fontSize: Math.round(parseFloat(getComputedStyle(document.documentElement).fontSize) * 0.93), minimap: { enabled: false }, scrollBeyondLastLine: false, padding: { top: 8 } }}
               />
             </div>
           </div>

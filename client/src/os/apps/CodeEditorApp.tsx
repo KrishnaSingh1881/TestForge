@@ -103,7 +103,7 @@ export default function CodeEditorApp() {
             onChange={v => setCode(v ?? '')}
             theme="vs-dark"
             options={{
-              fontSize: 13,
+              fontSize: Math.round(parseFloat(getComputedStyle(document.documentElement).fontSize) * 0.93),
               minimap: { enabled: false },
               scrollBeyondLastLine: false,
               lineNumbers: 'on',

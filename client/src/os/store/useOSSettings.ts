@@ -3,18 +3,15 @@ import { persist } from 'zustand/middleware';
 
 export type FontSize = 'small' | 'medium' | 'large' | 'xl';
 
-const FONT_SIZE_MAP: Record<FontSize, string> = {
-  small:  '12px',
-  medium: '14px',
-  large:  '16px',
-  xl:     '18px',
-};
-
 interface OSSettings {
   fontSize: FontSize;
   dockAutohide: boolean;
   setFontSize: (size: FontSize) => void;
   toggleDockAutohide: () => void;
+}
+
+function applyFont(size: FontSize) {
+  document.documentElement.setAttribute('data-font', size);
 }
 
 export const useOSSettings = create<OSSettings>()(
@@ -23,7 +20,7 @@ export const useOSSettings = create<OSSettings>()(
       fontSize: 'medium',
       dockAutohide: false,
       setFontSize: (size) => {
-        document.documentElement.style.fontSize = FONT_SIZE_MAP[size];
+        applyFont(size);
         set({ fontSize: size });
       },
       toggleDockAutohide: () => set(s => ({ dockAutohide: !s.dockAutohide })),
@@ -32,15 +29,12 @@ export const useOSSettings = create<OSSettings>()(
   )
 );
 
-// Apply persisted font size on load
 export function applyPersistedSettings() {
-  const raw = localStorage.getItem('os-settings');
-  if (raw) {
-    try {
+  try {
+    const raw = localStorage.getItem('os-settings');
+    if (raw) {
       const { state } = JSON.parse(raw);
-      if (state?.fontSize) {
-        document.documentElement.style.fontSize = FONT_SIZE_MAP[state.fontSize as FontSize];
-      }
-    } catch {}
-  }
+      if (state?.fontSize) applyFont(state.fontSize as FontSize);
+    }
+  } catch {}
 }
