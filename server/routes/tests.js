@@ -64,3 +64,129 @@ router.get('/available', async (req, res) => {
 });
 
 export default router;
+
+// ── POST /api/tests — admin: create test ─────────────────────
+router.post('/', requireAdmin, async (req, res) => {
+  const { title, subject, year, division, duration_minutes, start_time, end_time, questions_per_attempt, randomize_questions } = req.body;
+
+  if (!title || !subject || !year || !division || !start_time || !end_time) {
+    return res.status(400).json({ error: 'title, subject, year, division, start_time, end_time are required' });
+  }
+
+  const { data: test, error } = await supabase
+    .from('tests')
+    .insert({
+      created_by: req.user.id,
+      title,
+      subject,
+      year,
+      division,
+      duration_mins: duration_minutes ?? 60,
+      start_time,
+      end_time,
+      questions_per_attempt: questions_per_attempt ?? 10,
+      randomize_questions: randomize_questions ?? false,
+      status: 'draft',
+    })
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  return res.status(201).json({ test });
+});
+
+// ── PATCH /api/tests/:id — admin: update test ─────────────────
+router.patch('/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { title, subject, year, division, duration_minutes, start_time, end_time, questions_per_attempt, randomize_questions, status } = req.body;
+
+  const { data: existing } = await supabase
+    .from('tests')
+    .select('id, created_by')
+    .eq('id', id)
+    .single();
+
+  if (!existing) return res.status(404).json({ error: 'Test not found' });
+  if (existing.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+  const updates = {};
+  if (title                !== undefined) updates.title                 = title;
+  if (subject              !== undefined) updates.subject               = subject;
+  if (year                 !== undefined) updates.year                  = year;
+  if (division             !== undefined) updates.division              = division;
+  if (duration_minutes     !== undefined) updates.duration_mins         = duration_minutes;
+  if (start_time           !== undefined) updates.start_time            = start_time;
+  if (end_time             !== undefined) updates.end_time              = end_time;
+  if (questions_per_attempt !== undefined) updates.questions_per_attempt = questions_per_attempt;
+  if (randomize_questions  !== undefined) updates.randomize_questions   = randomize_questions;
+  if (status               !== undefined) updates.status                = status;
+
+  const { data: test, error } = await supabase
+    .from('tests')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  return res.json({ test });
+});
+
+// ── DELETE /api/tests/:id — admin: delete test ───────────────
+router.delete('/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+
+  const { data: existing } = await supabase
+    .from('tests')
+    .select('id, created_by')
+    .eq('id', id)
+    .single();
+
+  if (!existing) return res.status(404).json({ error: 'Test not found' });
+  if (existing.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+  const { error } = await supabase.from('tests').delete().eq('id', id);
+  if (error) return res.status(500).json({ error: error.message });
+  return res.json({ message: 'Test deleted' });
+});
+
+// ── GET /api/tests/:id/leaderboard ───────────────────────────
+router.get('/:id/leaderboard', requireAdmin, async (req, res) => {
+  const { id: testId } = req.params;
+
+  const { data: test } = await supabase
+    .from('tests')
+    .select('id, created_by')
+    .eq('id', testId)
+    .single();
+
+  if (!test) return res.status(404).json({ error: 'Test not found' });
+  if (test.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+  const { data: results, error } = await supabase
+    .from('results')
+    .select(`
+      rank, total_score, total_marks, percentage, submitted_at,
+      attempts ( submitted_at, users ( name, division ) )
+    `)
+    .eq('test_id', testId)
+    .order('rank', { ascending: true });
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  const leaderboard = (results ?? []).map(r => {
+    const attempt = Array.isArray(r.attempts) ? r.attempts[0] : r.attempts;
+    const user    = attempt ? (Array.isArray(attempt.users) ? attempt.users[0] : attempt.users) : null;
+    return {
+      rank:         r.rank,
+      student_name: user?.name     ?? 'Unknown',
+      division:     user?.division ?? '—',
+      score:        r.total_score,
+      total_marks:  r.total_marks,
+      percentage:   r.percentage,
+      submitted_at: attempt?.submitted_at ?? r.submitted_at,
+    };
+  });
+
+  return res.json({ leaderboard });
+});
