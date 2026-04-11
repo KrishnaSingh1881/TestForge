@@ -1,8 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../../lib/axios';
 import MCQForm from '../../components/admin/MCQForm';
 import DebugQuestionForm from '../../components/admin/DebugQuestionForm';
-import { useLenis } from '../../hooks/useLenis';
 
 interface Test { id: string; title: string; subject: string; status: string; }
 interface Question {
@@ -15,7 +14,7 @@ interface TestQuestion {
   question_order: number; question_bank: Question;
 }
 
-type Screen = 'pick-test' | 'test-questions' | 'add-question' | 'pick-type' | 'create-mcq' | 'create-debug' | 'edit-mcq';
+type Screen = 'pick-test' | 'test-questions' | 'add-question' | 'pick-type' | 'create-mcq' | 'create-debug' | 'create-coding' | 'edit-mcq' | 'bulk-import';
 
 const diffColor: Record<string, string> = { easy: 'rgba(34,197,94,0.15)', medium: 'rgba(234,179,8,0.15)', hard: 'rgba(239,68,68,0.15)' };
 const diffText:  Record<string, string> = { easy: '#4ade80', medium: '#facc15', hard: '#f87171' };
@@ -33,8 +32,6 @@ function TypeBadge({ type }: { type: string }) {
 }
 
 export default function QuestionBankApp({ testId: initTestId, testTitle: initTestTitle }: { testId?: string; testTitle?: string }) {
-  const lenisRef = useLenis();
-
   const [screen, setScreen] = useState<Screen>(initTestId ? 'test-questions' : 'pick-test');
   const [tests, setTests] = useState<Test[]>([]);
   const [testsLoading, setTestsLoading] = useState(true);
@@ -52,6 +49,12 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
   const [attachingQ, setAttachingQ] = useState<Question | null>(null);
   const [unlockAt, setUnlockAt] = useState(0);
   const [attaching, setAttaching] = useState(false);
+
+  // Bulk import state
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ success_count: number; error_count: number; errors: any[] } | null>(null);
+  const [importError, setImportError] = useState('');
 
   const inputStyle = {
     backgroundColor: 'rgba(255,255,255,0.07)',
@@ -134,6 +137,24 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
     setAllQuestions(prev => prev.filter(q => q.id !== id));
   }
 
+  async function handleBulkImport() {
+    if (!importFile) return;
+    setImporting(true);
+    setImportError('');
+    setImportResult(null);
+    const fd = new FormData();
+    fd.append('file', importFile);
+    try {
+      const { data } = await api.post('/questions/import', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setImportResult(data);
+      loadAllQuestions();
+    } catch (e: any) {
+      setImportError(e.response?.data?.error ?? 'Import failed');
+    } finally {
+      setImporting(false);
+    }
+  }
+
   function goAddQuestion() {
     loadAllQuestions();
     setScreen('add-question');
@@ -148,7 +169,7 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
   // ── Screen: Pick Test ──────────────────────────────────────
   if (screen === 'pick-test') {
     return (
-      <div ref={lenisRef} className="h-full overflow-auto flex flex-col">
+      <div className="h-full overflow-auto flex flex-col">
         {/* Header */}
         <div className="p-6 pb-4">
           <h1 className="text-2xl font-bold" style={{ color: 'rgb(var(--text-primary))' }}>Question Bank</h1>
@@ -194,7 +215,7 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
   // ── Screen: Test Questions ─────────────────────────────────
   if (screen === 'test-questions') {
     return (
-      <div ref={lenisRef} className="h-full overflow-auto flex flex-col">
+      <div className="h-full overflow-auto flex flex-col">
         {/* Header */}
         <div className="p-6 pb-4 flex items-center gap-3">
           <button onClick={() => setScreen('pick-test')}
@@ -277,7 +298,7 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
   // ── Screen: Add Question (browse bank) ────────────────────
   if (screen === 'add-question') {
     return (
-      <div ref={lenisRef} className="h-full overflow-auto flex flex-col">
+      <div className="h-full overflow-auto flex flex-col">
         {/* Header */}
         <div className="p-6 pb-4 flex items-center gap-3">
           <button onClick={() => setScreen('test-questions')}
@@ -424,7 +445,7 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
   // ── Screen: Pick Type ──────────────────────────────────────
   if (screen === 'pick-type') {
     return (
-      <div ref={lenisRef} className="h-full overflow-auto flex flex-col">
+      <div className="h-full overflow-auto flex flex-col">
         <div className="p-6 pb-4 flex items-center gap-3">
           <button onClick={() => setScreen('add-question')}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-opacity hover:opacity-70"
@@ -434,20 +455,22 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
           <h1 className="text-xl font-bold" style={{ color: 'rgb(var(--text-primary))' }}>Choose Question Type</h1>
         </div>
 
-        <div className="flex-1 p-6 pt-2 flex flex-col gap-4 justify-center max-w-lg mx-auto w-full">
+        <div className="flex-1 p-6 pt-2 flex flex-col gap-3 max-w-lg mx-auto w-full">
           {[
             { type: 'create-mcq' as Screen, icon: '☑️', title: 'Multiple Choice', desc: 'Single or multi-select options with correct answers' },
             { type: 'create-debug' as Screen, icon: '🐛', title: 'Debugging Question', desc: 'Students fix buggy code — AI generates variants' },
+            { type: 'create-coding' as Screen, icon: '💻', title: 'Coding Question', desc: 'Students write code from scratch with test cases' },
+            { type: 'bulk-import' as Screen, icon: '📥', title: 'Bulk Import', desc: 'Import multiple MCQ questions from CSV or JSON file' },
           ].map(opt => (
-            <button key={opt.type} onClick={() => setScreen(opt.type)}
-              className="glass p-6 rounded-2xl text-left transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center gap-5"
+            <button key={opt.type} onClick={() => { setImportFile(null); setImportResult(null); setImportError(''); setScreen(opt.type); }}
+              className="glass p-5 rounded-2xl text-left transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center gap-4"
               style={{ border: '1px solid var(--glass-border)' }}>
-              <div className="text-4xl">{opt.icon}</div>
-              <div>
-                <p className="font-semibold text-base" style={{ color: 'rgb(var(--text-primary))' }}>{opt.title}</p>
-                <p className="text-sm mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>{opt.desc}</p>
+              <div className="text-3xl">{opt.icon}</div>
+              <div className="flex-1">
+                <p className="font-semibold text-sm" style={{ color: 'rgb(var(--text-primary))' }}>{opt.title}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>{opt.desc}</p>
               </div>
-              <span className="ml-auto text-lg" style={{ color: 'rgb(var(--text-secondary))' }}>→</span>
+              <span className="text-lg" style={{ color: 'rgb(var(--text-secondary))' }}>→</span>
             </button>
           ))}
         </div>
@@ -458,7 +481,7 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
   // ── Screen: Create MCQ ─────────────────────────────────────
   if (screen === 'create-mcq' || screen === 'edit-mcq') {
     return (
-      <div ref={lenisRef} className="h-full overflow-auto flex flex-col">
+      <div className="h-full overflow-auto flex flex-col">
         <div className="p-6 pb-4 flex items-center gap-3">
           <button onClick={() => setScreen(screen === 'edit-mcq' ? 'add-question' : 'pick-type')}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-opacity hover:opacity-70"
@@ -489,7 +512,7 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
   // ── Screen: Create Debug ───────────────────────────────────
   if (screen === 'create-debug') {
     return (
-      <div ref={lenisRef} className="h-full overflow-auto flex flex-col">
+      <div className="h-full overflow-auto flex flex-col">
         <div className="p-6 pb-4 flex items-center gap-3">
           <button onClick={() => setScreen('pick-type')}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-opacity hover:opacity-70"
@@ -500,6 +523,128 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
         </div>
         <div className="flex-1 px-6 pb-6">
           <DebugQuestionForm onSuccess={() => { loadAllQuestions(); setScreen('add-question'); }} />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Screen: Create Coding Question ────────────────────────
+  if (screen === 'create-coding') {
+    return (
+      <div className="h-full overflow-auto flex flex-col">
+        <div className="p-6 pb-4 flex items-center gap-3">
+          <button onClick={() => setScreen('pick-type')}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-opacity hover:opacity-70"
+            style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
+            ←
+          </button>
+          <h1 className="text-xl font-bold" style={{ color: 'rgb(var(--text-primary))' }}>New Coding Question</h1>
+        </div>
+        <div className="flex-1 px-6 pb-6">
+          <DebugQuestionForm
+            onSuccess={() => { loadAllQuestions(); setScreen('add-question'); }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Screen: Bulk Import ────────────────────────────────────
+  if (screen === 'bulk-import') {
+    const CSV_TEMPLATE = `type,statement,option_1,option_2,option_3,option_4,correct_options,marks,topic_tag,difficulty\nmcq_single,"What is O(log n)?","Binary Search","Bubble Sort","Linear Search","DFS","1",2,"Algorithms","easy"\n`;
+    const JSON_TEMPLATE = JSON.stringify([{ type: 'mcq_single', statement: 'What is O(log n)?', options: [{ text: 'Binary Search', is_correct: true }, { text: 'Bubble Sort', is_correct: false }], marks: 2, topic_tag: 'Algorithms', difficulty: 'easy' }], null, 2);
+
+    function dl(content: string, name: string, mime: string) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([content], { type: mime }));
+      a.download = name; a.click();
+    }
+
+    return (
+      <div className="h-full overflow-auto flex flex-col">
+        <div className="p-6 pb-4 flex items-center gap-3">
+          <button onClick={() => setScreen('pick-type')}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-opacity hover:opacity-70"
+            style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
+            ←
+          </button>
+          <h1 className="text-xl font-bold" style={{ color: 'rgb(var(--text-primary))' }}>Bulk Import</h1>
+        </div>
+
+        <div className="flex-1 px-6 pb-6 space-y-4">
+          {/* Templates */}
+          <div className="glass p-5 rounded-2xl">
+            <p className="text-xs font-medium uppercase tracking-wide mb-3" style={{ color: 'rgb(var(--text-secondary))' }}>Download Templates</p>
+            <div className="flex gap-3">
+              <button onClick={() => dl(CSV_TEMPLATE, 'questions_template.csv', 'text/csv')}
+                className="px-4 py-2 rounded-lg text-sm transition-opacity hover:opacity-80"
+                style={{ backgroundColor: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}>
+                ⬇ CSV Template
+              </button>
+              <button onClick={() => dl(JSON_TEMPLATE, 'questions_template.json', 'application/json')}
+                className="px-4 py-2 rounded-lg text-sm transition-opacity hover:opacity-80"
+                style={{ backgroundColor: 'rgba(99,102,241,0.12)', color: 'rgb(var(--accent))', border: '1px solid rgba(99,102,241,0.3)' }}>
+                ⬇ JSON Template
+              </button>
+            </div>
+          </div>
+
+          {/* Drop zone */}
+          <div className="glass p-6 rounded-2xl space-y-4">
+            <label className="rounded-xl flex flex-col items-center justify-center gap-3 py-10 cursor-pointer transition-all"
+              style={{ border: '2px dashed var(--glass-border)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+              <input type="file" accept=".csv,.json" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) { setImportFile(f); setImportResult(null); setImportError(''); } }} />
+              <div className="text-4xl">📂</div>
+              <p className="text-sm font-medium" style={{ color: 'rgb(var(--text-primary))' }}>
+                {importFile ? importFile.name : 'Drop CSV or JSON here, or click to browse'}
+              </p>
+              <div className="flex gap-2">
+                {['.csv', '.json'].map(e => (
+                  <span key={e} className="text-xs px-2 py-0.5 rounded-full font-mono"
+                    style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: 'rgb(var(--accent))' }}>{e}</span>
+                ))}
+              </div>
+            </label>
+
+            {importError && <p className="text-sm text-red-400">{importError}</p>}
+
+            {importFile && !importResult && (
+              <button onClick={handleBulkImport} disabled={importing}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-2"
+                style={{ backgroundColor: 'rgb(var(--accent))' }}>
+                {importing ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Importing...</> : 'Import Questions'}
+              </button>
+            )}
+          </div>
+
+          {/* Result */}
+          {importResult && (
+            <div className="glass p-5 rounded-2xl space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl p-4 text-center" style={{ backgroundColor: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.25)' }}>
+                  <p className="text-3xl font-bold" style={{ color: '#4ade80' }}>{importResult.success_count}</p>
+                  <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-secondary))' }}>Imported</p>
+                </div>
+                <div className="rounded-xl p-4 text-center" style={{ backgroundColor: importResult.error_count > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${importResult.error_count > 0 ? 'rgba(239,68,68,0.25)' : 'var(--glass-border)'}` }}>
+                  <p className="text-3xl font-bold" style={{ color: importResult.error_count > 0 ? '#f87171' : 'rgb(var(--text-secondary))' }}>{importResult.error_count}</p>
+                  <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-secondary))' }}>Failed</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => { setScreen('add-question'); }}
+                  className="px-5 py-2 rounded-lg text-sm font-semibold text-white"
+                  style={{ backgroundColor: 'rgb(var(--accent))' }}>
+                  View Questions →
+                </button>
+                <button onClick={() => { setImportFile(null); setImportResult(null); }}
+                  className="px-4 py-2 rounded-lg text-sm"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
+                  Import More
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
