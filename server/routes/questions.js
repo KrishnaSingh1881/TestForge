@@ -437,3 +437,54 @@ router.post('/import', upload.single('file'), async (req, res) => {
 });
 
 export default router;
+
+// ── GET /questions/test/:testId — list questions attached to a test ──
+router.get('/test/:testId', async (req, res) => {
+  const { testId } = req.params;
+
+  const { data: test } = await supabase
+    .from('tests')
+    .select('id, created_by')
+    .eq('id', testId)
+    .single();
+
+  if (!test) return res.status(404).json({ error: 'Test not found' });
+  if (test.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+  const { data, error } = await supabase
+    .from('test_questions')
+    .select(`
+      id, question_id, unlock_at_minutes, question_order,
+      question_bank ( id, type, statement, marks, topic_tag, difficulty, language )
+    `)
+    .eq('test_id', testId)
+    .order('question_order', { ascending: true });
+
+  if (error) return res.status(500).json({ error: error.message });
+  return res.json({ questions: data ?? [] });
+});
+
+// ── DELETE /questions/test-question/:id — detach question from test ──
+router.delete('/test-question/:id', async (req, res) => {
+  const { id } = req.params;
+
+  const { data: tq } = await supabase
+    .from('test_questions')
+    .select('id, test_id')
+    .eq('id', id)
+    .single();
+
+  if (!tq) return res.status(404).json({ error: 'Not found' });
+
+  const { data: test } = await supabase
+    .from('tests')
+    .select('created_by')
+    .eq('id', tq.test_id)
+    .single();
+
+  if (!test || test.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+  const { error } = await supabase.from('test_questions').delete().eq('id', id);
+  if (error) return res.status(500).json({ error: error.message });
+  return res.json({ message: 'Detached' });
+});

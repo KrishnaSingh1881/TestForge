@@ -94,6 +94,15 @@ export const APP_REGISTRY: AppDefinition[] = [
     allowedRoles: ['admin', 'super_admin'],
     singleton: true,
   },
+  {
+    id: 'test-settings',
+    name: 'Test Settings',
+    icon: '⚙️',
+    defaultSize: { width: 720, height: 580 },
+    defaultPosition: { x: 130, y: 70 },
+    allowedRoles: ['admin', 'super_admin'],
+    singleton: true,
+  },
 ];
 
 /** Returns apps visible in the Dock for a given role */

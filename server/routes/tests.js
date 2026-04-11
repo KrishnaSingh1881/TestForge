@@ -190,3 +190,48 @@ router.get('/:id/leaderboard', requireAdmin, async (req, res) => {
 
   return res.json({ leaderboard });
 });
+
+// ── GET /api/tests/:id/settings ───────────────────────────────
+router.get('/:id/settings', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+
+  const { data: test } = await supabase
+    .from('tests')
+    .select('id, created_by, settings')
+    .eq('id', id)
+    .single();
+
+  if (!test) return res.status(404).json({ error: 'Test not found' });
+  if (test.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+  return res.json({ settings: test.settings ?? {} });
+});
+
+// ── PATCH /api/tests/:id/settings ────────────────────────────
+router.patch('/:id/settings', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { settings } = req.body;
+
+  if (!settings || typeof settings !== 'object') {
+    return res.status(400).json({ error: 'settings object is required' });
+  }
+
+  const { data: existing } = await supabase
+    .from('tests')
+    .select('id, created_by')
+    .eq('id', id)
+    .single();
+
+  if (!existing) return res.status(404).json({ error: 'Test not found' });
+  if (existing.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+  const { data, error } = await supabase
+    .from('tests')
+    .update({ settings })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  return res.json({ settings: data.settings });
+});

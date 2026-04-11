@@ -18,6 +18,14 @@ interface Question {
   mcq_options: any[];
 }
 
+interface TestQuestion {
+  id: string;
+  question_id: string;
+  unlock_at_minutes: number;
+  question_order: number;
+  question_bank: Question;
+}
+
 interface ImportError { row: number | string; reason: string; }
 interface ImportResult { success_count: number; error_count: number; errors: ImportError[]; }
 
@@ -117,7 +125,7 @@ function DropZone({ onFile, disabled }: { onFile: (f: File) => void; disabled: b
   );
 }
 
-export default function QuestionBankApp() {
+export default function QuestionBankApp({ testId, testTitle }: { testId?: string; testTitle?: string }) {
   const lenisRef = useLenis();
 
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -125,6 +133,30 @@ export default function QuestionBankApp() {
   const [view, setView] = useState<View>('list');
   const [editing, setEditing] = useState<Question | null>(null);
   const [attachId, setAttachId] = useState<string | null>(null);
+
+  // Test-questions management (when opened from Test Manager)
+  const [activeTab, setActiveTab] = useState<'bank' | 'test'>(testId ? 'test' : 'bank');
+  const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
+  const [testQLoading, setTestQLoading] = useState(false);
+
+  async function loadTestQuestions() {
+    if (!testId) return;
+    setTestQLoading(true);
+    try {
+      const r = await api.get(`/questions/test/${testId}`);
+      setTestQuestions(r.data.questions ?? []);
+    } catch {
+      setTestQuestions([]);
+    } finally {
+      setTestQLoading(false);
+    }
+  }
+
+  async function handleDetach(testQuestionId: string) {
+    if (!confirm('Remove this question from the test?')) return;
+    await api.delete(`/questions/test-question/${testQuestionId}`);
+    setTestQuestions(prev => prev.filter(tq => tq.id !== testQuestionId));
+  }
 
   // Filters
   const [typeFilter, setTypeFilter] = useState('');
@@ -149,7 +181,7 @@ export default function QuestionBankApp() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); if (testId) loadTestQuestions(); }, []);
 
   async function handleDelete(id: string) {
     if (!confirm('Delete this question? This cannot be undone.')) return;
@@ -276,7 +308,95 @@ export default function QuestionBankApp() {
         )}
       </div>
 
-      {/* Create / Edit MCQ form */}
+      {/* Tab bar — only shown when opened from Test Manager */}
+      {testId && (
+        <div className="flex gap-1 p-1 rounded-xl w-fit"
+          style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)' }}>
+          {(['test', 'bank'] as const).map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all"
+              style={{
+                backgroundColor: activeTab === tab ? 'rgb(var(--accent))' : 'transparent',
+                color: activeTab === tab ? '#fff' : 'rgb(var(--text-secondary))',
+              }}>
+              {tab === 'test' ? `📋 ${testTitle ?? 'Test'} Questions` : '🗃️ All Questions'}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Test questions management panel */}
+      {activeTab === 'test' && testId && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>
+              {testQuestions.length} question{testQuestions.length !== 1 ? 's' : ''} attached to this test
+            </p>
+            <button onClick={() => setActiveTab('bank')}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
+              style={{ backgroundColor: 'rgb(var(--accent))' }}>
+              + Add from Bank
+            </button>
+          </div>
+
+          {testQLoading ? (
+            <p className="text-sm text-center py-8" style={{ color: 'rgb(var(--text-secondary))' }}>Loading...</p>
+          ) : testQuestions.length === 0 ? (
+            <div className="glass p-10 text-center">
+              <p className="text-base mb-1" style={{ color: 'rgb(var(--text-primary))' }}>No questions attached</p>
+              <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>
+                Switch to "All Questions" tab and click "Attach" on any question.
+              </p>
+            </div>
+          ) : (
+            <div className="glass overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                    {['#', 'Question', 'Type', 'Marks', 'Unlocks at', 'Actions'].map(h => (
+                      <th key={h} className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wide"
+                        style={{ color: 'rgb(var(--text-secondary))' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {testQuestions.sort((a, b) => a.question_order - b.question_order).map((tq, i) => {
+                    const q = tq.question_bank;
+                    return (
+                      <tr key={tq.id} style={{ borderBottom: i < testQuestions.length - 1 ? '1px solid var(--glass-border)' : 'none' }}>
+                        <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>{tq.question_order + 1}</td>
+                        <td className="px-4 py-3 max-w-xs">
+                          <p className="truncate" style={{ color: 'rgb(var(--text-primary))' }}>{q?.statement ?? '—'}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-xs px-2 py-0.5 rounded-full"
+                            style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: 'rgb(var(--accent))' }}>
+                            {q?.type === 'mcq_single' ? 'MCQ' : q?.type === 'mcq_multi' ? 'MCQ Multi' : 'Debug'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-primary))' }}>{q?.marks ?? '—'}</td>
+                        <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
+                          {tq.unlock_at_minutes === 0 ? 'Immediately' : `${tq.unlock_at_minutes}m`}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button onClick={() => handleDetach(tq.id)}
+                            className="text-xs px-2 py-1 rounded transition-opacity hover:opacity-80"
+                            style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#f87171' }}>
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Show bank content only when on bank tab */}
+      {activeTab === 'bank' && (<>
       {(view === 'create-mcq' || view === 'edit') && (
         <div className="glass p-6">
           <h2 className="text-lg font-semibold mb-5" style={{ color: 'rgb(var(--text-primary))' }}>
@@ -574,7 +694,7 @@ export default function QuestionBankApp() {
       {attachId && (
         <AttachToTestModal
           questionId={attachId}
-          onClose={() => setAttachId(null)}
+          onClose={() => { setAttachId(null); if (testId) loadTestQuestions(); }}
         />
       )}
     </div>

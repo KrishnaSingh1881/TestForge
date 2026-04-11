@@ -207,11 +207,23 @@ export default function TestManagerApp() {
           </p>
         </div>
         {view === 'list' ? (
-          <button onClick={handleCreate}
-            className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
-            style={{ backgroundColor: 'rgb(var(--accent))' }}>
-            + New Test
-          </button>
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={handleCreate}
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
+              style={{ backgroundColor: 'rgb(var(--accent))' }}>
+              + New Test
+            </button>
+            <button onClick={() => openWindow('question-bank')}
+              className="px-4 py-2 rounded-lg text-sm font-semibold"
+              style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-primary))' }}>
+              🗃️ Question Bank
+            </button>
+            <button onClick={() => openWindow('test-settings')}
+              className="px-4 py-2 rounded-lg text-sm font-semibold"
+              style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-primary))' }}>
+              ⚙️ Test Settings
+            </button>
+          </div>
         ) : (
           <button onClick={() => { setView('list'); resetForm(); setEditing(null); }}
             className="px-4 py-2 rounded-lg text-sm"
@@ -379,6 +391,11 @@ export default function TestManagerApp() {
                               Edit
                             </button>
                           )}
+                          <button onClick={() => openWindow('question-bank', { testId: t.id, testTitle: t.title })}
+                            className="text-xs px-2 py-1 rounded transition-opacity hover:opacity-80"
+                            style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
+                            Questions
+                          </button>
                           {(t.status === 'active' || t.status === 'ended') && (
                             <>
                               <button onClick={() => setLeaderboardTestId(t.id)}
