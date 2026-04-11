@@ -102,7 +102,9 @@ Return ONLY valid JSON: {"stdout": "...", "stderr": "...", "exitCode": 0}`;
 
 async function runCode(language, code, stdin) {
   if (USE_JUDGE0 && JUDGE0_LANG[language]) return judge0Submit(JUDGE0_LANG[language], code, stdin);
-  try { return await pistonRun(language, code, stdin); } catch { /* fall through */ }
+  if (!process.env.SKIP_PISTON) {
+    try { return await pistonRun(language, code, stdin); } catch { /* fall through */ }
+  }
   return geminiSimulate(language, code, stdin);
 }
 
