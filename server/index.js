@@ -7,7 +7,7 @@ import testsRoutes from './routes/tests.js';
 import questionsRoutes from './routes/questions.js';
 import attemptsRoutes from './routes/attempts.js';
 import adminRoutes from './routes/admin.js';
-import geminiRoutes from './routes/gemini.js';
+import aiRoutes from './routes/ai.js';
 import executeRoutes from './routes/execute.js';
 import analyticsRoutes from './routes/analytics.js';
 
@@ -31,7 +31,7 @@ app.use('/api/tests', testsRoutes);
 app.use('/api/questions', questionsRoutes);
 app.use('/api/attempts', attemptsRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/gemini', geminiRoutes);
+app.use('/api/ai', aiRoutes);
 app.use('/api/execute', executeRoutes);
 app.use('/api/analytics', analyticsRoutes);
 

@@ -76,7 +76,7 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
     setError('');
     setGenerating(true);
     try {
-      const { data } = await api.post('/gemini/generate-variants', { question_id: savedQuestionId });
+      const { data } = await api.post('/ai/generate-variants', { question_id: savedQuestionId });
       setVariants(data.variants ?? []);
     } catch (e: any) {
       setError(e.response?.data?.error ?? 'Generation failed');
@@ -93,7 +93,7 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
   }
   async function handleRegenerate(questionId: string) {
     try {
-      const { data } = await api.post(`/gemini/regenerate-variant/${questionId}`);
+      const { data } = await api.post(`/ai/regenerate-variant/${questionId}`);
       setVariants(prev => [...prev, data.variant]);
     } catch (e: any) {
       setError(e.response?.data?.error ?? 'Regeneration failed');

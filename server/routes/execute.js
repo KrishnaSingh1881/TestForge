@@ -61,7 +61,7 @@ async function pistonRun(language, code, stdin) {
   throw lastError ?? new Error('Piston unavailable');
 }
 
-async function geminiSimulate(language, code, stdin) {
+async function gemmaSimulate(language, code, stdin) {
   const client = new OpenAI({
     apiKey:  process.env.NVIDIA_API_KEY,
     baseURL: 'https://integrate.api.nvidia.com/v1',
@@ -114,8 +114,8 @@ async function runCode(language, code, stdin) {
     try { return await pistonRun(language, code, stdin); } catch { /* fall through */ }
   }
 
-  // Gemini simulation as last resort
-  return geminiSimulate(language, code, stdin);
+  // Gemma simulation as last resort
+  return gemmaSimulate(language, code, stdin);
 }
 
 // ── POST /api/execute/scratch ─────────────────────────────────

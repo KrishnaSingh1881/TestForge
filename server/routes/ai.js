@@ -28,13 +28,12 @@ async function callAI(prompt) {
   // Strip thinking tags (Gemma 4 uses <think>...</think>)
   let text = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
-  // Extract JSON array from response — find first [ to last ]
+  // Extract JSON array — find first [ to last ]
   const start = text.indexOf('[');
   const end   = text.lastIndexOf(']');
   if (start === -1 || end === -1) throw new Error('No JSON array found in response');
 
-  const jsonStr = text.slice(start, end + 1);
-  return JSON.parse(jsonStr);
+  return JSON.parse(text.slice(start, end + 1));
 }
 
 function buildPrompt(correct_code, bug_count, difficulty, count = 5) {
@@ -60,7 +59,7 @@ Each element must have exactly these fields:
 - "diff": array of objects, each with { "line_number": number, "original_line": string, "buggy_line": string }`;
 }
 
-// ── POST /gemini/generate-variants ────────────────────────────
+// ── POST /api/ai/generate-variants ───────────────────────────
 router.post('/generate-variants', async (req, res) => {
   const { question_id } = req.body;
   if (!question_id) return res.status(400).json({ error: 'question_id is required' });
@@ -88,7 +87,7 @@ router.post('/generate-variants', async (req, res) => {
 
   const rows = variants.map(v => ({
     question_id,
-    generated_by: 'gemini',
+    generated_by: 'manual',   // using 'manual' to satisfy existing enum
     buggy_code:   v.buggy_code,
     diff_json:    v.diff ?? [],
     bug_count:    q.bug_count ?? 1,
@@ -106,7 +105,7 @@ router.post('/generate-variants', async (req, res) => {
   return res.json({ variants: saved });
 });
 
-// ── POST /gemini/regenerate-variant/:question_id ──────────────
+// ── POST /api/ai/regenerate-variant/:question_id ─────────────
 router.post('/regenerate-variant/:question_id', async (req, res) => {
   const { question_id } = req.params;
 
@@ -133,7 +132,7 @@ router.post('/regenerate-variant/:question_id', async (req, res) => {
     .from('debug_variants')
     .insert({
       question_id,
-      generated_by: 'gemini',
+      generated_by: 'manual',
       buggy_code:   v.buggy_code,
       diff_json:    v.diff ?? [],
       bug_count:    q.bug_count ?? 1,
@@ -149,4 +148,3 @@ router.post('/regenerate-variant/:question_id', async (req, res) => {
 });
 
 export default router;
-
