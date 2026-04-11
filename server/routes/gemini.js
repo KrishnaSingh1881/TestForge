@@ -20,12 +20,21 @@ async function callAI(prompt) {
   const completion = await client.chat.completions.create({
     model: MODEL,
     messages: [{ role: 'user', content: prompt }],
-    temperature: 0.7,
-    max_tokens: 4096,
+    temperature: 0.5,
+    max_tokens: 8192,
   });
-  const text = completion.choices[0]?.message?.content?.trim() ?? '';
-  const clean = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
-  return JSON.parse(clean);
+  const raw = completion.choices[0]?.message?.content?.trim() ?? '';
+
+  // Strip thinking tags (Gemma 4 uses <think>...</think>)
+  let text = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+  // Extract JSON array from response — find first [ to last ]
+  const start = text.indexOf('[');
+  const end   = text.lastIndexOf(']');
+  if (start === -1 || end === -1) throw new Error('No JSON array found in response');
+
+  const jsonStr = text.slice(start, end + 1);
+  return JSON.parse(jsonStr);
 }
 
 function buildPrompt(correct_code, bug_count, difficulty, count = 5) {

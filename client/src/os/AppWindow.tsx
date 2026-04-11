@@ -81,8 +81,11 @@ export default function AppWindow({ window: win, timerSlot, children }: AppWindo
 
   const maxStyle = win.isMaximized ? {
     position: 'fixed' as const,
-    top: MENUBAR_H, left: 0, right: 0, bottom: DOCK_H,
-    width: '100%',
+    top: MENUBAR_H,
+    left: 0,
+    right: 0,
+    bottom: DOCK_H,
+    width: '100vw',
     height: `calc(100vh - ${MENUBAR_H + DOCK_H}px)`,
   } : {};
 
