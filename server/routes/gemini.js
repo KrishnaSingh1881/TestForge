@@ -88,7 +88,7 @@ router.post('/generate-variants', async (req, res) => {
 
   const rows = variants.map(v => ({
     question_id,
-    generated_by: 'nvidia-gemma',
+    generated_by: 'gemini',
     buggy_code:   v.buggy_code,
     diff_json:    v.diff ?? [],
     bug_count:    q.bug_count ?? 1,
@@ -133,7 +133,7 @@ router.post('/regenerate-variant/:question_id', async (req, res) => {
     .from('debug_variants')
     .insert({
       question_id,
-      generated_by: 'nvidia-gemma',
+      generated_by: 'gemini',
       buggy_code:   v.buggy_code,
       diff_json:    v.diff ?? [],
       bug_count:    q.bug_count ?? 1,
@@ -149,3 +149,4 @@ router.post('/regenerate-variant/:question_id', async (req, res) => {
 });
 
 export default router;
+
