@@ -257,15 +257,37 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
 
       {/* ── Variant Review Panel ── */}
       {variants.length > 0 && savedQuestionId && (
-        <VariantReviewPanel
-          correctCode={correctCode}
-          language={language}
-          variants={variants}
-          questionId={savedQuestionId}
-          onApprove={handleVariantUpdate}
-          onReject={handleVariantRemove}
-          onRegenerate={() => handleRegenerate(savedQuestionId)}
-        />
+        <>
+          <VariantReviewPanel
+            correctCode={correctCode}
+            language={language}
+            variants={variants}
+            questionId={savedQuestionId}
+            onApprove={handleVariantUpdate}
+            onReject={handleVariantRemove}
+            onRegenerate={() => handleRegenerate(savedQuestionId)}
+          />
+
+          {/* Done button — shown when at least one variant is approved */}
+          {variants.some(v => v.is_approved) && (
+            <div className="glass p-5 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold" style={{ color: 'rgb(var(--text-primary))' }}>
+                  {variants.filter(v => v.is_approved).length} variant{variants.filter(v => v.is_approved).length !== 1 ? 's' : ''} approved
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>
+                  Question is ready to be added to tests
+                </p>
+              </div>
+              <button
+                onClick={onSuccess}
+                className="px-6 py-2.5 rounded-lg text-sm font-semibold text-white"
+                style={{ backgroundColor: '#4ade80', color: '#000' }}>
+                ✓ Done — Back to Questions
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
