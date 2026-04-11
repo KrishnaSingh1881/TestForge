@@ -63,7 +63,7 @@ async function pistonRun(language, code, stdin) {
 async function geminiSimulate(language, code, stdin) {
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.0-flash',
     generationConfig: { responseMimeType: 'application/json' },
   });
   const prompt = `You are a code execution simulator. Execute the following ${language} code and return the exact output.
