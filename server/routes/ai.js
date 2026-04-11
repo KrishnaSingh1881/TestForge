@@ -78,6 +78,7 @@ router.post('/generate-variants', async (req, res) => {
   try {
     variants = await callAI(buildPrompt(q.correct_code, q.bug_count ?? 1, q.difficulty ?? 'medium', 5));
   } catch (e) {
+    console.error('AI generation error:', e.message);
     return res.status(502).json({ error: 'AI generation failed: ' + e.message });
   }
 
@@ -87,7 +88,7 @@ router.post('/generate-variants', async (req, res) => {
 
   const rows = variants.map(v => ({
     question_id,
-    generated_by: 'manual',   // using 'manual' to satisfy existing enum
+    generated_by: 'nvidia-gemma',   // matches DB enum value added via ALTER TYPE
     buggy_code:   v.buggy_code,
     diff_json:    v.diff ?? [],
     bug_count:    q.bug_count ?? 1,
@@ -132,7 +133,7 @@ router.post('/regenerate-variant/:question_id', async (req, res) => {
     .from('debug_variants')
     .insert({
       question_id,
-      generated_by: 'manual',
+      generated_by: 'nvidia-gemma',
       buggy_code:   v.buggy_code,
       diff_json:    v.diff ?? [],
       bug_count:    q.bug_count ?? 1,
