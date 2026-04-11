@@ -94,15 +94,14 @@ function TestCard({ test }: { test: Test }) {
       {/* CTA */}
       <div className="mt-auto">
         {ended ? (
-          <div
-            className="text-center py-2 rounded-lg text-sm"
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.04)',
-              border: '1px solid var(--glass-border)',
-              color: 'rgb(var(--text-secondary))',
-            }}
-          >
+          <div className="text-center py-2 rounded-lg text-sm"
+            style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
             Test Ended
+          </div>
+        ) : test.status === 'draft' ? (
+          <div className="text-center py-2 rounded-lg text-sm"
+            style={{ backgroundColor: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.25)', color: '#facc15' }}>
+            ⏳ Not started yet — waiting for teacher
           </div>
         ) : submitted ? (
           <button

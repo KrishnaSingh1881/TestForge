@@ -8,10 +8,28 @@ import Dock from './Dock';
 import LockScreen from './LockScreen';
 
 export default function OSShell(): JSX.Element {
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const { theme } = useTheme();
   const { closeAll, setResponsiveMode } = useOSStore();
   const prevSessionRef = useRef(session);
+
+  // Disable right-click, copy, paste globally for students
+  useEffect(() => {
+    if (!user || user.role !== 'student') return;
+
+    const block = (e: Event) => e.preventDefault();
+    document.addEventListener('contextmenu', block);
+    document.addEventListener('copy', block);
+    document.addEventListener('paste', block);
+    document.addEventListener('cut', block);
+
+    return () => {
+      document.removeEventListener('contextmenu', block);
+      document.removeEventListener('copy', block);
+      document.removeEventListener('paste', block);
+      document.removeEventListener('cut', block);
+    };
+  }, [user]);
 
   // Set data-theme attribute on document root
   useEffect(() => {

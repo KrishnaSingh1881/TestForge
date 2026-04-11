@@ -17,22 +17,21 @@ router.get('/', requireAdmin, async (req, res) => {
   return res.json({ tests });
 });
 
-// ── GET /api/tests/available — student: active tests ─────────
+// ── GET /api/tests/available — student: active + upcoming tests ──
 router.get('/available', async (req, res) => {
   const { year, division, id: userId } = req.user;
   if (!year || !division) return res.status(400).json({ error: 'Student profile missing year or division' });
 
   const now = new Date().toISOString();
 
-  // Fetch tests matching student's year AND (their division OR 'ALL')
+  // Fetch active tests (can attempt) AND draft/upcoming tests (can see but not start)
   const { data: tests, error: testsErr } = await supabase
     .from('tests')
     .select('id, title, subject, year, division, duration_mins, start_time, end_time, questions_per_attempt, total_marks, status')
-    .eq('status', 'active')
     .eq('year', year)
     .in('division', [division, 'ALL'])
-    .lte('start_time', now)
-    .gte('end_time', now);
+    .in('status', ['active', 'draft'])
+    .gte('end_time', now);  // not ended yet
 
   if (testsErr) return res.status(500).json({ error: testsErr.message });
 
