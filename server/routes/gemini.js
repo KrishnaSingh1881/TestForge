@@ -1,17 +1,31 @@
 import { Router } from 'express';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import { supabase } from '../supabase.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
 
-function getModel() {
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  return genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    generationConfig: { responseMimeType: 'application/json' },
+function getClient() {
+  return new OpenAI({
+    apiKey:  process.env.NVIDIA_API_KEY,
+    baseURL: 'https://integrate.api.nvidia.com/v1',
   });
+}
+
+const MODEL = 'google/gemma-3-27b-it';
+
+async function callAI(prompt) {
+  const client = getClient();
+  const completion = await client.chat.completions.create({
+    model: MODEL,
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.7,
+    max_tokens: 4096,
+  });
+  const text = completion.choices[0]?.message?.content?.trim() ?? '';
+  const clean = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
+  return JSON.parse(clean);
 }
 
 function buildPrompt(correct_code, bug_count, difficulty, count = 5) {
@@ -22,8 +36,8 @@ Given the following correct code, generate ${count} buggy variant${count > 1 ? '
 Rules:
 - Each variant must have exactly ${bug_count} bug${bug_count > 1 ? 's' : ''} introduced.
 - Difficulty level: ${difficulty}.
-- Use different variable names, function names, and minor structural differences across variants to make each unique.
-- Bugs must be subtle and realistic (off-by-one errors, wrong operators, swapped conditions, wrong return values, etc).
+- Use different variable names, function names, and minor structural differences across variants.
+- Bugs must be subtle and realistic (off-by-one errors, wrong operators, swapped conditions, wrong return values).
 - Do NOT add syntax errors that prevent compilation/parsing.
 
 Correct code:
@@ -35,15 +49,6 @@ Return ONLY a valid JSON array with no markdown, no explanation, no code fences.
 Each element must have exactly these fields:
 - "buggy_code": string (the full modified code)
 - "diff": array of objects, each with { "line_number": number, "original_line": string, "buggy_line": string }`;
-}
-
-async function callGemini(prompt) {
-  const model = getModel();
-  const result = await model.generateContent(prompt);
-  const text = result.response.text().trim();
-  // Strip any accidental markdown fences
-  const clean = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
-  return JSON.parse(clean);
 }
 
 // ── POST /gemini/generate-variants ────────────────────────────
@@ -63,18 +68,18 @@ router.post('/generate-variants', async (req, res) => {
 
   let variants;
   try {
-    variants = await callGemini(buildPrompt(q.correct_code, q.bug_count ?? 1, q.difficulty ?? 'medium', 5));
+    variants = await callAI(buildPrompt(q.correct_code, q.bug_count ?? 1, q.difficulty ?? 'medium', 5));
   } catch (e) {
-    return res.status(502).json({ error: 'Gemini generation failed: ' + e.message });
+    return res.status(502).json({ error: 'AI generation failed: ' + e.message });
   }
 
   if (!Array.isArray(variants) || variants.length === 0) {
-    return res.status(502).json({ error: 'Gemini returned no variants' });
+    return res.status(502).json({ error: 'AI returned no variants' });
   }
 
   const rows = variants.map(v => ({
     question_id,
-    generated_by: 'gemini',
+    generated_by: 'nvidia-gemma',
     buggy_code:   v.buggy_code,
     diff_json:    v.diff ?? [],
     bug_count:    q.bug_count ?? 1,
@@ -107,19 +112,19 @@ router.post('/regenerate-variant/:question_id', async (req, res) => {
 
   let variants;
   try {
-    variants = await callGemini(buildPrompt(q.correct_code, q.bug_count ?? 1, q.difficulty ?? 'medium', 1));
+    variants = await callAI(buildPrompt(q.correct_code, q.bug_count ?? 1, q.difficulty ?? 'medium', 1));
   } catch (e) {
-    return res.status(502).json({ error: 'Gemini generation failed: ' + e.message });
+    return res.status(502).json({ error: 'AI generation failed: ' + e.message });
   }
 
   const v = Array.isArray(variants) ? variants[0] : variants;
-  if (!v?.buggy_code) return res.status(502).json({ error: 'Gemini returned invalid variant' });
+  if (!v?.buggy_code) return res.status(502).json({ error: 'AI returned invalid variant' });
 
   const { data: saved, error: insertErr } = await supabase
     .from('debug_variants')
     .insert({
       question_id,
-      generated_by: 'gemini',
+      generated_by: 'nvidia-gemma',
       buggy_code:   v.buggy_code,
       diff_json:    v.diff ?? [],
       bug_count:    q.bug_count ?? 1,

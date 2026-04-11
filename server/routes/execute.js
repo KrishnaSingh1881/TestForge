@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import { supabase } from '../supabase.js';
 import { requireAuth } from '../middleware/auth.js';
 
@@ -61,11 +61,11 @@ async function pistonRun(language, code, stdin) {
 }
 
 async function geminiSimulate(language, code, stdin) {
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    generationConfig: { responseMimeType: 'application/json' },
+  const client = new OpenAI({
+    apiKey:  process.env.NVIDIA_API_KEY,
+    baseURL: 'https://integrate.api.nvidia.com/v1',
   });
+
   const prompt = `You are a code execution simulator. Execute the following ${language} code and return the exact output.
 
 Code:
@@ -83,9 +83,16 @@ Rules:
 
 Return ONLY valid JSON: {"stdout": "...", "stderr": "...", "exitCode": 0}`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text().trim().replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
-  const data = JSON.parse(text);
+  const completion = await client.chat.completions.create({
+    model: 'google/gemma-3-27b-it',
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.1,
+    max_tokens: 1024,
+  });
+
+  const text = completion.choices[0]?.message?.content?.trim() ?? '';
+  const clean = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
+  const data = JSON.parse(clean);
   return {
     stdout:   String(data.stdout   ?? ''),
     stderr:   String(data.stderr   ?? ''),
