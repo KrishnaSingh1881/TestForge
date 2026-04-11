@@ -149,9 +149,14 @@ export default function TestSessionApp({ testId, attemptId: initialAttemptId }: 
 
       setPhase('active');
       
-      // Lock window after attempt loaded
-      if (windowId) {
-        lockWindow(windowId);
+      // Lock window after attempt loaded — find window ID if not set yet
+      const wid = windowId ?? useOSStore.getState().windows.find(w =>
+        w.appType === 'test-session' &&
+        (w.appProps?.attemptId === aid || w.appProps?.testId === testId)
+      )?.id ?? null;
+      if (wid) {
+        setWindowId(wid);
+        lockWindow(wid);
       }
     } catch (err) {
       setError('Could not load attempt. It may have expired or been submitted.');
@@ -227,6 +232,8 @@ export default function TestSessionApp({ testId, attemptId: initialAttemptId }: 
     if (!tid) return;
     api.get(`/tests/${tid}/settings`).then(r => setTestSettings(r.data.settings ?? {})).catch(() => {});
   }, [testId, test?.id]);
+  // Heartbeat + integrity
+  useHeartbeat(attemptId, phase === 'active');
   useIntegrityListeners({
     attemptId,
     active: phase === 'active',
@@ -499,85 +506,81 @@ export default function TestSessionApp({ testId, attemptId: initialAttemptId }: 
           />
 
           {/* Main question area */}
-          <main className="flex-1 overflow-y-auto p-8">
+          <main className="flex-1 min-h-0 overflow-hidden relative">
             {!currentQ ? (
-              <div className="glass p-10 text-center">
-                <p style={{ color: 'rgb(var(--text-secondary))' }}>No questions available.</p>
+              <div className="h-full flex items-center justify-center">
+                <div className="glass p-10 text-center">
+                  <p style={{ color: 'rgb(var(--text-secondary))' }}>No questions available.</p>
+                </div>
               </div>
-            ) : (
-              <div className="max-w-5xl mx-auto">
-                {/* Locked overlay */}
-                {elapsedMins < currentQ.unlock_at_minutes ? (
-                  <div className="glass p-12 text-center">
-                    <p className="text-4xl mb-4">🔒</p>
-                    <p className="text-lg font-semibold mb-2" style={{ color: 'rgb(var(--text-primary))' }}>
-                      Question Locked
-                    </p>
-                    <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>
-                      This question unlocks at {currentQ.unlock_at_minutes} minutes into the test.
-                    </p>
-                  </div>
-                ) : currentQ.type === 'mcq_single' || currentQ.type === 'mcq_multi' ? (
-                  <MCQQuestion
-                    key={currentQ.id}
-                    question={currentQ}
-                    attemptId={attemptId!}
-                    questionNumber={currentIdx + 1}
-                    isMarkedForReview={reviewIds.has(currentQ.id)}
-                    onAnswered={onAnswered}
-                    onToggleReview={onToggleReview}
-                  />
-                ) : currentQ.type === 'debugging' ? (
-                  <VSCodeLayout
-                    key={currentQ.id}
-                    question={currentQ}
-                    attemptId={attemptId!}
-                    questionNumber={currentIdx + 1}
-                    initialCode={currentQ.saved_response?.submitted_code || currentQ.buggy_code}
-                    initialRunsRemaining={runsRemaining}
-                    sessionPhase={phase}
-                    onCodeChange={() => {}}
-                    onAnswered={onAnswered}
-                  />
-                ) : (
-                  <div className="glass p-10 text-center">
-                    <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>
-                      Unknown question type.
-                    </p>
-                  </div>
-                )}
-
-                {/* Prev / Next navigation */}
-                <div className="flex items-center justify-between mt-8">
-                  <button
-                    disabled={currentIdx === 0}
-                    onClick={() => setCurrentIdx(i => i - 1)}
-                    className="px-5 py-2 rounded-lg text-sm transition-opacity disabled:opacity-30"
-                    style={{
-                      backgroundColor: 'rgba(255,255,255,0.07)',
-                      border: '1px solid var(--glass-border)',
-                      color: 'rgb(var(--text-secondary))',
-                    }}
-                  >
+            ) : elapsedMins < (currentQ.unlock_at_minutes ?? 0) ? (
+              <div className="h-full flex items-center justify-center p-8">
+                <div className="glass p-12 text-center">
+                  <p className="text-4xl mb-4">🔒</p>
+                  <p className="text-lg font-semibold mb-2" style={{ color: 'rgb(var(--text-primary))' }}>Question Locked</p>
+                  <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>
+                    Unlocks at {currentQ.unlock_at_minutes} minutes into the test.
+                  </p>
+                </div>
+              </div>
+            ) : currentQ.type === 'debugging' ? (
+              // Debugging questions get full height — no scroll wrapper
+              <div className="h-full flex flex-col">
+                <VSCodeLayout
+                  key={currentQ.id}
+                  question={currentQ}
+                  attemptId={attemptId!}
+                  questionNumber={currentIdx + 1}
+                  initialCode={currentQ.saved_response?.submitted_code || currentQ.buggy_code}
+                  initialRunsRemaining={runsRemaining}
+                  sessionPhase={phase}
+                  onCodeChange={() => {}}
+                  onAnswered={onAnswered}
+                />
+                {/* Nav buttons for debug questions */}
+                <div className="flex items-center justify-between px-6 py-3 border-t shrink-0"
+                  style={{ borderColor: 'var(--glass-border)', backgroundColor: 'rgba(0,0,0,0.3)' }}>
+                  <button disabled={currentIdx === 0} onClick={() => setCurrentIdx(i => i - 1)}
+                    className="px-4 py-1.5 rounded-lg text-sm disabled:opacity-30"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
                     ← Previous
                   </button>
-
-                  <span className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
-                    {currentIdx + 1} / {questions.length}
-                  </span>
-
-                  <button
-                    disabled={currentIdx === questions.length - 1}
-                    onClick={() => setCurrentIdx(i => i + 1)}
-                    className="px-5 py-2 rounded-lg text-sm transition-opacity disabled:opacity-30"
-                    style={{
-                      backgroundColor: 'rgba(255,255,255,0.07)',
-                      border: '1px solid var(--glass-border)',
-                      color: 'rgb(var(--text-secondary))',
-                    }}
-                  >
+                  <span className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>{currentIdx + 1} / {questions.length}</span>
+                  <button disabled={currentIdx === questions.length - 1} onClick={() => setCurrentIdx(i => i + 1)}
+                    className="px-4 py-1.5 rounded-lg text-sm disabled:opacity-30"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
                     Next →
                   </button>
+                </div>
+              </div>
+            ) : (
+              // MCQ questions scroll normally
+              <div className="h-full overflow-y-auto p-8">
+                <div className="max-w-3xl mx-auto space-y-6">
+                  {(currentQ.type === 'mcq_single' || currentQ.type === 'mcq_multi') && (
+                    <MCQQuestion
+                      key={currentQ.id}
+                      question={currentQ}
+                      attemptId={attemptId!}
+                      questionNumber={currentIdx + 1}
+                      isMarkedForReview={reviewIds.has(currentQ.id)}
+                      onAnswered={onAnswered}
+                      onToggleReview={onToggleReview}
+                    />
+                  )}
+                  <div className="flex items-center justify-between">
+                    <button disabled={currentIdx === 0} onClick={() => setCurrentIdx(i => i - 1)}
+                      className="px-5 py-2 rounded-lg text-sm disabled:opacity-30"
+                      style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
+                      ← Previous
+                    </button>
+                    <span className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>{currentIdx + 1} / {questions.length}</span>
+                    <button disabled={currentIdx === questions.length - 1} onClick={() => setCurrentIdx(i => i + 1)}
+                      className="px-5 py-2 rounded-lg text-sm disabled:opacity-30"
+                      style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
+                      Next →
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
