@@ -125,7 +125,7 @@ function DropZone({ onFile, disabled }: { onFile: (f: File) => void; disabled: b
   );
 }
 
-export default function QuestionBankApp({ testId, testTitle }: { testId?: string; testTitle?: string }) {
+export default function QuestionBankApp({ testId: initialTestId, testTitle: initialTestTitle }: { testId?: string; testTitle?: string }) {
   const lenisRef = useLenis();
 
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -134,16 +134,23 @@ export default function QuestionBankApp({ testId, testTitle }: { testId?: string
   const [editing, setEditing] = useState<Question | null>(null);
   const [attachId, setAttachId] = useState<string | null>(null);
 
-  // Test-questions management (when opened from Test Manager)
-  const [activeTab, setActiveTab] = useState<'bank' | 'test'>(testId ? 'test' : 'bank');
+  // Test picker — works both when passed a testId prop and when selected manually
+  const [allTests, setAllTests] = useState<{ id: string; title: string; status: string }[]>([]);
+  const [selectedTestId, setSelectedTestId] = useState(initialTestId ?? '');
+  const [selectedTestTitle, setSelectedTestTitle] = useState(initialTestTitle ?? '');
+  const activeTestId = selectedTestId || undefined;
+  const activeTestTitle = selectedTestTitle || undefined;
+
+  // Test-questions management
+  const [activeTab, setActiveTab] = useState<'bank' | 'test'>(initialTestId ? 'test' : 'bank');
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
   const [testQLoading, setTestQLoading] = useState(false);
 
-  async function loadTestQuestions() {
-    if (!testId) return;
+  async function loadTestQuestions(tid = activeTestId) {
+    if (!tid) return;
     setTestQLoading(true);
     try {
-      const r = await api.get(`/questions/test/${testId}`);
+      const r = await api.get(`/questions/test/${tid}`);
       setTestQuestions(r.data.questions ?? []);
     } catch {
       setTestQuestions([]);
@@ -181,7 +188,11 @@ export default function QuestionBankApp({ testId, testTitle }: { testId?: string
     }
   }
 
-  useEffect(() => { load(); if (testId) loadTestQuestions(); }, []);
+  useEffect(() => {
+    load();
+    api.get('/tests').then(r => setAllTests(r.data.tests ?? [])).catch(() => {});
+    if (initialTestId) loadTestQuestions(initialTestId);
+  }, []);
 
   async function handleDelete(id: string) {
     if (!confirm('Delete this question? This cannot be undone.')) return;
@@ -308,29 +319,52 @@ export default function QuestionBankApp({ testId, testTitle }: { testId?: string
         )}
       </div>
 
-      {/* Tab bar — only shown when opened from Test Manager */}
-      {testId && (
-        <div className="flex gap-1 p-1 rounded-xl w-fit"
-          style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)' }}>
-          {(['test', 'bank'] as const).map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)}
-              className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all"
-              style={{
-                backgroundColor: activeTab === tab ? 'rgb(var(--accent))' : 'transparent',
-                color: activeTab === tab ? '#fff' : 'rgb(var(--text-secondary))',
-              }}>
-              {tab === 'test' ? `📋 ${testTitle ?? 'Test'} Questions` : '🗃️ All Questions'}
-            </button>
-          ))}
+      {/* Test picker + tab bar */}
+      <div className="glass p-4 flex flex-wrap items-center gap-3">
+        <div className="flex-1 min-w-48">
+          <label className="block text-xs mb-1 font-medium uppercase tracking-wide"
+            style={{ color: 'rgb(var(--text-secondary))' }}>Manage questions for test</label>
+          <select
+            value={selectedTestId}
+            onChange={e => {
+              const tid = e.target.value;
+              const t = allTests.find(x => x.id === tid);
+              setSelectedTestId(tid);
+              setSelectedTestTitle(t?.title ?? '');
+              if (tid) { setActiveTab('test'); loadTestQuestions(tid); }
+              else setActiveTab('bank');
+            }}
+            className="w-full px-3 py-1.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+            style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-primary))' }}
+          >
+            <option value="">— No test selected (browse all questions) —</option>
+            {allTests.map(t => <option key={t.id} value={t.id}>{t.title} ({t.status})</option>)}
+          </select>
         </div>
-      )}
+
+        {activeTestId && (
+          <div className="flex gap-1 p-1 rounded-xl"
+            style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)' }}>
+            {(['test', 'bank'] as const).map(tab => (
+              <button key={tab} onClick={() => setActiveTab(tab)}
+                className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all"
+                style={{
+                  backgroundColor: activeTab === tab ? 'rgb(var(--accent))' : 'transparent',
+                  color: activeTab === tab ? '#fff' : 'rgb(var(--text-secondary))',
+                }}>
+                {tab === 'test' ? `📋 Test Questions` : '🗃️ All Questions'}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Test questions management panel */}
-      {activeTab === 'test' && testId && (
+      {activeTab === 'test' && activeTestId && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>
-              {testQuestions.length} question{testQuestions.length !== 1 ? 's' : ''} attached to this test
+              {testQuestions.length} question{testQuestions.length !== 1 ? 's' : ''} attached — {activeTestTitle}
             </p>
             <button onClick={() => setActiveTab('bank')}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
@@ -694,7 +728,8 @@ export default function QuestionBankApp({ testId, testTitle }: { testId?: string
       {attachId && (
         <AttachToTestModal
           questionId={attachId}
-          onClose={() => { setAttachId(null); if (testId) loadTestQuestions(); }}
+          preselectedTestId={activeTestId}
+          onClose={() => { setAttachId(null); if (activeTestId) loadTestQuestions(activeTestId); }}
         />
       )}
     </div>

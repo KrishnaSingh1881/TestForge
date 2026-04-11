@@ -5,12 +5,13 @@ interface Test { id: string; title: string; status: string; }
 
 interface Props {
   questionId: string;
+  preselectedTestId?: string;
   onClose: () => void;
 }
 
-export default function AttachToTestModal({ questionId, onClose }: Props) {
+export default function AttachToTestModal({ questionId, preselectedTestId, onClose }: Props) {
   const [tests, setTests] = useState<Test[]>([]);
-  const [testId, setTestId] = useState('');
+  const [testId, setTestId] = useState(preselectedTestId ?? '');
   const [unlockAt, setUnlockAt] = useState(0);
   const [order, setOrder] = useState(0);
   const [loading, setLoading] = useState(false);
