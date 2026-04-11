@@ -137,6 +137,32 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
     setAllQuestions(prev => prev.filter(q => q.id !== id));
   }
 
+  const [addingAll, setAddingAll] = useState(false);
+
+  async function handleAddAll() {
+    if (!activeTest) return;
+    const unattached = filtered.filter(q => !testQuestions.some(tq => tq.question_id === q.id));
+    if (unattached.length === 0) return;
+    if (!confirm(`Add all ${unattached.length} questions to this test?`)) return;
+    setAddingAll(true);
+    try {
+      for (let i = 0; i < unattached.length; i++) {
+        await api.post(`/questions/${unattached[i].id}/attach`, {
+          test_id: activeTest.id,
+          unlock_at_minutes: 0,
+          question_order: testQuestions.length + i,
+        });
+      }
+      const r = await api.get(`/questions/test/${activeTest.id}`);
+      setTestQuestions(r.data.questions ?? []);
+      setScreen('test-questions');
+    } catch (e: any) {
+      alert(e.response?.data?.error ?? 'Failed to add all');
+    } finally {
+      setAddingAll(false);
+    }
+  }
+
   async function handleBulkImport() {
     if (!importFile) return;
     setImporting(true);
@@ -315,6 +341,13 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
             style={{ backgroundColor: 'rgb(var(--accent))' }}>
             + Create New
           </button>
+          {filtered.some(q => !testQuestions.some(tq => tq.question_id === q.id)) && (
+            <button onClick={handleAddAll} disabled={addingAll}
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
+              style={{ backgroundColor: '#4ade80', color: '#000' }}>
+              {addingAll ? 'Adding...' : `+ Add All (${filtered.filter(q => !testQuestions.some(tq => tq.question_id === q.id)).length})`}
+            </button>
+          )}
         </div>
 
         {/* Filters */}

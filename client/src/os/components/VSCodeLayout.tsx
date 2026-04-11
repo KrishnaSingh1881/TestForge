@@ -128,11 +128,17 @@ export default function VSCodeLayout({
         running: false,
       }));
 
-      // Mark as answered if any test passed
+      // Save response with behavioral meta after each run
+      await api.post(`/attempts/${attemptId}/responses`, {
+        question_id: question.id,
+        submitted_code: state.code,
+        language: question.language,
+        time_spent_seconds: Math.floor((Date.now() - questionOpenTime.current) / 1000),
+        behavioral_meta: meta,
+      }).catch(() => {});
+
       const anyPassed = results.some(r => r.passed);
-      if (anyPassed) {
-        onAnswered(question.id, true);
-      }
+      if (anyPassed) onAnswered(question.id, true);
     } catch (err) {
       console.error('Failed to execute code:', err);
       setState(s => ({ ...s, running: false }));
