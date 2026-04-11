@@ -85,6 +85,15 @@ export const APP_REGISTRY: AppDefinition[] = [
     allowedRoles: ['admin', 'super_admin'],
     singleton: true,
   },
+  {
+    id: 'code-editor',
+    name: 'Code Editor',
+    icon: '💻',
+    defaultSize: { width: 1100, height: 720 },
+    defaultPosition: { x: 70, y: 45 },
+    allowedRoles: ['admin', 'super_admin'],
+    singleton: true,
+  },
 ];
 
 /** Returns apps visible in the Dock for a given role */

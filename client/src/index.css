@@ -21,19 +21,19 @@
 }
 
 [data-theme="light"] {
-  --bg-primary: 241 245 249;     /* slate-100 */
-  --bg-secondary: 226 232 240;   /* slate-200 */
-  --text-primary: 15 23 42;      /* slate-900 */
-  --text-secondary: 71 85 105;   /* slate-600 */
+  --bg-primary: 245 237 224;     /* warm beige */
+  --bg-secondary: 235 220 195;   /* slightly darker sand */
+  --text-primary: 40 25 8;       /* dark brown */
+  --text-secondary: 120 85 45;   /* medium brown */
   --accent: 99 102 241;
-  --glass-bg: rgba(255 255 255 / 0.45);
-  --glass-border: rgba(255 255 255 / 0.7);
+  --glass-bg: rgba(200 160 90 / 0.18);
+  --glass-border: rgba(180 130 60 / 0.28);
 
-  /* ── OS Shell tokens (light) ── */
-  --menubar-bg: rgba(241, 245, 249, 0.8);
-  --dock-bg: rgba(255, 255, 255, 0.5);
-  --window-chrome-bg: rgba(226, 232, 240, 0.9);
-  --window-titlebar-bg: rgba(203, 213, 225, 0.95);
+  /* ── OS Shell tokens (light — warm) ── */
+  --menubar-bg: rgba(225, 195, 145, 0.65);
+  --dock-bg: rgba(210, 175, 120, 0.4);
+  --window-chrome-bg: rgba(235, 215, 180, 0.6);
+  --window-titlebar-bg: rgba(225, 200, 160, 0.8);
 }
 
 /* Smooth theme transition */
@@ -92,30 +92,30 @@ body {
 /* Allow text selection inside app windows */
 .app-window-content {
   user-select: text;
+  /* Dark mode tokens inside windows */
+  --bg-primary: 15 23 42;
+  --bg-secondary: 22 30 50;
+  --text-primary: 248 250 252;
+  --text-secondary: 148 163 184;
+  --glass-bg: rgba(255 255 255 / 0.06);
+  --glass-border: rgba(255 255 255 / 0.1);
+  color: rgb(248 250 252);
 }
 
-/* Desktop wallpaper mesh gradient */
-.desktop-wallpaper {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(at 20% 30%, #1e1b4b 0%, transparent 50%),
-    radial-gradient(at 80% 70%, #0f172a 0%, transparent 50%),
-    radial-gradient(at 50% 10%, #312e81 0%, transparent 40%),
-    radial-gradient(at 10% 80%, #1e3a5f 0%, transparent 45%),
-    #0f172a;
-  will-change: transform;
+/* Light mode — warm sand tones inside windows */
+[data-theme="light"] .app-window-content {
+  --bg-primary: 60 40 15;
+  --bg-secondary: 80 55 25;
+  --text-primary: 40 25 8;
+  --text-secondary: 120 85 45;
+  --glass-bg: rgba(200 150 80 / 0.12);
+  --glass-border: rgba(180 130 60 / 0.25);
+  color: rgb(40 25 8);
 }
 
-/* Dock pill */
-.dock-pill {
-  background: var(--dock-bg);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid var(--glass-border);
-  border-radius: 9999px;
-  padding: 8px 12px;
-}
+/* Desktop wallpaper — handled by Desktop.tsx inline styles */
+
+/* Dock — no pill container, icons are individual tiles (see DockIcon.tsx) */
 
 /* Menu bar */
 .menu-bar {
@@ -123,22 +123,36 @@ body {
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-bottom: 1px solid var(--glass-border);
+  transition: background 0.8s ease, border-color 0.8s ease;
 }
 
-/* App window chrome */
+/* App window chrome — dark glass in dark mode, warm glass in light mode */
 .app-window {
-  background: var(--window-chrome-bg);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid var(--glass-border);
+  background: rgba(18, 14, 40, 0.72);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(120, 90, 200, 0.25);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255,255,255,0.08);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255,255,255,0.06);
+  transition: background 0.8s ease, border-color 0.8s ease;
 }
 
 .app-window-titlebar {
-  background: var(--window-titlebar-bg);
-  border-bottom: 1px solid var(--glass-border);
+  background: rgba(10, 8, 28, 0.85);
+  border-bottom: 1px solid rgba(120, 90, 200, 0.2);
+  transition: background 0.8s ease, border-color 0.8s ease;
+}
+
+[data-theme="light"] .app-window {
+  background: rgba(245, 230, 200, 0.55);
+  border: 1px solid rgba(180, 130, 60, 0.3);
+  box-shadow: 0 24px 48px rgba(120, 80, 20, 0.2), 0 0 0 0.5px rgba(200,150,80,0.15);
+}
+
+[data-theme="light"] .app-window-titlebar {
+  background: rgba(235, 215, 180, 0.75);
+  border-bottom: 1px solid rgba(180, 130, 60, 0.2);
 }
 
 /* Traffic light buttons */
@@ -183,12 +197,6 @@ option {
 
 /* Tablet mode (768px - 1023px) */
 @media (min-width: 768px) and (max-width: 1023px) {
-  /* Dock: disable magnification effects on tablet */
-  .dock-pill {
-    padding: 6px 10px;
-  }
-  
-  /* MenuBar: ensure full layout is visible */
   .menu-bar {
     padding-left: 1rem;
     padding-right: 1rem;
@@ -197,23 +205,7 @@ option {
 
 /* Mobile mode (< 768px) */
 @media (max-width: 767px) {
-  /* Dock: transform to bottom nav bar */
-  .dock-pill {
-    border-radius: 0;
-    padding: 0;
-    width: 100%;
-    background: var(--menubar-bg);
-    border: none;
-    border-top: 1px solid var(--glass-border);
-  }
-  
-  /* MenuBar: compact layout */
-  .menu-bar {
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-  }
-  
-  /* Hide app window drag handles on mobile */
+  /* App window bottom sheet */
   .app-window {
     border-radius: 1.5rem 1.5rem 0 0;
   }
@@ -221,12 +213,6 @@ option {
 
 /* Desktop mode (>= 1024px) */
 @media (min-width: 1024px) {
-  /* Dock: full magnification and pill styling */
-  .dock-pill {
-    padding: 8px 12px;
-  }
-  
-  /* MenuBar: full layout with all elements */
   .menu-bar {
     padding-left: 1rem;
     padding-right: 1rem;

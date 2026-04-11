@@ -1,4 +1,3 @@
-import { AnimatePresence } from 'framer-motion';
 import { useOSStore } from './store/useOSStore';
 import AppWindow from './AppWindow';
 import type { AppType } from './store/useOSStore';
@@ -11,6 +10,7 @@ import QuestionBankApp from './apps/QuestionBankApp';
 import TestManagerApp from './apps/TestManagerApp';
 import IntegrityApp from './apps/IntegrityApp';
 import AdminAnalyticsApp from './apps/AdminAnalyticsApp';
+import CodeEditorApp from './apps/CodeEditorApp';
 
 const APP_COMPONENTS: Record<AppType, React.ComponentType<any>> = {
   'tests':           TestsApp,
@@ -21,13 +21,14 @@ const APP_COMPONENTS: Record<AppType, React.ComponentType<any>> = {
   'test-manager':    TestManagerApp,
   'integrity':       IntegrityApp,
   'admin-analytics': AdminAnalyticsApp,
+  'code-editor':     CodeEditorApp,
 };
 
 export default function WindowManager() {
   const { windows } = useOSStore();
 
   return (
-    <AnimatePresence>
+    <>
       {windows.map(win => {
         const AppComponent = APP_COMPONENTS[win.appType];
         if (!AppComponent) return null;
@@ -38,6 +39,6 @@ export default function WindowManager() {
           </AppWindow>
         );
       })}
-    </AnimatePresence>
+    </>
   );
 }

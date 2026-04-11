@@ -8,7 +8,8 @@ export type AppType =
   | 'question-bank'
   | 'test-manager'
   | 'integrity'
-  | 'admin-analytics';
+  | 'admin-analytics'
+  | 'code-editor';
 
 export type ResponsiveMode = 'desktop' | 'tablet' | 'mobile';
 
@@ -34,6 +35,7 @@ interface OSStore {
   responsiveMode: ResponsiveMode;
 
   openWindow: (appType: AppType, appProps?: Record<string, unknown>) => string;
+  openWindowExclusive: (appType: AppType, appProps?: Record<string, unknown>) => string;
   closeWindow: (id: string) => void;
   focusWindow: (id: string) => void;
   minimizeWindow: (id: string) => void;
@@ -58,6 +60,7 @@ const APP_DEFAULTS: Record<AppType, { size: { width: number; height: number }; p
   'test-manager':    { size: { width: 960,  height: 660 }, position: { x: 100, y: 60 } },
   'integrity':       { size: { width: 1000, height: 680 }, position: { x: 90,  y: 55 } },
   'admin-analytics': { size: { width: 960,  height: 660 }, position: { x: 110, y: 65 } },
+  'code-editor':     { size: { width: 1100, height: 720 }, position: { x: 70,  y: 45 } },
 };
 
 const APP_TITLES: Record<AppType, string> = {
@@ -69,11 +72,12 @@ const APP_TITLES: Record<AppType, string> = {
   'test-manager':    'Test Manager',
   'integrity':       'Integrity',
   'admin-analytics': 'Analytics',
+  'code-editor':     'Code Editor',
 };
 
 // Singleton app types — only one instance allowed
 const SINGLETON_APPS: Set<AppType> = new Set([
-  'tests', 'analytics', 'question-bank', 'test-manager', 'admin-analytics',
+  'tests', 'analytics', 'question-bank', 'test-manager', 'admin-analytics', 'code-editor',
 ]);
 
 export const useOSStore = create<OSStore>((set, get) => ({
@@ -141,6 +145,16 @@ export const useOSStore = create<OSStore>((set, get) => ({
     }));
 
     return id;
+  },
+
+  // Opens a window and closes ALL other non-locked windows (strict single-app mode)
+  openWindowExclusive: (appType, appProps) => {
+    // Single atomic set — remove all non-locked windows at once
+    set(s => ({
+      windows: s.windows.filter(w => w.isLocked),
+      focusedWindowId: null,
+    }));
+    return get().openWindow(appType, appProps);
   },
 
   closeWindow: (id) => {

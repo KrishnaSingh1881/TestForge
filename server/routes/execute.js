@@ -11,7 +11,52 @@ const PISTON_URL = 'https://emkc.org/api/v2/piston/execute';
 const LANG_MAP = {
   python: { language: 'python', version: '3.10.0' },
   cpp:    { language: 'c++',    version: '10.2.0'  },
+  c:      { language: 'c',      version: '10.2.0'  },
+  java:   { language: 'java',   version: '15.0.2'  },
 };
+
+// ── POST /api/execute/scratch — no attempt/question required ──
+router.post('/scratch', async (req, res) => {
+  const { language, code, stdin } = req.body;
+
+  if (!language || !code) {
+    return res.status(400).json({ error: 'language and code are required' });
+  }
+
+  const runtime = LANG_MAP[language];
+  if (!runtime) return res.status(400).json({ error: `Unsupported language: ${language}` });
+
+  try {
+    const pistonRes = await fetch(PISTON_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        language: runtime.language,
+        version:  runtime.version,
+        files:    [{ content: code }],
+        stdin:    stdin ?? '',
+        run_timeout: 10000,
+        compile_timeout: 15000,
+      }),
+    });
+
+    if (!pistonRes.ok) {
+      return res.status(502).json({ error: `Execution service error: ${pistonRes.status}` });
+    }
+
+    const data = await pistonRes.json();
+    const run  = data.run ?? {};
+    const compile = data.compile ?? {};
+
+    return res.json({
+      stdout:   run.stdout ?? '',
+      stderr:   (compile.stderr ?? '') + (run.stderr ?? ''),
+      exitCode: run.code ?? 0,
+    });
+  } catch (e) {
+    return res.status(502).json({ error: 'Network error reaching execution service' });
+  }
+});
 
 // ── POST /api/execute ─────────────────────────────────────────
 router.post('/', async (req, res) => {
