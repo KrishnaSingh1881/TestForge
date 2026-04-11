@@ -199,6 +199,7 @@ export default function AppWindow({ window: win, timerSlot, children }: AppWindo
   }
 
   return (
+    <Rnd
       ref={rndRef}
       position={win.position}
       size={win.size}
