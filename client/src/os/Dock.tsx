@@ -70,11 +70,13 @@ export default function Dock() {
     <div
       style={{
         position: 'fixed',
-        bottom: dockAutohide ? (hovered ? 16 : -80) : 16,
+        bottom: dockAutohide ? (hovered ? 16 : -90) : 16,
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 200,
-        transition: 'bottom 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+        transition: dockAutohide
+          ? 'bottom 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), background 0.8s ease, border-color 0.8s ease'
+          : 'background 0.8s ease, border-color 0.8s ease, box-shadow 0.8s ease',
         background: isLight
           ? 'rgba(210, 175, 120, 0.45)'
           : 'rgba(20, 14, 50, 0.55)',
@@ -91,7 +93,6 @@ export default function Dock() {
         display: 'flex',
         alignItems: 'flex-end',
         gap: 8,
-        transition: 'background 0.8s ease, border-color 0.8s ease, box-shadow 0.8s ease',
       }}
       onMouseMove={e => mouseX.set(e.clientX)}
       onMouseLeave={() => { mouseX.set(Infinity); setHovered(false); }}
@@ -121,7 +122,7 @@ export default function Dock() {
     {/* Autohide trigger zone — invisible strip at bottom edge */}
     {dockAutohide && (
       <div
-        style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 8, zIndex: 199 }}
+        style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 20, zIndex: 199 }}
         onMouseEnter={() => setHovered(true)}
       />
     )}

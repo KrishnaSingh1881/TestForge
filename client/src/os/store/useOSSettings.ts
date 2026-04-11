@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type FontSize = 'small' | 'medium' | 'large';
+export type FontSize = 'small' | 'medium' | 'large' | 'xl';
 
 const FONT_SIZE_MAP: Record<FontSize, string> = {
-  small:  '13px',
-  medium: '15px',
-  large:  '17px',
+  small:  '12px',
+  medium: '14px',
+  large:  '16px',
+  xl:     '18px',
 };
 
 interface OSSettings {

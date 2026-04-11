@@ -201,22 +201,40 @@ export default function MenuBar() {
                 <p className="text-xs" style={{ color: textSecondary }}>{user?.email}</p>
               </div>
 
-              {/* Font size */}
-              <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--glass-border)' }}>
-                <p className="text-xs mb-2" style={{ color: textSecondary }}>Font Size</p>
-                <div className="flex gap-1">
-                  {(['small', 'medium', 'large'] as FontSize[]).map(s => (
-                    <button key={s} onClick={() => setFontSize(s)}
-                      className="flex-1 py-1 rounded-lg text-xs font-medium transition-colors capitalize"
-                      style={{
-                        backgroundColor: fontSize === s ? 'rgb(var(--accent))' : 'rgba(255,255,255,0.08)',
-                        color: fontSize === s ? '#fff' : textSecondary,
-                        border: '1px solid var(--glass-border)',
-                      }}>
-                      {s === 'small' ? 'A' : s === 'medium' ? 'A' : 'A'}
-                      <span style={{ fontSize: s === 'small' ? 8 : s === 'medium' ? 10 : 12 }}> {s[0].toUpperCase()}</span>
-                    </button>
-                  ))}
+              {/* Font size slider */}
+              <div className="px-3 py-2.5 border-b" style={{ borderColor: 'var(--glass-border)' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs" style={{ color: textSecondary }}>Font Size</p>
+                  <span className="text-xs font-medium capitalize" style={{ color: textPrimary }}>{fontSize}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span style={{ fontSize: 10, color: textSecondary, fontWeight: 700, lineHeight: 1 }}>A</span>
+                  <div className="relative flex-1 h-5 flex items-center">
+                    <div className="w-full h-1 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.12)' }}>
+                      <div className="h-1 rounded-full transition-all duration-200"
+                        style={{
+                          backgroundColor: 'rgb(var(--accent))',
+                          width: fontSize === 'small' ? '0%' : fontSize === 'medium' ? '33%' : fontSize === 'large' ? '66%' : '100%',
+                        }} />
+                    </div>
+                    <input
+                      type="range" min={0} max={3} step={1}
+                      value={['small','medium','large','xl'].indexOf(fontSize as string)}
+                      onChange={e => setFontSize((['small','medium','large','xl'] as FontSize[])[Number(e.target.value)])}
+                      className="absolute inset-0 w-full opacity-0 cursor-pointer h-5"
+                    />
+                    {/* Tick marks */}
+                    <div className="absolute inset-x-0 flex justify-between px-0 pointer-events-none" style={{ top: '50%', transform: 'translateY(-50%)' }}>
+                      {['small','medium','large','xl'].map(s => (
+                        <div key={s} className="w-2.5 h-2.5 rounded-full border-2 transition-all duration-200"
+                          style={{
+                            backgroundColor: ['small','medium','large','xl'].indexOf(s) <= ['small','medium','large','xl'].indexOf(fontSize as string) ? 'rgb(var(--accent))' : 'rgba(255,255,255,0.15)',
+                            borderColor: ['small','medium','large','xl'].indexOf(s) <= ['small','medium','large','xl'].indexOf(fontSize as string) ? 'rgb(var(--accent))' : 'rgba(255,255,255,0.2)',
+                          }} />
+                      ))}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 16, color: textSecondary, fontWeight: 700, lineHeight: 1 }}>A</span>
                 </div>
               </div>
 
