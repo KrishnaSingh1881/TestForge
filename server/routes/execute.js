@@ -84,7 +84,7 @@ Rules:
 Return ONLY valid JSON: {"stdout": "...", "stderr": "...", "exitCode": 0}`;
 
   const completion = await client.chat.completions.create({
-    model: 'google/gemma-3-27b-it',
+    model: 'google/gemma-4-31b-it',
     messages: [{ role: 'user', content: prompt }],
     temperature: 0.1,
     max_tokens: 1024,

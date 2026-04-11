@@ -13,7 +13,7 @@ function getClient() {
   });
 }
 
-const MODEL = 'google/gemma-3-27b-it';
+const MODEL = 'google/gemma-4-31b-it';
 
 async function callAI(prompt) {
   const client = getClient();
