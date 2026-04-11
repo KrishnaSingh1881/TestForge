@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { useOSStore } from './store/useOSStore';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useOSSettings, type FontSize } from './store/useOSSettings';
 
 export default function MenuBar() {
   const { windows, focusedWindowId, responsiveMode } = useOSStore();
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { closeAll } = useOSStore();
+  const { fontSize, setFontSize, dockAutohide, toggleDockAutohide } = useOSSettings();
 
   const [clock, setClock] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -197,6 +199,36 @@ export default function MenuBar() {
               <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--glass-border)' }}>
                 <p className="text-xs font-medium" style={{ color: textPrimary }}>{user?.name}</p>
                 <p className="text-xs" style={{ color: textSecondary }}>{user?.email}</p>
+              </div>
+
+              {/* Font size */}
+              <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--glass-border)' }}>
+                <p className="text-xs mb-2" style={{ color: textSecondary }}>Font Size</p>
+                <div className="flex gap-1">
+                  {(['small', 'medium', 'large'] as FontSize[]).map(s => (
+                    <button key={s} onClick={() => setFontSize(s)}
+                      className="flex-1 py-1 rounded-lg text-xs font-medium transition-colors capitalize"
+                      style={{
+                        backgroundColor: fontSize === s ? 'rgb(var(--accent))' : 'rgba(255,255,255,0.08)',
+                        color: fontSize === s ? '#fff' : textSecondary,
+                        border: '1px solid var(--glass-border)',
+                      }}>
+                      {s === 'small' ? 'A' : s === 'medium' ? 'A' : 'A'}
+                      <span style={{ fontSize: s === 'small' ? 8 : s === 'medium' ? 10 : 12 }}> {s[0].toUpperCase()}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dock autohide */}
+              <div className="px-3 py-2 border-b flex items-center justify-between" style={{ borderColor: 'var(--glass-border)' }}>
+                <p className="text-xs" style={{ color: textSecondary }}>Dock Autohide</p>
+                <button onClick={toggleDockAutohide}
+                  className="relative w-9 h-5 rounded-full transition-colors flex-shrink-0"
+                  style={{ backgroundColor: dockAutohide ? 'rgb(var(--accent))' : 'rgba(255,255,255,0.15)' }}>
+                  <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
+                    style={{ left: dockAutohide ? '18px' : '2px' }} />
+                </button>
               </div>
               <button
                 onClick={handleSignOut}

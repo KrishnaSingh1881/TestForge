@@ -4,13 +4,17 @@ import { getAppsForRole } from './apps/registry';
 import DockIcon from './components/DockIcon';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useOSSettings } from './store/useOSSettings';
+import { useState } from 'react';
 
 export default function Dock() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const { windows, openWindow, focusWindow, restoreWindow, responsiveMode } = useOSStore();
+  const { dockAutohide } = useOSSettings();
   const mouseX = useMotionValue(Infinity);
   const isLight = theme === 'light';
+  const [hovered, setHovered] = useState(false);
 
   const role = (user?.role ?? 'student') as 'student' | 'admin' | 'super_admin';
   const apps = getAppsForRole(role);
@@ -62,13 +66,15 @@ export default function Dock() {
   }
 
   return (
+    <>
     <div
       style={{
         position: 'fixed',
-        bottom: 16,
+        bottom: dockAutohide ? (hovered ? 16 : -80) : 16,
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 200,
+        transition: 'bottom 0.3s cubic-bezier(0.34,1.56,0.64,1)',
         background: isLight
           ? 'rgba(210, 175, 120, 0.45)'
           : 'rgba(20, 14, 50, 0.55)',
@@ -88,7 +94,8 @@ export default function Dock() {
         transition: 'background 0.8s ease, border-color 0.8s ease, box-shadow 0.8s ease',
       }}
       onMouseMove={e => mouseX.set(e.clientX)}
-      onMouseLeave={() => mouseX.set(Infinity)}
+      onMouseLeave={() => { mouseX.set(Infinity); setHovered(false); }}
+      onMouseEnter={() => setHovered(true)}
     >
       {apps.map(app => {
         const openWin = windows.find(w => w.appType === app.id);
@@ -110,5 +117,14 @@ export default function Dock() {
         );
       })}
     </div>
+
+    {/* Autohide trigger zone — invisible strip at bottom edge */}
+    {dockAutohide && (
+      <div
+        style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 8, zIndex: 199 }}
+        onMouseEnter={() => setHovered(true)}
+      />
+    )}
+  </>
   );
 }
