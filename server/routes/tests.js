@@ -23,12 +23,14 @@ router.get('/available', async (req, res) => {
   if (!year || !division) return res.status(400).json({ error: 'Student profile missing year or division' });
 
   const now = new Date().toISOString();
+
+  // Fetch tests matching student's year AND (their division OR 'ALL')
   const { data: tests, error: testsErr } = await supabase
     .from('tests')
     .select('id, title, subject, year, division, duration_mins, start_time, end_time, questions_per_attempt, total_marks, status')
     .eq('status', 'active')
     .eq('year', year)
-    .eq('division', division)
+    .in('division', [division, 'ALL'])
     .lte('start_time', now)
     .gte('end_time', now);
 

@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import api from '../../lib/axios';
 import { useOSStore } from '../store/useOSStore';
 import { useCountdown } from '../../hooks/useCountdown';
+import { useAuth } from '../../context/AuthContext';
 import Lenis from 'lenis';
 
 interface Attempt {
@@ -159,6 +160,7 @@ export default function TestsApp() {
   const [tests, setTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
 
   // Fetch tests and poll every 60 seconds
   useEffect(() => {
@@ -203,13 +205,37 @@ export default function TestsApp() {
   return (
     <div ref={containerRef} className="h-full overflow-auto">
       <div className="p-8 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'rgb(var(--text-primary))' }}>
-            Available Tests
-          </h1>
-          <p className="text-sm mt-1" style={{ color: 'rgb(var(--text-secondary))' }}>
-            Active tests assigned to your year and division.
-          </p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold" style={{ color: 'rgb(var(--text-primary))' }}>
+              Available Tests
+            </h1>
+            <p className="text-sm mt-1" style={{ color: 'rgb(var(--text-secondary))' }}>
+              Active tests assigned to your year and division.
+            </p>
+          </div>
+          {user && (
+            <div className="flex gap-2 flex-wrap">
+              {user.year && (
+                <span className="text-xs px-3 py-1.5 rounded-full font-medium"
+                  style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: 'rgb(var(--accent))' }}>
+                  {user.year}
+                </span>
+              )}
+              {user.division && (
+                <span className="text-xs px-3 py-1.5 rounded-full font-medium"
+                  style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: 'rgb(var(--accent))' }}>
+                  Div {user.division}
+                </span>
+              )}
+              {user.subject && (
+                <span className="text-xs px-3 py-1.5 rounded-full font-medium"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'rgb(var(--text-secondary))' }}>
+                  {user.subject}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {loading ? (

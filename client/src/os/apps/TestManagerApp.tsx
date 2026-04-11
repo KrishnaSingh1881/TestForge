@@ -285,6 +285,7 @@ export default function TestManagerApp() {
               <select value={division} onChange={e => setDivision(e.target.value)}
                 className={inputCls} style={inputStyle}>
                 <option value="" style={{ background: '#1e293b', color: '#f8fafc' }}>Select division</option>
+                <option value="ALL" style={{ background: '#1e293b', color: '#f8fafc' }}>All Divisions</option>
                 {['A', 'B', 'C', 'D'].map(d => <option key={d} value={d} style={{ background: '#1e293b', color: '#f8fafc' }}>{d}</option>)}
               </select>
             </div>
