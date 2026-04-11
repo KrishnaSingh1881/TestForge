@@ -430,8 +430,9 @@ export default function QuestionBankApp({ testId: initialTestId, testTitle: init
       )}
 
       {/* Show bank content only when on bank tab */}
-      {activeTab === 'bank' && (<>
-      {(view === 'create-mcq' || view === 'edit') && (
+      {activeTab === 'bank' && (
+        <>
+          {(view === 'create-mcq' || view === 'edit') && (
         <div className="glass p-6">
           <h2 className="text-lg font-semibold mb-5" style={{ color: 'rgb(var(--text-primary))' }}>
             {view === 'edit' ? 'Edit Question' : 'New MCQ Question'}
@@ -721,6 +722,9 @@ export default function QuestionBankApp({ testId: initialTestId, testTitle: init
               </table>
             </div>
           )}
+        </>
+      )}
+
         </>
       )}
 
