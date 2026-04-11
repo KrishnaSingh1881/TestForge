@@ -231,16 +231,14 @@ export default function AppWindow({ window: win, timerSlot, children }: AppWindo
             style={{
               width: '100%', height: '100%',
               display: 'flex', flexDirection: 'column',
-              // Maximized: break out of Rnd container via fixed positioning
               ...(win.isMaximized ? {
                 position: 'fixed',
                 top: MENUBAR_H,
                 left: 0,
-                right: 0,
-                bottom: DOCK_H,
                 width: '100vw',
-                height: `calc(100vh - ${MENUBAR_H + DOCK_H}px)`,
-                zIndex: win.zIndex,
+                height: `calc(100vh - ${MENUBAR_H}px)`,
+                zIndex: 500,
+                bottom: 'unset',
               } : {}),
             }}
             className="app-window"
