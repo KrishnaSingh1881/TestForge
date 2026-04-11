@@ -2,6 +2,7 @@ import { Router } from 'express';
 import OpenAI from 'openai';
 import { supabase } from '../supabase.js';
 import { requireAuth } from '../middleware/auth.js';
+import { runLocally } from '../lib/localRunner.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -102,9 +103,18 @@ Return ONLY valid JSON: {"stdout": "...", "stderr": "...", "exitCode": 0}`;
 
 async function runCode(language, code, stdin) {
   if (USE_JUDGE0 && JUDGE0_LANG[language]) return judge0Submit(JUDGE0_LANG[language], code, stdin);
+
+  // Try local execution first (real compiler, handles stdin properly)
+  if (!process.env.SKIP_LOCAL) {
+    try { return await runLocally(language, code, stdin); } catch { /* fall through */ }
+  }
+
+  // Piston fallback
   if (!process.env.SKIP_PISTON) {
     try { return await pistonRun(language, code, stdin); } catch { /* fall through */ }
   }
+
+  // Gemini simulation as last resort
   return geminiSimulate(language, code, stdin);
 }
 
