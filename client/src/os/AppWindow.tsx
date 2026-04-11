@@ -104,7 +104,8 @@ export default function AppWindow({ window: win, timerSlot, children }: AppWindo
   } : {};
 
   const overrideStyle = isMobile ? mobileStyle : isTablet ? tabletStyle : win.isMaximized ? maxStyle : {};
-  const useRnd = !isMobile && !isTablet && !win.isMaximized;
+  // Always use Rnd — never switch branches (switching causes remount = state loss)
+  const useRnd = !isMobile && !isTablet;
   const shouldHideInMobile = isMobile && !isFocused;
 
   // Build animation variants based on dock position
@@ -198,15 +199,14 @@ export default function AppWindow({ window: win, timerSlot, children }: AppWindo
   }
 
   return (
-    <Rnd
       ref={rndRef}
       position={win.position}
       size={win.size}
       minWidth={320}
       minHeight={240}
       style={{ zIndex: win.zIndex, display: win.isMinimized ? 'none' : 'block' }}
-      disableDragging={win.isLocked}
-      enableResizing={win.isLocked ? false : undefined}
+      disableDragging={win.isLocked || win.isMaximized}
+      enableResizing={win.isLocked || win.isMaximized ? false : undefined}
       dragHandleClassName="app-window-titlebar"
       onDragStop={(_, d) => updatePosition(win.id, { x: d.x, y: d.y })}
       onResizeStop={(_, __, ref, ___, pos) => {
@@ -227,7 +227,21 @@ export default function AppWindow({ window: win, timerSlot, children }: AppWindo
             initial="initial"
             animate="animate"
             exit={win.isMinimized ? 'minimized' : 'exit'}
-            style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}
+            style={{
+              width: '100%', height: '100%',
+              display: 'flex', flexDirection: 'column',
+              // Maximized: break out of Rnd container via fixed positioning
+              ...(win.isMaximized ? {
+                position: 'fixed',
+                top: MENUBAR_H,
+                left: 0,
+                right: 0,
+                bottom: DOCK_H,
+                width: '100vw',
+                height: `calc(100vh - ${MENUBAR_H + DOCK_H}px)`,
+                zIndex: win.zIndex,
+              } : {}),
+            }}
             className="app-window"
           >
             {innerContent}
