@@ -19,8 +19,11 @@ const JUDGE0_LANG = {
   java:   62,   // Java (OpenJDK 13)
 };
 
-// Piston fallback
-const PISTON_URL  = 'https://emkc.org/api/v2/piston/execute';
+// Piston fallback — try multiple public instances
+const PISTON_INSTANCES = [
+  'https://emkc.org/api/v2/piston/execute',
+  'https://piston.krunker.io/api/v2/piston/execute',
+];
 const PISTON_LANG = {
   python: { language: 'python', version: '3.10.0' },
   cpp:    { language: 'c++',    version: '10.2.0'  },
@@ -60,29 +63,39 @@ async function judge0Submit(languageId, code, stdin) {
   };
 }
 
-// ── Piston fallback helper ────────────────────────────────────
+// ── Piston fallback helper — tries multiple instances ─────────
 async function pistonRun(language, code, stdin) {
   const runtime = PISTON_LANG[language];
-  const res = await fetch(PISTON_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      language: runtime.language,
-      version:  runtime.version,
-      files:    [{ content: code }],
-      stdin:    stdin ?? '',
-      run_timeout: 10000,
-      compile_timeout: 15000,
-    }),
+  const body = JSON.stringify({
+    language: runtime.language,
+    version:  runtime.version,
+    files:    [{ content: code }],
+    stdin:    stdin ?? '',
+    run_timeout: 10000,
+    compile_timeout: 15000,
   });
-  if (!res.ok) throw new Error(`Piston error: ${res.status}`);
-  const data = await res.json();
-  const run  = data.run ?? {};
-  return {
-    stdout:   run.stdout ?? '',
-    stderr:   (data.compile?.stderr ?? '') + (run.stderr ?? ''),
-    exitCode: run.code ?? 0,
-  };
+
+  let lastError;
+  for (const url of PISTON_INSTANCES) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
+      if (!res.ok) { lastError = new Error(`Piston error: ${res.status}`); continue; }
+      const data = await res.json();
+      const run  = data.run ?? {};
+      return {
+        stdout:   run.stdout ?? '',
+        stderr:   (data.compile?.stderr ?? '') + (run.stderr ?? ''),
+        exitCode: run.code ?? 0,
+      };
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError ?? new Error('All execution instances failed');
 }
 
 async function runCode(language, code, stdin) {
