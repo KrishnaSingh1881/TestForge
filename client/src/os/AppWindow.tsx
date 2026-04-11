@@ -154,7 +154,7 @@ export default function AppWindow({ window: win, timerSlot, children }: AppWindo
         isLocked={win.isLocked}
         timerSlot={timerSlot}
       />
-      <div className="app-window-content flex-1 overflow-auto">
+      <div className="app-window-content flex-1 overflow-hidden" style={{ minHeight: 0 }}>
         <WindowErrorBoundary>
           {children}
         </WindowErrorBoundary>

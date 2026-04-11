@@ -23,7 +23,7 @@ export default function TrafficLights({ windowId, isLocked }: TrafficLightsProps
 
   return (
     <div
-      className="flex items-center gap-1.5"
+      className="flex items-center gap-2"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -33,7 +33,7 @@ export default function TrafficLights({ windowId, isLocked }: TrafficLightsProps
         onClick={(e) => { e.stopPropagation(); closeWindow(windowId); }}
         title="Close"
       >
-        {hovered && <span className="text-[8px] font-bold leading-none" style={{ color: 'rgba(0,0,0,0.5)' }}>×</span>}
+        {hovered && <span className="text-[9px] font-bold leading-none" style={{ color: 'rgba(0,0,0,0.55)' }}>×</span>}
       </button>
 
       {/* Yellow — minimize */}
@@ -42,7 +42,7 @@ export default function TrafficLights({ windowId, isLocked }: TrafficLightsProps
         onClick={(e) => { e.stopPropagation(); minimizeWindow(windowId); }}
         title="Minimize"
       >
-        {hovered && <span className="text-[8px] font-bold leading-none" style={{ color: 'rgba(0,0,0,0.5)' }}>−</span>}
+        {hovered && <span className="text-[9px] font-bold leading-none" style={{ color: 'rgba(0,0,0,0.55)' }}>−</span>}
       </button>
 
       {/* Green — maximize / restore */}
@@ -55,7 +55,7 @@ export default function TrafficLights({ windowId, isLocked }: TrafficLightsProps
         title={isMaximized ? 'Restore' : 'Maximize'}
       >
         {hovered && (
-          <span className="text-[8px] font-bold leading-none" style={{ color: 'rgba(0,0,0,0.5)' }}>
+          <span className="text-[9px] font-bold leading-none" style={{ color: 'rgba(0,0,0,0.55)' }}>
             {isMaximized ? '⤡' : '+'}
           </span>
         )}
