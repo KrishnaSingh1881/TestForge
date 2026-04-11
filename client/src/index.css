@@ -99,9 +99,8 @@ body {
 /* Allow text selection inside app windows */
 .app-window-content {
   user-select: text;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   height: 100%;
   /* Dark mode tokens inside windows */
   --bg-primary: 15 23 42;
@@ -113,12 +112,9 @@ body {
   color: rgb(248 250 252);
 }
 
-/* Every direct child of app-window-content should fill and scroll */
-.app-window-content > * {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  min-height: 0;
+/* App content divs that use h-full overflow-auto should just be min-height containers */
+.app-window-content > div {
+  min-height: 100%;
 }
 
 /* Light mode — warm sand tones inside windows */
