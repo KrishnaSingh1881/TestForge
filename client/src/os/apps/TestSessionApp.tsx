@@ -70,6 +70,21 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
   // Fullscreen coding overlay
   const [codingOverlayQ, setCodingOverlayQ] = useState<any | null>(null);
 
+  // Live integrity score (starts at 100, decremented client-side for instant feedback)
+  const [liveIntegrity, setLiveIntegrity] = useState(100);
+  const liveIntegrityRef = useRef(100);
+
+  function deductIntegrity(points: number, reason: string) {
+    const newScore = Math.max(0, liveIntegrityRef.current - points);
+    liveIntegrityRef.current = newScore;
+    setLiveIntegrity(newScore);
+    showToast(`⚠️ ${reason} — Integrity: ${newScore}/100`);
+    if (newScore <= 0) {
+      showToast('🚨 Integrity score reached 0 — Auto-submitting!');
+      setTimeout(() => handleSubmit(true, 'integrity_zero'), 1500);
+    }
+  }
+
   // Integrity toast helper — defined early so effects can capture it
   const showToast = useCallback((msg: string) => {
     setIntegrityToast(msg);
@@ -209,7 +224,10 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
       handlers.push(['copy', h]);
     }
     if (!testSettings.allow_paste) {
-      const h = (e: Event) => e.preventDefault();
+      const h = (e: Event) => {
+        e.preventDefault();
+        deductIntegrity(30, 'Paste attempt blocked (−30)');
+      };
       document.addEventListener('paste', h);
       handlers.push(['paste', h]);
     }
@@ -229,7 +247,12 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
       if (ctrl && e.key === 'v' && !testSettings.allow_paste) {
         e.preventDefault();
         e.stopPropagation();
-        showToast('⛔ Paste is disabled during this test');
+        deductIntegrity(30, 'Paste attempt detected (−30)');
+      }
+      if (ctrl && e.key === 'c' && !testSettings.allow_copy) {
+        e.preventDefault();
+        e.stopPropagation();
+        deductIntegrity(10, 'Copy attempt detected (−10)');
       }
       // Block inspect / dev tools
       if (e.key === 'F12') e.preventDefault();
@@ -257,16 +280,12 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
     attemptId,
     active: phase === 'active',
     onEvent: (msg) => {
-      showToast(msg.includes('Tab switch')
-        ? `⚠️ Tab switch detected — ${(testSettings.max_tab_switches ?? 3)} max allowed`
-        : msg
-      );
+      deductIntegrity(30, `Tab switch detected (−30)`);
     },
     onTabSwitchCount: (count) => {
-      // Server-confirmed count — trigger auto-submit immediately if over limit
-      const maxSwitches = testSettings.max_tab_switches ?? 3;
-      if (count >= maxSwitches && testSettings.auto_submit_on_tab_limit !== false) {
-        handleSubmit(true, 'integrity_violation');
+      if (count >= 3) {
+        showToast('🚨 3 tab switches — Auto-submitting!');
+        setTimeout(() => handleSubmit(true, 'integrity_violation'), 1000);
       }
     },
   });
@@ -495,6 +514,8 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
             initialCode={codingOverlayQ.saved_response?.submitted_code || codingOverlayQ.buggy_code || ''}
             runsRemaining={runsRemaining}
             timeLeft={timeLeft}
+            disablePaste={!testSettings.allow_paste}
+            onPasteAttempt={() => deductIntegrity(30, 'Paste in editor blocked (−30)')}
             onSubmit={(qid) => {
               onAnswered(qid, true);
               setCodingOverlayQ(null);
@@ -512,6 +533,18 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
             <span className="text-sm font-black text-primary truncate max-w-[200px] uppercase tracking-tight">
               {attempt?.test_title || test?.title}
             </span>
+          </div>
+
+          {/* Live Integrity Score */}
+          <div className="flex items-center gap-2 px-4 py-2 rounded-2xl glass no-shadow border-white/10">
+            <FiShield className="text-lg" style={{ color: liveIntegrity > 60 ? '#4ade80' : liveIntegrity > 30 ? '#facc15' : '#f87171' }} />
+            <div className="flex flex-col items-end">
+              <span className="text-[9px] font-black uppercase tracking-widest text-secondary opacity-40">Integrity</span>
+              <span className="font-mono font-black text-base tabular-nums leading-none mt-0.5"
+                style={{ color: liveIntegrity > 60 ? '#4ade80' : liveIntegrity > 30 ? '#facc15' : '#f87171' }}>
+                {liveIntegrity}/100
+              </span>
+            </div>
           </div>
 
           {/* Timer */}

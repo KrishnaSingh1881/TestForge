@@ -38,7 +38,9 @@ interface CodingEditorOverlayProps {
   attemptId: string;
   initialCode: string;
   runsRemaining: number;
-  timeLeft: number; // seconds, for display
+  timeLeft: number;
+  disablePaste?: boolean;
+  onPasteAttempt?: () => void;
   onSubmit: (qid: string, code: string) => void;
   onSkip: () => void;
   onClose: () => void;
@@ -60,6 +62,8 @@ export default function CodingEditorOverlay({
   initialCode,
   runsRemaining: initialRuns,
   timeLeft,
+  disablePaste = true,
+  onPasteAttempt,
   onSubmit,
   onSkip,
   onClose,
@@ -98,7 +102,10 @@ export default function CodingEditorOverlay({
       if (ctrl && e.key === 'v') {
         e.preventDefault();
         e.stopPropagation();
-        showToast('⛔ Paste is disabled during this test');
+        if (disablePaste) {
+          showToast('⛔ Paste blocked — integrity penalty applied');
+          onPasteAttempt?.();
+        }
         api.patch(`/attempts/${attemptId}/integrity`, { event: 'focus_lost' }).catch(() => {});
       }
       if (ctrl && e.key === 'c') { e.preventDefault(); e.stopPropagation(); }
@@ -114,8 +121,16 @@ export default function CodingEditorOverlay({
     editor.onKeyDown(onKeyDown);
     editor.onDidPaste(() => {
       onPaste();
-      showToast('📋 Paste detected and flagged');
-      api.patch(`/attempts/${attemptId}/integrity`, { event: 'focus_lost' }).catch(() => {});
+      if (disablePaste) {
+        // Undo the paste immediately
+        editor.trigger('keyboard', 'undo', null);
+        showToast('⛔ Paste blocked — integrity penalty applied');
+        onPasteAttempt?.();
+        api.patch(`/attempts/${attemptId}/integrity`, { event: 'focus_lost' }).catch(() => {});
+      } else {
+        showToast('📋 Paste detected and flagged');
+        api.patch(`/attempts/${attemptId}/integrity`, { event: 'focus_lost' }).catch(() => {});
+      }
     });
     editor.onDidChangeModelContent(() => {
       setCode(editor.getValue());
