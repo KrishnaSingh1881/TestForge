@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../lib/axios';
+import GlassSelect from '../../components/admin/GlassSelect';
 
 interface Test {
   id: string;
@@ -117,13 +118,15 @@ export default function TestSettingsApp() {
         {loading ? (
           <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>Loading tests...</p>
         ) : (
-          <select value={selectedTestId} onChange={e => setSelectedTestId(e.target.value)}
-            className={inputCls} style={inputStyle}>
-            <option value="">Choose a test to configure...</option>
-            {tests.map(t => (
-              <option key={t.id} value={t.id}>{t.title} — {t.subject} ({t.status})</option>
-            ))}
-          </select>
+          <GlassSelect 
+            value={selectedTestId}
+            onChange={setSelectedTestId}
+            options={tests.map(t => ({
+              value: t.id,
+              label: `${t.title} — ${t.subject} (${t.status})`
+            }))}
+            placeholder="Choose a test to configure..."
+          />
         )}
       </div>
 

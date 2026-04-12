@@ -6,6 +6,7 @@ import { useOSStore } from '../store/useOSStore';
 import AnimatedList from '../../components/AnimatedList';
 import { FiPlus, FiBox, FiSettings, FiSearch, FiFolder, FiEdit3, FiPlay, FiSquare, FiTrash2, FiBarChart, FiShield, FiArrowLeft, FiClock, FiCalendar, FiUsers } from 'react-icons/fi';
 import { GlassIcon } from '../components/AppIcons';
+import GlassSelect from '../../components/admin/GlassSelect';
 
 interface Test {
   id: string;
@@ -284,18 +285,32 @@ export default function TestManagerApp() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className={labelCls}>Target Year *</label>
-                        <select value={year} onChange={e => setYear(e.target.value)} className={inputCls}>
-                             <option value="">Select Target Year</option>
-                             {['FE', 'SE', 'TE', 'BE'].map(y => <option key={y} value={y} className="bg-secondary">{y}</option>)}
-                        </select>
+                        <GlassSelect 
+                          value={year} 
+                          onChange={setYear}
+                          options={[
+                            { value: 'FE', label: 'FE' },
+                            { value: 'SE', label: 'SE' },
+                            { value: 'TE', label: 'TE' },
+                            { value: 'BE', label: 'BE' },
+                          ]}
+                          placeholder="Select Target Year"
+                        />
                     </div>
                     <div>
                         <label className={labelCls}>Departmental Division *</label>
-                        <select value={division} onChange={e => setDivision(e.target.value)} className={inputCls}>
-                             <option value="">Select Division</option>
-                             <option value="ALL" className="bg-secondary">All Divisions</option>
-                             {['A', 'B', 'C', 'D'].map(d => <option key={d} value={d} className="bg-secondary">{d}</option>)}
-                        </select>
+                        <GlassSelect 
+                          value={division} 
+                          onChange={setDivision}
+                          options={[
+                            { value: 'ALL', label: 'All Divisions' },
+                            { value: 'A', label: 'Division A' },
+                            { value: 'B', label: 'Division B' },
+                            { value: 'C', label: 'Division C' },
+                            { value: 'D', label: 'Division D' },
+                          ]}
+                          placeholder="Select Division"
+                        />
                     </div>
                 </div>
 
