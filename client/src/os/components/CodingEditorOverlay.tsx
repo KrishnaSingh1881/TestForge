@@ -89,10 +89,9 @@ export default function CodingEditorOverlay({
     toastTimer.current = setTimeout(() => setToast(''), 4000);
   }, []);
 
-  // Lock body scroll and force fullscreen feel
+  // No body scroll lock needed — overlay is contained within the test window
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
+    return () => {};
   }, []);
 
   // Block copy/paste shortcuts
@@ -176,9 +175,9 @@ export default function CodingEditorOverlay({
 
   return (
     <div
-      className="fixed inset-0 flex flex-col"
+      className="absolute inset-0 flex flex-col"
       style={{
-        zIndex: 99999,
+        zIndex: 9999,
         background: 'linear-gradient(135deg, #0a0a14 0%, #0d0d1e 50%, #080814 100%)',
         fontFamily: "'Inter', sans-serif",
       }}

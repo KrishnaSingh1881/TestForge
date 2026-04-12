@@ -192,31 +192,42 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
     }
   }
 
-  // Countdown timer
+  // Countdown timer — only start if there's actually time remaining
   useEffect(() => {
-    if (phase !== 'active' || timeLeft <= 0) return;
+    if (phase !== 'active') return;
+    // Don't auto-submit immediately — only if timer genuinely runs out during the session
+    if (timeLeft <= 0) return; // test may have expired, let server handle it on submit
     const id = setInterval(() => {
       setTimeLeft(prev => {
-        if (prev <= 1) {
+        const next = prev - 1;
+        if (next <= 0) {
           clearInterval(id);
           handleAutoSubmit();
           return 0;
         }
-        return prev - 1;
+        return next;
       });
-      // Update elapsed minutes
       if (startedAtRef.current) {
         setElapsedMins((Date.now() - startedAtRef.current.getTime()) / 60000);
       }
     }, 1000);
     return () => clearInterval(id);
-  }, [phase, timeLeft]);
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Enforce test settings (copy-paste, right-click, keyboard shortcuts) during active test
   useEffect(() => {
     if (phase !== 'active') return;
 
     const handlers: Array<[string, EventListener]> = [];
+
+    // Disable text selection entirely during test
+    const styleEl = document.createElement('style');
+    styleEl.id = 'test-no-select';
+    styleEl.textContent = `
+      * { user-select: none !important; -webkit-user-select: none !important; }
+      input, textarea, [contenteditable] { user-select: text !important; -webkit-user-select: text !important; }
+    `;
+    document.head.appendChild(styleEl);
 
     // Always block copy during test (no exceptions)
     const copyHandler = (e: Event) => {
@@ -266,6 +277,7 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
 
     return () => {
       handlers.forEach(([event, handler]) => document.removeEventListener(event, handler, true as any));
+      document.getElementById('test-no-select')?.remove();
     };
   }, [phase, testSettings]);
 
@@ -504,7 +516,7 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
   // Active test session
   if (phase === 'active' || phase === 'evaluating') {
     return (
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col relative" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
         {/* ── Fullscreen coding overlay (z-99999, covers everything) ── */}
         {codingOverlayQ && (
           <CodingEditorOverlay

@@ -38,22 +38,38 @@ export default function MCQQuestion({
   const [saveError, setSaveError] = useState('');
   const startTime = useRef(Date.now());
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const firstClickTime = useRef<number | null>(null);
+  const changeCount = useRef(0);
 
   // Reset when question changes
   useEffect(() => {
     setSelected(question.saved_response?.selected_option_ids ?? []);
     startTime.current = Date.now();
+    firstClickTime.current = null;
+    changeCount.current = 0;
     setSaveError('');
   }, [question.id]);
 
   async function saveResponse(ids: string[]) {
     setSaving(true);
     setSaveError('');
+    const timeToFirstClick = firstClickTime.current !== null
+      ? firstClickTime.current - startTime.current
+      : null;
     try {
       await api.post(`/attempts/${attemptId}/responses`, {
         question_id:         question.id,
         selected_option_ids: ids,
         time_spent_seconds:  Math.floor((Date.now() - startTime.current) / 1000),
+        behavioral_meta: {
+          time_to_first_keystroke: timeToFirstClick,
+          edit_count: changeCount.current,
+          paste_events: 0,
+          backspace_count: 0,
+          wpm_consistency: 0,
+          idle_periods: [],
+          test_runs_before_submit: 0,
+        },
       });
       onAnswered(question.id, ids.length > 0);
     } catch {
@@ -64,6 +80,9 @@ export default function MCQQuestion({
   }
 
   function handleSelect(optId: string) {
+    if (firstClickTime.current === null) firstClickTime.current = Date.now();
+    changeCount.current++;
+
     let next: string[];
 
     if (isMulti) {
