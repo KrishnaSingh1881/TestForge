@@ -79,14 +79,16 @@ export default function AppWindow({ window: win, timerSlot, children }: AppWindo
   const isMobile = responsiveMode === 'mobile';
   const isFocused = focusedWindowId === win.id;
 
+  // When maximized via Rnd path, Rnd handles the dimensions — no extra CSS needed.
+  // For non-Rnd path (tablet/mobile), use this:
   const maxStyle = win.isMaximized ? {
     position: 'fixed' as const,
-    top: MENUBAR_H,
+    top: 0,
     left: 0,
-    right: 0,
-    bottom: DOCK_H,
     width: '100vw',
-    height: `calc(100vh - ${MENUBAR_H + DOCK_H}px)`,
+    height: '100vh',
+    zIndex: 400,
+    borderRadius: 0,
   } : {};
 
   const mobileStyle = isMobile ? {
@@ -201,11 +203,18 @@ export default function AppWindow({ window: win, timerSlot, children }: AppWindo
   return (
     <Rnd
       ref={rndRef}
-      position={win.position}
-      size={win.size}
+      position={win.isMaximized ? { x: 0, y: 0 } : win.position}
+      size={
+        win.isMaximized
+          ? { width: window.innerWidth, height: window.innerHeight }
+          : win.size
+      }
       minWidth={320}
       minHeight={240}
-      style={{ zIndex: win.zIndex, display: win.isMinimized ? 'none' : 'block' }}
+      style={{
+        zIndex: win.isMaximized ? 400 : win.zIndex,
+        display: win.isMinimized ? 'none' : 'block',
+      }}
       disableDragging={win.isLocked || win.isMaximized}
       enableResizing={win.isLocked || win.isMaximized ? false : undefined}
       dragHandleClassName="app-window-titlebar"
@@ -231,15 +240,6 @@ export default function AppWindow({ window: win, timerSlot, children }: AppWindo
             style={{
               width: '100%', height: '100%',
               display: 'flex', flexDirection: 'column',
-              ...(win.isMaximized ? {
-                position: 'fixed',
-                top: MENUBAR_H,
-                left: 0,
-                width: '100vw',
-                height: `calc(100vh - ${MENUBAR_H}px)`,
-                zIndex: 500,
-                bottom: 'unset',
-              } : {}),
             }}
             className="app-window"
           >

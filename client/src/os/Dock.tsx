@@ -19,6 +19,7 @@ export default function Dock() {
   const role = (user?.role ?? 'student') as 'student' | 'admin' | 'super_admin' | 'master_admin';
   const apps = getAppsForRole(role);
   const isMobile = responsiveMode === 'mobile';
+  const hasMaximized = windows.some(w => w.isMaximized && !w.isMinimized);
 
   function handleAppClick(appId: typeof apps[number]['id']) {
     const existing = windows.find(w => w.appType === appId);
@@ -73,7 +74,9 @@ export default function Dock() {
     <div
       style={{
         position: 'fixed',
-        bottom: dockAutohide ? (hovered ? 16 : -90) : 16,
+        bottom: hasMaximized ? -200 : dockAutohide ? (hovered ? 16 : -90) : 16,
+        pointerEvents: hasMaximized ? 'none' : 'auto',
+        opacity: hasMaximized ? 0 : 1,
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 200,
@@ -121,7 +124,7 @@ export default function Dock() {
     </div>
 
     {/* Autohide trigger zone — invisible strip at bottom edge */}
-    {dockAutohide && (
+    {dockAutohide && !hasMaximized && (
       <div
         style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 20, zIndex: 199 }}
         onMouseEnter={() => setHovered(true)}
