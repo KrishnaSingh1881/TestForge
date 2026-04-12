@@ -41,15 +41,17 @@ router.get('/tests/:id/integrity', async (req, res) => {
   // Fetch behavioral_meta from responses (coding questions only)
   const { data: responses } = await supabase
     .from('responses')
-    .select('attempt_id, question_id, behavioral_meta, submitted_code')
+    .select('attempt_id, question_id, behavioral_meta, submitted_code, time_spent_seconds, question_bank(type)')
     .in('attempt_id', attemptIds)
     .not('behavioral_meta', 'is', null);
 
   // Group responses by attempt
   const respByAttempt = {};
   (responses ?? []).forEach(r => {
+    const qb = Array.isArray(r.question_bank) ? r.question_bank[0] : r.question_bank;
+    const enriched = { ...r, question_type: qb?.type ?? null };
     if (!respByAttempt[r.attempt_id]) respByAttempt[r.attempt_id] = [];
-    respByAttempt[r.attempt_id].push(r);
+    respByAttempt[r.attempt_id].push(enriched);
   });
 
   // Fetch similarity flag counts per attempt
@@ -119,6 +121,7 @@ router.get('/tests/:id/integrity', async (req, res) => {
     // Per-question behavioral detail for expanded view
     const behavioralDetail = attemptResps.map(r => ({
       question_id:             r.question_id,
+      question_type:           r.question_type ?? null,
       time_to_first_keystroke: r.behavioral_meta?.time_to_first_keystroke ?? null,
       paste_events:            r.behavioral_meta?.paste_events            ?? 0,
       backspace_count:         r.behavioral_meta?.backspace_count         ?? 0,
@@ -126,6 +129,7 @@ router.get('/tests/:id/integrity', async (req, res) => {
       wpm_consistency:         r.behavioral_meta?.wpm_consistency         ?? 0,
       test_runs_before_submit: r.behavioral_meta?.test_runs_before_submit ?? 0,
       idle_periods:            r.behavioral_meta?.idle_periods            ?? [],
+      time_spent_seconds:      r.time_spent_seconds                       ?? null,
     }));
 
     return {

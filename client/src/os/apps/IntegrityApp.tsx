@@ -33,20 +33,292 @@ function AdminAttemptAudit({ attemptId, testId, studentName }: {
   attemptId: string; testId: string; studentName: string;
 }) {
   const [data, setData] = useState<any>(null);
+  const [questions, setQuestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Use the admin integrity endpoint which already has all behavioral data
-    api.get(`/admin/tests/${testId}/integrity`)
-      .then(r => {
-        const studentData = (r.data.attempts ?? []).find((a: any) => a.attempt_id === attemptId);
-        if (!studentData) { setError('Student audit not found'); return; }
-        setData(studentData);
-      })
-      .catch(e => setError(e.response?.data?.error ?? 'Failed to load audit'))
-      .finally(() => setLoading(false));
+    Promise.all([
+      api.get(`/admin/tests/${testId}/integrity`),
+      api.get(`/admin/tests/${testId}/questions-meta`).catch(() => ({ data: { questions: [] } })),
+    ]).then(([intRes, qRes]) => {
+      const studentData = (intRes.data.attempts ?? []).find((a: any) => a.attempt_id === attemptId);
+      if (!studentData) { setError('Student audit not found'); return; }
+      setData(studentData);
+      setQuestions(qRes.data.questions ?? []);
+    })
+    .catch(e => setError(e.response?.data?.error ?? 'Failed to load audit'))
+    .finally(() => setLoading(false));
   }, [attemptId, testId]);
+
+  if (loading) return (
+    <div className="h-full flex items-center justify-center">
+      <div className="w-10 h-10 border-4 border-red-500/10 border-t-red-500 rounded-full animate-spin" />
+    </div>
+  );
+  if (error) return (
+    <div className="h-full flex items-center justify-center flex-col gap-3">
+      <FiShield className="text-4xl text-white/10" />
+      <p className="text-red-400 font-bold text-sm">{error}</p>
+    </div>
+  );
+  if (!data) return null;
+
+  const highFlags   = (data.behavioral_flags ?? []).filter((f: any) => f.severity === 'high');
+  const medFlags    = (data.behavioral_flags ?? []).filter((f: any) => f.severity === 'medium');
+  const allFlags    = [...highFlags, ...medFlags];
+  const details     = data.behavioral_detail ?? [];
+
+  // Map details by question_id for quick lookup
+  const detailByQ: Record<string, any> = {};
+  details.forEach((d: any) => { if (d.question_id) detailByQ[d.question_id] = d; });
+
+  const severityStyle = (sev: string) =>
+    sev === 'high'
+      ? { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20', badge: 'bg-red-500/20 text-red-400' }
+      : { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20', badge: 'bg-amber-500/20 text-amber-400' };
+
+  function fmtMs(ms: number | null) {
+    if (ms === null || ms === undefined) return '—';
+    if (ms < 1000) return `${ms}ms`;
+    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${(ms / 60000).toFixed(1)}m`;
+  }
+
+  function MetricCell({ label, val, flag, icon, na }: { label: string; val: any; flag?: boolean; icon: string; na?: boolean }) {
+    return (
+      <div className={`text-center p-3 rounded-xl ${na ? 'bg-white/[0.02] opacity-40' : flag ? 'bg-red-500/10' : 'bg-white/[0.03]'}`}>
+        <div className="text-base mb-1">{icon}</div>
+        <p className={`text-sm font-black tabular-nums ${na ? 'text-secondary' : flag ? 'text-red-400' : 'text-primary'}`}>
+          {na ? 'N/A' : val}
+        </p>
+        <p className="text-[8px] font-black text-secondary uppercase tracking-widest opacity-30 mt-0.5">{label}</p>
+      </div>
+    );
+  }
+
+  // Separate coding/debugging details from MCQ
+  const codingDetails = details.filter((d: any) => d.question_type === 'debugging' || d.question_type === 'coding' || (!d.question_type && d.test_runs_before_submit !== undefined));
+  const mcqDetails = details.filter((d: any) => d.question_type === 'mcq_single' || d.question_type === 'mcq_multi');
+
+  return (
+    <div className="p-8 space-y-6 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-6 pb-16">
+
+      {/* Hero integrity score */}
+      <div className="glass no-shadow p-10 rounded-[3rem] border-white/5 flex items-center gap-10">
+        <div className="text-center shrink-0">
+          <p className="text-[9px] font-black text-secondary uppercase tracking-[0.4em] opacity-40 mb-2">Integrity Score</p>
+          <p className="text-6xl font-black tabular-nums" style={{ color: scoreColor(data.integrity_score) }}>
+            {data.integrity_score ?? '—'}
+          </p>
+          <p className="text-[9px] font-black uppercase tracking-widest mt-2" style={{ color: scoreColor(data.integrity_score) }}>
+            {(data.integrity_score ?? 100) >= 90 ? 'CLEAN' : (data.integrity_score ?? 100) >= 70 ? 'LOW RISK' : 'HIGH RISK'}
+          </p>
+        </div>
+        <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: 'Score', val: `${data.total_score ?? 0}/${data.total_marks ?? 0}`, color: 'rgb(var(--accent))' },
+            { label: 'Tab Switches', val: data.tab_switches ?? 0, color: (data.tab_switches ?? 0) >= 3 ? '#f87171' : '#4ade80' },
+            { label: 'Focus Lost', val: data.focus_lost_count ?? 0, color: (data.focus_lost_count ?? 0) >= 5 ? '#f87171' : '#4ade80' },
+            { label: 'Flags', val: allFlags.length, color: allFlags.length >= 3 ? '#f87171' : allFlags.length >= 1 ? '#facc15' : '#4ade80' },
+          ].map((s, i) => (
+            <div key={i} className="glass no-shadow p-4 rounded-[1.5rem] border-white/5 text-center">
+              <p className="text-[8px] font-black text-secondary uppercase tracking-widest opacity-40 mb-1">{s.label}</p>
+              <p className="text-2xl font-black tabular-nums" style={{ color: s.color }}>{s.val}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Behavioral flags */}
+      {allFlags.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[9px] font-black text-secondary uppercase tracking-[0.4em] opacity-40 px-2">
+            Integrity Flags ({allFlags.length})
+          </p>
+          {allFlags.map((f: any, i: number) => {
+            const st = severityStyle(f.severity);
+            return (
+              <div key={i} className={`glass no-shadow p-4 flex items-center justify-between rounded-[1.5rem] border-white/5 ${st.bg}`}>
+                <div className="flex items-center gap-4">
+                  <FiAlertTriangle className={`${st.text} text-lg`} />
+                  <div>
+                    <p className="text-sm font-black text-primary uppercase tracking-tight">{f.label}</p>
+                    <p className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-40 mt-0.5">
+                      {f.type?.replace(/_/g, ' ')}
+                    </p>
+                  </div>
+                </div>
+                <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${st.badge} ${st.border}`}>
+                  {f.severity}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── CODING / DEBUGGING ANALYSIS (USP) ── */}
+      {codingDetails.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 px-2">
+            <span className="text-lg">🐛</span>
+            <p className="text-[9px] font-black text-secondary uppercase tracking-[0.4em] opacity-60">
+              Coding & Debugging Analysis ({codingDetails.length} question{codingDetails.length !== 1 ? 's' : ''})
+            </p>
+            <span className="text-[8px] font-black px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/20">
+              PRIMARY INTEGRITY SIGNAL
+            </span>
+          </div>
+          {codingDetails.map((d: any, i: number) => {
+            const attempted = d.time_to_first_keystroke !== null || (d.backspace_count ?? 0) > 0 || (d.edit_count ?? 0) > 0;
+            const hasPaste  = (d.paste_events ?? 0) > 0;
+            const fastStart = attempted && (d.time_to_first_keystroke ?? 99999) < 3000;
+            const highWpm   = (d.wpm_consistency ?? 0) > 100;
+            const noFix     = attempted && (d.backspace_count ?? 99) <= 2 && highWpm;
+            const noRuns    = attempted && (d.test_runs_before_submit ?? 1) === 0;
+            const longIdle  = (d.idle_periods ?? []).some((p: any) => (p.duration_seconds ?? p.duration ?? 0) > 180);
+            const flagCount = [hasPaste, fastStart, highWpm, noFix, noRuns, longIdle].filter(Boolean).length;
+
+            return (
+              <div key={i} className={`glass no-shadow rounded-[2rem] border overflow-hidden ${!attempted ? 'border-white/5 opacity-60' : flagCount >= 2 ? 'border-red-500/30' : flagCount >= 1 ? 'border-amber-500/20' : 'border-green-500/20'}`}>
+                {/* Question header */}
+                <div className={`px-6 py-3 flex items-center justify-between border-b border-white/5 ${!attempted ? 'bg-white/[0.02]' : flagCount >= 2 ? 'bg-red-500/[0.06]' : flagCount >= 1 ? 'bg-amber-500/[0.04]' : 'bg-green-500/[0.04]'}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">
+                      🐛 Coding Q{i + 1}
+                    </span>
+                    {!attempted && (
+                      <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/5 text-secondary opacity-60">
+                        NOT ATTEMPTED
+                      </span>
+                    )}
+                    {flagCount > 0 && attempted && (
+                      <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${flagCount >= 2 ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                        {flagCount} FLAG{flagCount !== 1 ? 'S' : ''}
+                      </span>
+                    )}
+                  </div>
+                  {attempted && flagCount === 0 && <span className="text-[9px] font-black text-green-400 uppercase tracking-widest">✓ CLEAN</span>}
+                </div>
+
+                {/* Metrics grid */}
+                <div className="p-5">
+                  {!attempted ? (
+                    <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                      {['First Key', 'WPM', 'Backspaces', 'Pastes', 'Edits', 'Test Runs'].map((label, j) => (
+                        <MetricCell key={j} label={label} val="—" icon={['⚡','⌨️','⌫','📋','✏️','▶'][j]} na />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                      <MetricCell label="First Key" val={fmtMs(d.time_to_first_keystroke)} flag={fastStart} icon="⚡" />
+                      <MetricCell label="WPM" val={Math.round(d.wpm_consistency ?? 0)} flag={highWpm} icon="⌨️" />
+                      <MetricCell label="Backspaces" val={d.backspace_count ?? 0} flag={noFix} icon="⌫" />
+                      <MetricCell label="Pastes" val={d.paste_events ?? 0} flag={hasPaste} icon="📋" />
+                      <MetricCell label="Edits" val={d.edit_count ?? 0} icon="✏️" />
+                      <MetricCell label="Test Runs" val={d.test_runs_before_submit ?? '—'} flag={noRuns} icon="▶" />
+                    </div>
+                  )}
+
+                  {/* Idle periods */}
+                  {attempted && (d.idle_periods ?? []).length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-white/5">
+                      <p className="text-[8px] font-black text-secondary uppercase tracking-widest opacity-40 mb-2">Idle Periods</p>
+                      <div className="flex flex-wrap gap-2">
+                        {d.idle_periods.map((p: any, k: number) => {
+                          const dur = p.duration_seconds ?? p.duration ?? 0;
+                          return (
+                            <span key={k} className={`text-[9px] font-black px-3 py-1 rounded-full ${dur > 180 ? 'bg-amber-500/20 text-amber-400' : 'bg-white/5 text-secondary'}`}>
+                              {dur >= 60 ? `${Math.round(dur / 60)}m` : `${dur}s`} idle
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Flag explanations */}
+                  {attempted && flagCount > 0 && (
+                    <div className="mt-3 pt-3 border-t border-white/5 space-y-1">
+                      {hasPaste  && <p className="text-[10px] font-bold text-red-400">⚠ Paste event detected — code may not be original</p>}
+                      {fastStart && <p className="text-[10px] font-bold text-red-400">⚠ Typed within 3s of opening — likely pre-prepared</p>}
+                      {highWpm   && <p className="text-[10px] font-bold text-amber-400">⚠ Unusually high WPM — possible mechanical input</p>}
+                      {noFix     && <p className="text-[10px] font-bold text-red-400">⚠ No corrections at high speed — likely copy-pasted</p>}
+                      {noRuns    && <p className="text-[10px] font-bold text-amber-400">⚠ Submitted without running test cases</p>}
+                      {longIdle  && <p className="text-[10px] font-bold text-amber-400">⚠ Long idle period — may have sought external help</p>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* MCQ analysis (compact) */}
+      {mcqDetails.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[9px] font-black text-secondary uppercase tracking-[0.4em] opacity-40 px-2">
+            MCQ Telemetry ({mcqDetails.length} questions)
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {mcqDetails.map((d: any, i: number) => {
+              const attempted = d.time_to_first_keystroke !== null || (d.edit_count ?? 0) > 0;
+              const fastClick = attempted && (d.time_to_first_keystroke ?? 99999) < 2000;
+              return (
+                <div key={i} className={`glass no-shadow p-4 rounded-[1.5rem] border-white/5 ${!attempted ? 'opacity-50' : ''}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-secondary opacity-40">MCQ Q{i + 1}</span>
+                    {!attempted && <span className="text-[9px] font-black text-secondary opacity-40">NOT ATTEMPTED</span>}
+                    {fastClick && <span className="text-[9px] font-black text-amber-400">⚡ Fast click</span>}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <MetricCell label="First Click" val={fmtMs(d.time_to_first_keystroke)} flag={fastClick} icon="⚡" na={!attempted} />
+                    <MetricCell label="Changes" val={d.edit_count ?? 0} icon="✏️" na={!attempted} />
+                    <MetricCell label="Time Spent" val={d.time_spent_seconds ? `${d.time_spent_seconds}s` : '—'} icon="⏱" na={!attempted} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Fallback: old-style details if no type info */}
+      {codingDetails.length === 0 && mcqDetails.length === 0 && details.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-[9px] font-black text-secondary uppercase tracking-[0.4em] opacity-40 px-2">Question-Level Telemetry</p>
+          {details.map((d: any, i: number) => {
+            const attempted = d.time_to_first_keystroke !== null || (d.backspace_count ?? 0) > 0;
+            return (
+              <div key={i} className="glass no-shadow p-5 rounded-[1.5rem] border-white/5">
+                <p className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-40 mb-3">Question {i + 1}</p>
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                  <MetricCell label="First Key" val={fmtMs(d.time_to_first_keystroke)} icon="⚡" na={!attempted} />
+                  <MetricCell label="WPM" val={Math.round(d.wpm_consistency ?? 0)} icon="⌨️" na={!attempted} />
+                  <MetricCell label="Backspaces" val={d.backspace_count ?? 0} icon="⌫" na={!attempted} />
+                  <MetricCell label="Pastes" val={d.paste_events ?? 0} flag={(d.paste_events ?? 0) > 0} icon="📋" na={!attempted} />
+                  <MetricCell label="Edits" val={d.edit_count ?? 0} icon="✏️" na={!attempted} />
+                  <MetricCell label="Test Runs" val={d.test_runs_before_submit ?? '—'} icon="▶" na={!attempted} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {allFlags.length === 0 && details.length === 0 && (
+        <div className="py-20 text-center glass no-shadow border-dashed border-white/5 rounded-[3rem]">
+          <FiCheckCircle className="mx-auto text-4xl text-green-500/20 mb-4" />
+          <p className="text-[10px] font-black text-secondary uppercase tracking-[0.4em] opacity-40">
+            No behavioral anomalies detected for this session
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
   if (loading) return (
     <div className="h-full flex items-center justify-center">
