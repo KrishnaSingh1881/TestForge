@@ -34,55 +34,58 @@ export default function DockIcon({ app, isOpen, isActive, isMinimized, isLight, 
 
   const IconComponent = APP_ICONS[app.id];
 
-  // Theme-aware colors
+  // Liquid Glass tokens
   const tileBg = isLight
-    ? isActive ? 'rgba(180, 130, 60, 0.45)' : 'rgba(200, 160, 90, 0.25)'
-    : isActive ? 'rgba(130, 100, 220, 0.45)' : 'rgba(255, 255, 255, 0.08)';
+    ? isActive ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.12)'
+    : isActive ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)';
 
   const tileBorder = isLight
-    ? isActive ? '1px solid rgba(160, 110, 40, 0.6)' : '1px solid rgba(180, 140, 70, 0.3)'
-    : isActive ? '1px solid rgba(180, 150, 255, 0.5)' : '1px solid rgba(255, 255, 255, 0.14)';
+    ? isActive ? '1px solid rgba(0, 0, 0, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)'
+    : isActive ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(255, 255, 255, 0.06)';
 
   const tileShadow = isLight
     ? isActive
-      ? '0 0 16px rgba(160,110,30,0.35), inset 0 1px 0 rgba(255,220,120,0.3)'
-      : '0 4px 14px rgba(100,60,10,0.2), inset 0 1px 0 rgba(255,220,120,0.1)'
+      ? '0 12px 24px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.4)'
+      : '0 4px 12px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.2)'
     : isActive
-      ? '0 0 18px rgba(130,90,255,0.45), inset 0 1px 0 rgba(255,255,255,0.15)'
-      : '0 4px 14px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.07)';
+      ? '0 0 20px rgba(99,102,241,0.3), 0 12px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)'
+      : '0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03)';
 
-  const tooltipBg = isLight ? 'rgba(60, 40, 10, 0.88)' : 'rgba(6, 4, 20, 0.92)';
+  const tooltipBg = 'rgba(15, 12, 35, 0.8)';
   const dotColor  = isLight
-    ? isActive ? 'rgba(140, 90, 20, 0.9)' : 'rgba(100, 70, 20, 0.5)'
-    : isActive ? 'rgba(167,139,250,1)'     : 'rgba(255,255,255,0.45)';
+    ? isActive ? '#6366f1' : 'rgba(0,0,0,0.2)'
+    : isActive ? '#818cf8' : 'rgba(255,255,255,0.2)';
 
   return (
     <div
-      style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+      className="flex flex-col items-center relative group"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Tooltip */}
+      {/* Tooltip - Modern Liquid Glass */}
       <motion.div
-        animate={{ opacity: hovered ? 1 : 0, y: hovered ? 0 : 4 }}
-        transition={{ duration: 0.12 }}
+        animate={{ opacity: hovered ? 1 : 0, y: hovered ? 0 : 8, scale: hovered ? 1 : 0.9 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
         style={{
           position: 'absolute',
-          bottom: 'calc(100% + 10px)',
+          bottom: 'calc(100% + 16px)',
           left: '50%',
           transform: 'translateX(-50%)',
-          padding: '4px 12px',
-          borderRadius: 8,
-          fontSize: 12,
-          fontWeight: 700,
+          padding: '6px 14px',
+          borderRadius: 12,
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: '0.05em',
+          textTransform: 'uppercase',
           whiteSpace: 'nowrap',
           background: tooltipBg,
           color: '#fff',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255,255,255,0.1)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          border: '1px solid rgba(255,255,255,0.08)',
           pointerEvents: 'none',
-          zIndex: 10,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+          zIndex: 50,
+          boxShadow: '0 10px 30px -5px rgba(0,0,0,0.5)',
         }}
       >
         {app.name}
@@ -93,45 +96,57 @@ export default function DockIcon({ app, isOpen, isActive, isMinimized, isLight, 
         ref={ref}
         style={{ scale, y }}
         onClick={onClick}
-        whileTap={{ scale: 0.88 }}
-        title={app.name}
+        whileTap={{ scale: 0.9 }}
+        className="relative"
       >
         <div style={{
-          width: 58,
-          height: 58,
-          borderRadius: 15,
+          width: 54,
+          height: 54,
+          borderRadius: 14,
           overflow: 'hidden',
           cursor: 'pointer',
           userSelect: 'none',
-          opacity: isMinimized ? 0.4 : 1,
+          opacity: isMinimized ? 0.5 : 1,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           background: tileBg,
-          backdropFilter: 'blur(16px) saturate(160%)',
-          WebkitBackdropFilter: 'blur(16px) saturate(160%)',
+          backdropFilter: 'blur(24px) saturate(200%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(200%)',
           border: tileBorder,
           boxShadow: tileShadow,
-          transition: 'background 0.8s ease, border 0.8s ease, box-shadow 0.8s ease, opacity 0.2s',
-        }}>
-          {IconComponent
-            ? <IconComponent />
-            : <span style={{ fontSize: 26 }}>{app.icon}</span>
-          }
+          transition: 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)',
+        }}
+        className="hover:border-white/20 transition-all duration-300"
+        >
+          <div className="transform scale-[0.85] group-hover:scale-100 transition-transform duration-500 flex items-center justify-center w-full h-full">
+            {IconComponent
+                ? <IconComponent />
+                : <span style={{ fontSize: 24 }}>{app.icon}</span>
+            }
+          </div>
         </div>
+        
+        {/* Shine effect on hover */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-2xl" />
       </motion.div>
 
       {/* Dot indicator */}
-      <div style={{
-        width: 4, height: 4, borderRadius: '50%',
-        marginTop: 4,
-        background: dotColor,
-        opacity: isOpen ? 1 : 0,
-        transition: 'opacity 0.2s, background 0.8s ease',
-        boxShadow: isActive
-          ? isLight ? '0 0 5px rgba(140,90,20,0.6)' : '0 0 6px rgba(167,139,250,0.9)'
-          : 'none',
-      }} />
+      <motion.div 
+        animate={{ 
+          scale: isOpen ? 1 : 0,
+          opacity: isOpen ? 1 : 0,
+          y: isOpen ? 0 : 4
+        }}
+        style={{
+          width: 4, height: 4, borderRadius: '50%',
+          marginTop: 6,
+          background: dotColor,
+          boxShadow: isActive
+            ? `0 0 10px ${dotColor}`
+            : 'none',
+        }} 
+      />
     </div>
   );
 }

@@ -1,9 +1,12 @@
-import { useEffect, useState, useRef } from 'react';
+
+import { useEffect, useState, useMemo } from 'react';
 import api from '../../lib/axios';
 import { useOSStore } from '../store/useOSStore';
 import { useCountdown } from '../../hooks/useCountdown';
 import { useAuth } from '../../context/AuthContext';
-import Lenis from 'lenis';
+import AnimatedList from '../../components/AnimatedList';
+import { FiClock, FiFileText, FiCalendar, FiPlay, FiCheckCircle, FiRotateCcw, FiLock } from 'react-icons/fi';
+import { GlassIcon } from '../components/AppIcons';
 
 interface Attempt {
   id: string;
@@ -22,6 +25,7 @@ interface Test {
   questions_per_attempt: number;
   total_marks: number;
   attempt: Attempt | null;
+  status: 'draft' | 'active' | 'ended';
 }
 
 function TestCard({ test }: { test: Test }) {
@@ -47,107 +51,68 @@ function TestCard({ test }: { test: Test }) {
   };
 
   return (
-    <div className="glass p-5 flex flex-col gap-4 transition-transform hover:-translate-y-0.5">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="text-base font-semibold leading-snug" style={{ color: 'rgb(var(--text-primary))' }}>
-          {test.title}
-        </h3>
-        {test.subject && (
-          <span
-            className="text-xs px-2 py-0.5 rounded-full shrink-0 font-medium"
-            style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: 'rgb(var(--accent))' }}
-          >
-            {test.subject}
-          </span>
-        )}
+    <div className="group relative glass p-6 flex flex-col gap-4 transition-all hover:bg-white/[0.08] hover:border-white/20 hover:shadow-2xl hover:shadow-indigo-500/10 h-full">
+      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-30 group-hover:scale-110 transition-all duration-700">
+        <GlassIcon id="folder" size="sm" />
       </div>
 
-      {/* Meta */}
-      <div className="flex flex-wrap gap-2">
-        <span
-          className="text-xs px-2 py-0.5 rounded-full"
-          style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'rgb(var(--text-secondary))' }}
-        >
-          {test.year} · Div {test.division}
-        </span>
-        <span
-          className="text-xs px-2 py-0.5 rounded-full"
-          style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'rgb(var(--text-secondary))' }}
-        >
-          ⏱ {test.duration_mins} min
-        </span>
-        <span
-          className="text-xs px-2 py-0.5 rounded-full"
-          style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'rgb(var(--text-secondary))' }}
-        >
-          {test.questions_per_attempt} questions
-        </span>
-        <span
-          className="text-xs px-2 py-0.5 rounded-full"
-          style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'rgb(var(--text-secondary))' }}
-        >
-          {test.total_marks} marks
-        </span>
+      <div className="flex-1">
+        <div className="flex items-start justify-between gap-3 mb-4">
+             <div className="flex flex-col">
+                <h3 className="text-lg font-black text-white leading-tight uppercase tracking-tight group-hover:text-indigo-400 transition-colors">
+                {test.title}
+                </h3>
+                <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mt-1">{test.subject}</p>
+             </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-6">
+            <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 bg-white/5 rounded border border-white/5 text-white/40 group-hover:text-white/60 transition-colors">
+                {test.year} • {test.division}
+            </span>
+            <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 bg-white/5 rounded border border-white/5 text-white/40 group-hover:text-white/60 transition-colors">
+                <FiClock className="inline mr-1 mb-0.5" /> {test.duration_mins}m
+            </span>
+             <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 bg-white/5 rounded border border-white/5 text-white/40 group-hover:text-white/60 transition-colors">
+                {test.questions_per_attempt} Ques
+            </span>
+        </div>
       </div>
 
-      {/* CTA */}
-      <div className="mt-auto">
+      <div className="mt-auto pt-4 border-t border-white/5">
         {ended ? (
-          <div className="text-center py-2 rounded-lg text-sm"
-            style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
-            Test Ended
+          <div className="flex items-center justify-center gap-2 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-[0.2em] text-red-400">
+            <FiLock /> Test Concluded
           </div>
         ) : test.status === 'draft' ? (
-          <div className="text-center py-2 rounded-lg text-sm"
-            style={{ backgroundColor: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.25)', color: '#facc15' }}>
-            ⏳ Not started yet — waiting for teacher
+          <div className="flex items-center justify-center gap-2 py-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-[10px] font-black uppercase tracking-[0.2em] text-yellow-400">
+            <FiClock className="animate-pulse" /> Pending Launch
           </div>
         ) : submitted ? (
           <button
             onClick={handleViewResults}
-            className="block w-full text-center py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-80"
-            style={{
-              backgroundColor: 'rgba(74,222,128,0.12)',
-              color: '#4ade80',
-              border: '1px solid rgba(74,222,128,0.3)',
-            }}
+            className="w-full py-3 rounded-xl bg-green-500/10 border border-green-500/20 text-[10px] font-black uppercase tracking-[0.2em] text-green-400 hover:bg-green-500 hover:text-white transition-all shadow-lg shadow-green-500/0 hover:shadow-green-500/20 flex items-center justify-center gap-2"
           >
-            View Results
+            <FiCheckCircle /> View Stats
           </button>
         ) : attempted ? (
           <button
             onClick={handleResume}
-            className="block w-full text-center py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-80"
-            style={{
-              backgroundColor: 'rgba(234,179,8,0.12)',
-              color: '#facc15',
-              border: '1px solid rgba(234,179,8,0.3)',
-            }}
+            className="w-full py-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-[10px] font-black uppercase tracking-[0.2em] text-yellow-400 hover:bg-yellow-500 hover:text-white transition-all shadow-lg shadow-yellow-500/0 hover:shadow-yellow-500/20 flex items-center justify-center gap-2"
           >
-            Resume Test
+            <FiRotateCcw /> Resume Now
           </button>
         ) : started ? (
           <button
             onClick={handleStart}
-            className="block w-full text-center py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: 'rgb(var(--accent))' }}
+            className="w-full py-4 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-[0.3em] hover:bg-indigo-500 hover:-translate-y-1 transition-all shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 active:translate-y-0"
           >
-            Start Test
+            <FiPlay className="fill-current" /> Begin Test
           </button>
         ) : (
-          <div
-            className="text-center py-2 rounded-lg text-sm"
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.04)',
-              border: '1px solid var(--glass-border)',
-              color: 'rgb(var(--text-secondary))',
-            }}
-          >
-            Starts in{' '}
-            <span className="font-mono font-medium" style={{ color: 'rgb(var(--text-primary))' }}>
-              {countdown}
-            </span>
+          <div className="flex flex-col items-center justify-center py-3 rounded-xl bg-white/5 border border-white/10 group-hover:border-indigo-500/30 transition-all">
+             <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em] mb-1">Unlocking In</p>
+             <p className="text-xs font-black text-indigo-400 tracking-widest">{countdown}</p>
           </div>
         )}
       </div>
@@ -158,104 +123,65 @@ function TestCard({ test }: { test: Test }) {
 export default function TestsApp() {
   const [tests, setTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
-  const containerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
-  // Fetch tests and poll every 60 seconds
-  useEffect(() => {
-    const fetchTests = () => {
-      api
-        .get('/tests/available')
-        .then(r => setTests(r.data.tests ?? []))
-        .catch(err => console.error('Failed to fetch tests:', err))
-        .finally(() => setLoading(false));
-    };
+  const fetchTests = () => {
+    api
+      .get('/tests/available')
+      .then(r => setTests(r.data.tests ?? []))
+      .catch(err => console.error('Failed to fetch tests:', err))
+      .finally(() => setLoading(false));
+  };
 
+  useEffect(() => {
     fetchTests();
     const interval = setInterval(fetchTests, 60_000);
-
     return () => clearInterval(interval);
   }, []);
 
-  // Lenis smooth scroll
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const lenis = new Lenis({
-      wrapper: containerRef.current,
-      duration: 1.2,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    });
-
-    function raf(time: number) {
-      lenis.raf(time);
-      requestAnimationFrame(raf);
-    }
-
-    const rafId = requestAnimationFrame(raf);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      lenis.destroy();
-    };
-  }, []);
-
   return (
-    <div ref={containerRef} className="h-full overflow-auto">
-      <div className="p-8 space-y-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: 'rgb(var(--text-primary))' }}>
-              Available Tests
+    <div className="h-full flex flex-col bg-[#0c0c16]/40 backdrop-blur-xl">
+      <div className="p-8 border-b border-white/5 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+            <h1 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]" />
+                DASHBOARD
             </h1>
-            <p className="text-sm mt-1" style={{ color: 'rgb(var(--text-secondary))' }}>
-              Active tests assigned to your year and division.
-            </p>
-          </div>
-          {user && (
-            <div className="flex gap-2 flex-wrap">
-              {user.year && (
-                <span className="text-xs px-3 py-1.5 rounded-full font-medium"
-                  style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: 'rgb(var(--accent))' }}>
-                  {user.year}
-                </span>
-              )}
-              {user.division && (
-                <span className="text-xs px-3 py-1.5 rounded-full font-medium"
-                  style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: 'rgb(var(--accent))' }}>
-                  Div {user.division}
-                </span>
-              )}
-              {user.subject && (
-                <span className="text-xs px-3 py-1.5 rounded-full font-medium"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'rgb(var(--text-secondary))' }}>
-                  {user.subject}
-                </span>
-              )}
-            </div>
-          )}
+            <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.5em] mt-1.5">Your Academic Evaluations</p>
         </div>
 
+        {user && (
+            <div className="flex items-center gap-3 bg-white/5 p-2 rounded-2xl border border-white/5">
+                <div className="flex flex-col px-4 border-r border-white/10">
+                    <p className="text-[8px] font-black text-white/20 uppercase tracking-widest">Enrollment</p>
+                    <p className="text-xs font-black text-white tracking-widest leading-none mt-1">{user.year} • {user.division}</p>
+                </div>
+                <div className="flex flex-col px-4">
+                    <p className="text-[8px] font-black text-white/20 uppercase tracking-widest">Active Trials</p>
+                    <p className="text-xs font-black text-indigo-400 tracking-widest leading-none mt-1">{tests.length}</p>
+                </div>
+            </div>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-auto custom-scrollbar p-8">
         {loading ? (
-          <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>
-            Loading...
-          </p>
+             <div className="h-full flex items-center justify-center">
+                <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+             </div>
         ) : tests.length === 0 ? (
-          <div className="glass p-12 text-center">
-            <p className="text-lg mb-1" style={{ color: 'rgb(var(--text-primary))' }}>
-              No tests available
-            </p>
-            <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>
-              Check back later — your teacher will publish tests here.
-            </p>
+          <div className="glass p-20 text-center border-dashed border-white/10 max-w-2xl mx-auto mt-10">
+             <div className="mb-6 opacity-20"><GlassIcon id="shield" size="md" /></div>
+            <p className="text-sm font-black text-white/40 uppercase tracking-[0.5em]">No active tests found</p>
+            <p className="text-[10px] text-white/20 mt-4 max-w-xs mx-auto uppercase font-bold leading-relaxed">System is syncing with server. Check your divisional broadcast for schedule updates.</p>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {tests.map(t => (
-              <TestCard key={t.id} test={t} />
-            ))}
-          </div>
+          <AnimatedList 
+            items={tests}
+            containerClassName="h-full"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            renderItem={(t) => <TestCard test={t} />}
+          />
         )}
       </div>
     </div>

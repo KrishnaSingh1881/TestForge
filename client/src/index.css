@@ -141,28 +141,30 @@ body {
   transition: background 0.8s ease, border-color 0.8s ease;
 }
 
-/* App window chrome — dark glass in dark mode, warm glass in light mode */
+/* App window chrome — high-fidelity liquid glass */
 .app-window {
-  background: rgba(18, 14, 40, 0.72);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(120, 90, 200, 0.25);
-  border-radius: 12px;
+  background: rgba(15, 12, 35, 0.45);  /* More translucent */
+  backdrop-filter: blur(32px) saturate(210%); /* Higher blur and saturation */
+  -webkit-backdrop-filter: blur(32px) saturate(210%);
+  border: 1px solid rgba(255, 255, 255, 0.08); /* Finer border */
+  border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255,255,255,0.06);
+  box-shadow: 
+    0 24px 60px -12px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.03); /* Subtle inner edge */
   transition: background 0.8s ease, border-color 0.8s ease;
 }
 
 .app-window-titlebar {
-  background: rgba(10, 8, 28, 0.85);
-  border-bottom: 1px solid rgba(120, 90, 200, 0.2);
+  background: rgba(255, 255, 255, 0.03); /* Extremely light titlebar */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   transition: background 0.8s ease, border-color 0.8s ease;
 }
 
 [data-theme="light"] .app-window {
-  background: rgba(245, 230, 200, 0.55);
-  border: 1px solid rgba(180, 130, 60, 0.3);
-  box-shadow: 0 24px 48px rgba(120, 80, 20, 0.2), 0 0 0 0.5px rgba(200,150,80,0.15);
+  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 24px 60px -12px rgba(120, 80, 20, 0.15);
 }
 
 [data-theme="light"] .app-window-titlebar {
@@ -198,21 +200,43 @@ body {
   margin: 0 auto;
 }
 
-/* Fix native select option colors on Windows */
-option {
-  background-color: #1e293b;
-  color: #f8fafc;
+
+/* ── Custom Glass Scrollbar ── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15); /* More visible by default */
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.05); /* Slight separation from track */
+  backdrop-filter: blur(8px);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25); /* Subtle highlight on hover */
 }
 
-/* Reduce motion overrides */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
+/* For Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+/* Hide horizontal scroll for containers that should only scroll vertically */
+.overflow-y-auto {
+    overflow-x: hidden;
+}
+
+/* Force dark interpretation of scrollbars for better contrast */
+:root {
+    color-scheme: dark;
 }
 
 /* ── Responsive overrides ── */
+/* ... existing content ... */
 
 /* Tablet mode (768px - 1023px) */
 @media (min-width: 768px) and (max-width: 1023px) {

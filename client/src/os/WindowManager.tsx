@@ -37,7 +37,7 @@ export default function WindowManager() {
 
         return (
           <AppWindow key={win.id} window={win}>
-            <AppComponent {...(win.appProps ?? {})} />
+            <AppComponent id={win.id} {...(win.appProps ?? {})} />
           </AppWindow>
         );
       })}

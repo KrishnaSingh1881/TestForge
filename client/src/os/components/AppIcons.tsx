@@ -1,3 +1,5 @@
+import React from 'react';
+
 // Glass-style SVG icons — transparent backgrounds, white/light symbols
 // The tile background comes from DockIcon, not the SVG itself
 
@@ -47,9 +49,10 @@ export function IconTestManager() {
 export function IconIntegrity() {
   return (
     <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
-      <circle cx="20" cy="20" r="10" stroke={G} strokeWidth="3.5" fill="rgba(255,255,255,0.1)"/>
-      <line x1="27" y1="27" x2="37" y2="37" stroke={G} strokeWidth="4" strokeLinecap="round"/>
-      <circle cx="20" cy="20" r="4" fill="rgba(120,200,255,0.35)"/>
+      <path d="M22 6 L34 11 V20 C34 28 29 35 22 38 C15 35 10 28 10 20 V11 L22 6Z" fill="rgba(255,255,255,0.15)" stroke={G} strokeWidth="2.5" />
+      <path d="M22 12 V32" stroke={D} strokeWidth="2" strokeLinecap="round" />
+      <path d="M16 18 H28" stroke={D} strokeWidth="2" strokeLinecap="round" />
+      <circle cx="22" cy="20" r="3" fill="rgba(120,200,255,0.8)" />
     </svg>
   );
 }
@@ -110,6 +113,18 @@ export function IconResults() {
   );
 }
 
+export function IconSettings() {
+  return (
+    <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+      <circle cx="22" cy="22" r="14" stroke={G} strokeWidth="3" fill="rgba(255,255,255,0.1)"/>
+      <circle cx="22" cy="22" r="5" fill={D}/>
+      {[0, 45, 90, 135, 180, 225, 270, 315].map(deg => (
+        <rect key={deg} x="20.5" y="5" width="3" height="6" rx="1.5" fill={G} transform={`rotate(${deg} 22 22)`}/>
+      ))}
+    </svg>
+  );
+}
+
 export const APP_ICONS: Record<string, () => JSX.Element> = {
   'tests':           IconTests,
   'test-session':    IconTests,
@@ -120,4 +135,19 @@ export const APP_ICONS: Record<string, () => JSX.Element> = {
   'integrity':       IconIntegrity,
   'admin-analytics': IconAdminAnalytics,
   'code-editor':     IconCodeEditor,
+  'settings':        IconSettings,
+  'folder':          IconTestManager,
+  'shield':          IconIntegrity,
+  'prism':           IconResults,
 };
+
+export function GlassIcon({ id, size = 'md' }: { id: string; size?: 'sm' | 'md' | 'lg' }) {
+    const Icon = APP_ICONS[id] || IconTests;
+    const scale = size === 'sm' ? 0.7 : size === 'lg' ? 1.4 : 1;
+    
+    return (
+        <div style={{ transform: `scale(${scale})`, display: 'inline-flex' }}>
+            <Icon />
+        </div>
+    );
+}

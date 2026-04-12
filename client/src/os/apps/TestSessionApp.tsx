@@ -31,9 +31,8 @@ interface TestSessionAppProps {
   attemptId?: string;
 }
 
-export default function TestSessionApp({ testId, attemptId: initialAttemptId }: TestSessionAppProps) {
+export default function TestSessionApp({ id: windowId, testId, attemptId: initialAttemptId }: TestSessionAppProps & { id: string }) {
   const { openWindow, closeWindow, lockWindow, unlockWindow } = useOSStore();
-  const [windowId, setWindowId] = useState<string | null>(null);
 
   const [phase, setPhase] = useState<SessionPhase>('start-screen');
   const [test, setTest] = useState<any>(null);
@@ -59,19 +58,6 @@ export default function TestSessionApp({ testId, attemptId: initialAttemptId }: 
   // Elapsed minutes for unlock logic
   const startedAtRef = useRef<Date | null>(null);
   const [elapsedMins, setElapsedMins] = useState(0);
-
-  // Get window ID from context (we'll need to create a context provider)
-  useEffect(() => {
-    // Find our window ID
-    const windows = useOSStore.getState().windows;
-    const myWindow = windows.find(w => 
-      w.appType === 'test-session' && 
-      (w.appProps?.attemptId === initialAttemptId || w.appProps?.testId === testId)
-    );
-    if (myWindow) {
-      setWindowId(myWindow.id);
-    }
-  }, [initialAttemptId, testId]);
 
   // Load test/attempt data
   useEffect(() => {
@@ -149,14 +135,8 @@ export default function TestSessionApp({ testId, attemptId: initialAttemptId }: 
 
       setPhase('active');
       
-      // Lock window after attempt loaded — find window ID if not set yet
-      const wid = windowId ?? useOSStore.getState().windows.find(w =>
-        w.appType === 'test-session' &&
-        (w.appProps?.attemptId === aid || w.appProps?.testId === testId)
-      )?.id ?? null;
-      if (wid) {
-        setWindowId(wid);
-        lockWindow(wid);
+      if (windowId) {
+        lockWindow(windowId);
       }
     } catch (err) {
       setError('Could not load attempt. It may have expired or been submitted.');

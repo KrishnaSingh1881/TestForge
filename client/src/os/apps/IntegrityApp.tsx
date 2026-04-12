@@ -1,6 +1,9 @@
+
 import { useEffect, useMemo, useState } from 'react';
 import api from '../../lib/axios';
-import { useLenis } from '../../hooks/useLenis';
+import AnimatedList from '../../components/AnimatedList';
+import { FiArrowLeft, FiSearch, FiChevronRight, FiUser, FiCalendar, FiShield, FiAlertTriangle, FiCheckCircle } from 'react-icons/fi';
+import { GlassIcon } from '../components/AppIcons';
 
 interface BehavioralFlag { type: string; label: string; question_id: string; }
 interface BehavioralDetail {
@@ -48,543 +51,291 @@ interface SimilarityFlag {
 }
 
 function scoreColor(score: number | null) {
-  if (score === null) return 'rgb(var(--text-secondary))';
+  if (score === null) return 'rgba(255,255,255,0.4)';
   if (score >= 80) return '#4ade80';
   if (score >= 60) return '#facc15';
   return '#f87171';
 }
-function scoreBg(score: number | null) {
-  if (score === null) return 'rgba(255,255,255,0.07)';
-  if (score >= 80) return 'rgba(74,222,128,0.12)';
-  if (score >= 60) return 'rgba(234,179,8,0.12)';
-  return 'rgba(239,68,68,0.12)';
-}
 
-function StatBox({ label, value, color }: { label: string; value: string | number; color?: string }) {
+function StatBox({ label, value, color, icon: Icon }: { label: string; value: string | number; color?: string; icon?: any }) {
   return (
-    <div className="glass p-5 text-center">
-      <p className="text-2xl font-bold" style={{ color: color ?? 'rgb(var(--accent))' }}>{value}</p>
-      <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-secondary))' }}>{label}</p>
+    <div className="glass p-5 flex flex-col items-center justify-center text-center group hover:bg-white/[0.05] transition-all">
+      {Icon && <Icon className="text-xl mb-3 opacity-40 group-hover:scale-110 transition-transform" style={{ color }} />}
+      <p className="text-2xl font-black tabular-nums tracking-tighter" style={{ color: color ?? 'rgb(var(--accent))' }}>{value}</p>
+      <p className="text-[10px] uppercase font-black tracking-widest mt-1.5 text-white/30">{label}</p>
     </div>
   );
 }
 
 function BehavioralPanel({ detail, flags }: { detail: BehavioralDetail[]; flags: BehavioralFlag[] }) {
-  if (!detail.length) {
-    return <p className="text-xs py-2" style={{ color: 'rgb(var(--text-secondary))' }}>No coding responses recorded.</p>;
-  }
+  if (!detail.length) return <p className="text-[10px] py-4 text-center font-bold text-white/30 uppercase tracking-widest">No coding telemetry found.</p>;
 
   return (
-    <div className="space-y-3 pt-1">
+    <div className="space-y-4 pt-1">
       {flags.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {flags.map((f, i) => (
-            <span key={i} className="text-xs px-2 py-0.5 rounded-full"
-              style={{ backgroundColor: 'rgba(239,68,68,0.12)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
-              ⚠ {f.label}
+            <span key={i} className="text-[9px] font-black uppercase tracking-[0.15em] px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+              {f.label}
             </span>
           ))}
         </div>
       )}
 
       {detail.map((d, i) => (
-        <div key={i} className="rounded-xl p-3"
-          style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)' }}>
-          <p className="text-xs font-medium mb-2" style={{ color: 'rgb(var(--text-secondary))' }}>
-            Coding Q{i + 1}
+        <div key={i} className="rounded-2xl p-4 bg-white/[0.03] border border-white/5 shadow-inner">
+          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-4 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
+              Coding Question {i + 1}
           </p>
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
             {[
-              { label: 'First Key',  value: d.time_to_first_keystroke != null ? `${(d.time_to_first_keystroke / 1000).toFixed(1)}s` : '—' },
-              { label: 'Pastes',     value: d.paste_events,            warn: d.paste_events > 0 },
-              { label: 'Backspaces', value: d.backspace_count,         warn: d.backspace_count === 0 },
-              { label: 'Edits',      value: d.edit_count },
-              { label: 'WPM',        value: d.wpm_consistency },
-              { label: 'Test Runs',  value: d.test_runs_before_submit },
-            ].map(s => (
-              <div key={s.label} className="text-center">
-                <p className="text-sm font-semibold"
-                  style={{ color: (s as any).warn ? '#f87171' : 'rgb(var(--text-primary))' }}>
-                  {s.value}
-                </p>
-                <p className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>{s.label}</p>
+              { label: 'Latency',  value: d.time_to_first_keystroke != null ? `${(d.time_to_first_keystroke / 1000).toFixed(1)}s` : '—' },
+              { label: 'Paste Ev.',  value: d.paste_events, warn: d.paste_events > 0 },
+              { label: 'Backspaces', value: d.backspace_count, warn: d.backspace_count === 0 },
+              { label: 'Complexity', value: d.edit_count },
+              { label: 'WPM Cons.',  value: d.wpm_consistency },
+              { label: 'Unit Tests', value: d.test_runs_before_submit },
+            ].map((s, idx) => (
+              <div key={idx} className="flex flex-col">
+                <p className="text-sm font-black text-white" style={{ color: (s as any).warn ? '#f87171' : 'white' }}>{s.value}</p>
+                <p className="text-[9px] font-bold text-white/20 uppercase tracking-tighter mt-0.5">{s.label}</p>
               </div>
             ))}
           </div>
-          {d.idle_periods.length > 0 && (
-            <p className="text-xs mt-2" style={{ color: '#facc15' }}>
-              ⏸ {d.idle_periods.length} idle period{d.idle_periods.length !== 1 ? 's' : ''} detected
-            </p>
-          )}
         </div>
       ))}
     </div>
   );
 }
 
-function VerdictBadge({ verdict }: { verdict: string }) {
-  const styles: Record<string, { bg: string; color: string; label: string }> = {
-    pending:   { bg: 'rgba(234,179,8,0.12)',  color: '#facc15', label: 'Pending'   },
-    confirmed: { bg: 'rgba(239,68,68,0.12)',  color: '#f87171', label: 'Confirmed' },
-    dismissed: { bg: 'rgba(74,222,128,0.12)', color: '#4ade80', label: 'Dismissed' },
-  };
-  const s = styles[verdict] ?? styles.pending;
-  return (
-    <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-      style={{ backgroundColor: s.bg, color: s.color }}>
-      {s.label}
-    </span>
-  );
-}
-
-export default function IntegrityApp({ appProps }: { appProps?: Record<string, unknown> }) {
-  const lenisRef = useLenis();
-  const testId = appProps?.testId as string | undefined;
-
-  const [data, setData] = useState<{ attempts: AttemptRow[]; summary: any; test_title: string } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+export default function IntegrityApp({ testId, testTitle }: { testId?: string; testTitle?: string }) {
+  const [view, setView] = useState<'tests' | 'students' | 'details'>('tests');
+  const [selectedTest, setSelectedTest] = useState<any>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  // Similarity report state
-  const [showSimilarity, setShowSimilarity] = useState(false);
-  const [similarityFlags, setSimilarityFlags] = useState<SimilarityFlag[]>([]);
-  const [loadingSimilarity, setLoadingSimilarity] = useState(false);
-  const [runningSimilarity, setRunningSimilarity] = useState(false);
-  const [similarityResult, setSimilarityResult] = useState<{ pairs_analyzed: number; flags_raised: number } | null>(null);
-
-  // Filters
+  const [tests, setTests] = useState<any[]>([]);
+  const [integrityData, setIntegrityData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+
+  // Filtering
   const [divFilter, setDivFilter] = useState('');
   const [scoreFilter, setScoreFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
-  const [sortAsc, setSortAsc] = useState(true);
 
   useEffect(() => {
-    if (!testId) return;
-    api.get(`/admin/tests/${testId}/integrity`)
-      .then(r => setData(r.data))
-      .catch(e => setError(e.response?.data?.error ?? 'Failed to load'))
-      .finally(() => setLoading(false));
-  }, [testId]);
+    if (testId) {
+      setSelectedTest({ id: testId, title: testTitle || 'Selected Test' });
+      setView('students');
+    } else {
+      loadTests();
+    }
+  }, [testId, testTitle]);
 
-  async function loadSimilarityFlags() {
-    if (!testId) return;
-    setLoadingSimilarity(true);
+  async function loadTests() {
+    setLoading(true);
     try {
-      const r = await api.get(`/admin/tests/${testId}/similarity-flags`);
-      setSimilarityFlags(r.data.flags ?? []);
-    } catch (e: any) {
-      console.error('Failed to load similarity flags:', e);
+      const r = await api.get('/tests');
+      setTests(r.data.tests ?? []);
     } finally {
-      setLoadingSimilarity(false);
+      setLoading(false);
+    }
+  }
+
+  async function loadIntegrity(tId: string) {
+    setLoading(true);
+    try {
+      const r = await api.get(`/admin/tests/${tId}/integrity`);
+      setIntegrityData(r.data);
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => {
-    if (showSimilarity) {
-      loadSimilarityFlags();
+    if (view === 'students' && selectedTest) {
+      loadIntegrity(selectedTest.id);
     }
-  }, [showSimilarity]);
+  }, [view, selectedTest]);
 
-  async function handleRunSimilarity() {
-    if (!testId) return;
-    if (!confirm('Run similarity analysis on all submissions for this test? This may take a moment.')) return;
-    setRunningSimilarity(true);
-    try {
-      const r = await api.post(`/admin/tests/${testId}/run-similarity`);
-      setSimilarityResult({ pairs_analyzed: r.data.pairs_analyzed, flags_raised: r.data.flags_raised });
-      await loadSimilarityFlags();
-    } catch (e: any) {
-      console.error('Similarity check failed:', e);
-    } finally {
-      setRunningSimilarity(false);
-    }
-  }
-
-  async function handleVerdict(flagId: string, verdict: 'confirmed' | 'dismissed') {
-    await api.patch(`/admin/flags/${flagId}/verdict`, { verdict });
-    setSimilarityFlags(prev => prev.map(f =>
-      f.id === flagId ? { ...f, admin_verdict: verdict, reviewed: true } : f
-    ));
-  }
-
-  const divisions = useMemo(() => {
-    if (!data) return [];
-    return [...new Set(data.attempts.map(a => a.division).filter(d => d !== '—'))].sort();
-  }, [data]);
+  const filteredTests = useMemo(() => {
+    return tests.filter(t => 
+        (t.title ?? '').toLowerCase().includes(search.toLowerCase()) || 
+        (t.subject ?? '').toLowerCase().includes(search.toLowerCase())
+    );
+  }, [tests, search]);
 
   const rows = useMemo(() => {
-    if (!data) return [];
-    let list = [...data.attempts];
-
+    if (!integrityData) return [];
+    let list = [...integrityData.attempts];
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter(a => a.student_name.toLowerCase().includes(q) || a.student_email.toLowerCase().includes(q));
+      list = list.filter(a => 
+        (a.student_name ?? '').toLowerCase().includes(q) || 
+        (a.student_email ?? '').toLowerCase().includes(q)
+      );
     }
     if (divFilter) list = list.filter(a => a.division === divFilter);
     if (scoreFilter === 'high')   list = list.filter(a => (a.integrity_score ?? 100) >= 80);
     if (scoreFilter === 'medium') list = list.filter(a => (a.integrity_score ?? 100) >= 60 && (a.integrity_score ?? 100) < 80);
     if (scoreFilter === 'low')    list = list.filter(a => (a.integrity_score ?? 100) < 60);
 
-    list.sort((a, b) => {
-      const sa = a.integrity_score ?? 100;
-      const sb = b.integrity_score ?? 100;
-      return sortAsc ? sa - sb : sb - sa;
-    });
-
     return list;
-  }, [data, search, divFilter, scoreFilter, sortAsc]);
+  }, [integrityData, search, divFilter, scoreFilter]);
 
-  const inputStyle = {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    border: '1px solid var(--glass-border)',
-    color: 'rgb(var(--text-primary))',
+  const handleBack = () => {
+    if (view === 'students') {
+        if (testId) {
+            // Can't go back further
+        } else {
+            setView('tests');
+            setSearch('');
+        }
+    }
   };
 
-  if (loading) return (
-    <div className="h-full flex items-center justify-center">
-      <div className="flex flex-col items-center gap-3">
-        <span className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>Loading integrity data...</p>
-      </div>
-    </div>
-  );
-
-  if (error) return (
-    <div className="h-full flex items-center justify-center">
-      <div className="glass p-10 text-center max-w-md">
-        <p className="text-red-400 mb-4">{error}</p>
-      </div>
-    </div>
-  );
-
-  const { summary } = data!;
-
-  const pending   = similarityFlags.filter(f => f.admin_verdict === 'pending').length;
-  const confirmed = similarityFlags.filter(f => f.admin_verdict === 'confirmed').length;
-  const dismissed = similarityFlags.filter(f => f.admin_verdict === 'dismissed').length;
-
   return (
-    <div ref={lenisRef} className="h-full overflow-auto p-6 space-y-6">
-
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'rgb(var(--text-primary))' }}>
-            Integrity Dashboard
+    <div className="h-full flex flex-col bg-transparent">
+      {/* App Header */}
+      <div className="flex items-center gap-4 p-6 border-b border-white/5">
+        {(view !== 'tests' || (view === 'tests' && testId)) && (
+          <button onClick={handleBack} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+            <FiArrowLeft className="text-white" />
+          </button>
+        )}
+        <div className="flex-1">
+          <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+            <FiShield className="text-indigo-500" />
+            {view === 'tests' ? "Integrity Hub" : (selectedTest?.title || "Test Monitoring")}
           </h1>
-          <p className="text-sm mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>
-            {data?.test_title}
+          <p className="text-[10px] font-black uppercase text-white/30 tracking-widest mt-0.5">
+            {view === 'tests' ? "Select a test to analyze behavioral patterns" : `Analyzing ${rows.length} active sessions`}
           </p>
         </div>
-        <button onClick={() => setShowSimilarity(v => !v)}
-          className="text-xs px-3 py-2 rounded-lg transition-opacity hover:opacity-80"
-          style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: 'rgb(var(--accent))', border: '1px solid rgba(99,102,241,0.3)' }}>
-          {showSimilarity ? '← Back to Integrity' : 'Similarity Report →'}
-        </button>
+        
+        <div className="relative w-64">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+            <input 
+                type="text" 
+                placeholder="Search..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+            />
+        </div>
       </div>
 
-      {!showSimilarity ? (
-        <>
-          {/* Summary row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatBox label="Total Attempts"    value={summary.total} />
-            <StatBox label="Avg Integrity"     value={`${summary.avg_integrity}`}
-              color={scoreColor(summary.avg_integrity)} />
-            <StatBox label="High Risk (< 60)"  value={summary.high_risk}
-              color={summary.high_risk > 0 ? '#f87171' : '#4ade80'} />
-            <StatBox label="Similarity Flags"  value={summary.similarity_flags}
-              color={summary.similarity_flags > 0 ? '#facc15' : '#4ade80'} />
-          </div>
-
-          {/* Filter bar */}
-          <div className="glass p-4 flex flex-wrap gap-3 items-center">
-            <input
-              type="text"
-              placeholder="Search by name..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="px-3 py-1.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500 w-48"
-              style={inputStyle}
-            />
-
-            <select value={divFilter} onChange={e => setDivFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-              style={inputStyle}>
-              <option value="">All Divisions</option>
-              {divisions.map(d => <option key={d} value={d}>Division {d}</option>)}
-            </select>
-
-            <select value={scoreFilter} onChange={e => setScoreFilter(e.target.value as any)}
-              className="px-3 py-1.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-              style={inputStyle}>
-              <option value="all">All Scores</option>
-              <option value="high">High (≥ 80)</option>
-              <option value="medium">Medium (60–79)</option>
-              <option value="low">Low (&lt; 60)</option>
-            </select>
-
-            <button onClick={() => setSortAsc(v => !v)}
-              className="px-3 py-1.5 rounded-lg text-xs transition-opacity hover:opacity-80"
-              style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
-              Sort: {sortAsc ? 'Worst first ↑' : 'Best first ↓'}
-            </button>
-
-            <span className="ml-auto text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
-              {rows.length} student{rows.length !== 1 ? 's' : ''}
-            </span>
-          </div>
-
-          {/* Integrity table */}
-          {rows.length === 0 ? (
-            <div className="glass p-12 text-center">
-              <p style={{ color: 'rgb(var(--text-secondary))' }}>No results match your filters.</p>
+      <div className="flex-1 overflow-auto custom-scrollbar">
+        {loading ? (
+            <div className="h-full flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+                    <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">Querying Database</p>
+                </div>
             </div>
-          ) : (
-            <div className="glass overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                    {['Student', 'Div', 'Integrity', 'Tab Sw.', 'Focus Lost', 'Behavioral', 'Similarity', 'Actions'].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wide"
-                        style={{ color: 'rgb(var(--text-secondary))' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, i) => {
+        ) : (
+          <div className="p-6">
+            {view === 'tests' && (
+              <AnimatedList 
+                items={filteredTests}
+                containerClassName="w-full"
+                className="flex flex-col gap-4"
+                renderItem={(t) => (
+                  <div className="group relative glass p-5 flex items-center gap-5 transition-all hover:bg-white/[0.08] hover:border-indigo-500/30">
+                    <div className="p-3 bg-indigo-500/10 rounded-2xl group-hover:bg-indigo-500/20 transition-all duration-500">
+                        <GlassIcon id="shield" size="sm" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-bold text-base truncate tracking-tight">{t.title}</h3>
+                        <div className="flex items-center gap-3 mt-1.5">
+                            <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-white/5 rounded text-white/40">{t.subject}</span>
+                            <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-white/5 rounded text-white/40">{t.year} • {t.division}</span>
+                        </div>
+                    </div>
+                    <FiChevronRight className="text-white/10 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                  </div>
+                )}
+                onItemSelect={(t) => {
+                  setSelectedTest(t);
+                  setView('students');
+                  setSearch('');
+                }}
+              />
+            )}
+
+            {view === 'students' && (
+              <div className="space-y-6">
+                {/* Dashboard Stats */}
+                {integrityData?.summary && (
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <StatBox label="Total Participants" value={integrityData.summary.total} icon={FiUser} />
+                        <StatBox label="Avg Integrity" value={`${integrityData.summary.avg_integrity}%`} color={scoreColor(integrityData.summary.avg_integrity)} icon={FiCheckCircle} />
+                        <StatBox label="High-Risk Flags" value={integrityData.summary.high_risk} color="#f87171" icon={FiAlertTriangle} />
+                        <StatBox label="Active Monitoring" value="LIVE" color="#4ade80" icon={FiShield} />
+                    </div>
+                )}
+
+                <div className="flex items-center gap-3 bg-white/5 p-2 rounded-2xl border border-white/5 overflow-x-auto whitespace-nowrap scrollbar-hide">
+                    <p className="text-[10px] font-black text-white/20 uppercase tracking-widest px-4 mr-2 border-r border-white/10">Quick Filters:</p>
+                    <button onClick={() => setScoreFilter('all')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${scoreFilter === 'all' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'text-white/40 hover:bg-white/5'}`}>All</button>
+                    <button onClick={() => setScoreFilter('low')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${scoreFilter === 'low' ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' : 'text-white/40 hover:bg-white/5'}`}>High Risk</button>
+                    <button onClick={() => setScoreFilter('medium')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${scoreFilter === 'medium' ? 'bg-yellow-500 text-white shadow-lg shadow-yellow-500/30' : 'text-white/40 hover:bg-white/5'}`}>Review Required</button>
+                </div>
+
+                <AnimatedList 
+                  items={rows}
+                  containerClassName="w-full"
+                  className="flex flex-col gap-3"
+                  renderItem={(row) => {
                     const isExpanded = expanded === row.attempt_id;
                     const sc = row.integrity_score;
+                    const color = scoreColor(sc);
 
                     return (
-                      <>
-                        <tr key={row.attempt_id}
-                          style={{ borderBottom: '1px solid var(--glass-border)', backgroundColor: isExpanded ? 'rgba(99,102,241,0.05)' : 'transparent' }}>
+                        <div className={`overflow-hidden rounded-2xl border transition-all duration-300 ${isExpanded ? 'bg-white/[0.08] border-indigo-500/40 shadow-2xl' : 'bg-white/[0.03] border-white/5 hover:border-white/20'}`}>
+                            <div className="p-4 flex items-center gap-4 cursor-pointer" onClick={() => setExpanded(isExpanded ? null : row.attempt_id)}>
+                                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:rotate-6 transition-all">
+                                    <FiUser className="text-white/40 text-lg" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-sm font-black text-white truncate uppercase tracking-tight">{row.student_name}</h3>
+                                    <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">{row.division} • {row.year}</p>
+                                </div>
+                                <div className="hidden sm:flex flex-col items-center px-4 border-l border-r border-white/5">
+                                    <p className="text-[10px] font-black text-white/20 uppercase tracking-tighter mb-0.5">Tab Sw.</p>
+                                    <p className={`text-sm font-black ${row.tab_switches > 0 ? 'text-red-400' : 'text-white/40'}`}>{row.tab_switches}</p>
+                                </div>
+                                <div className="text-right px-2 min-w-[70px]">
+                                    <p className="text-[10px] font-black text-white/20 uppercase tracking-tighter mb-0.5">Integrity</p>
+                                    <p className="text-sm font-black" style={{ color }}>{sc ?? '--'}%</p>
+                                </div>
+                                <div className={`w-8 h-8 flex items-center justify-center transition-transform duration-500 ${isExpanded ? 'rotate-180' : ''}`}>
+                                    <FiChevronRight className="text-white/20" />
+                                </div>
+                            </div>
 
-                          <td className="px-4 py-3">
-                            <p className="font-medium text-sm" style={{ color: 'rgb(var(--text-primary))' }}>
-                              {row.student_name}
-                            </p>
-                            <p className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
-                              {row.year}
-                            </p>
-                          </td>
-
-                          <td className="px-4 py-3">
-                            <span className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
-                              {row.division}
-                            </span>
-                          </td>
-
-                          <td className="px-4 py-3">
-                            <span className="text-sm font-bold px-2.5 py-1 rounded-full"
-                              style={{ backgroundColor: scoreBg(sc), color: scoreColor(sc) }}>
-                              {sc ?? '—'}
-                            </span>
-                          </td>
-
-                          <td className="px-4 py-3">
-                            <span className="text-sm" style={{ color: row.tab_switches > 0 ? '#f87171' : 'rgb(var(--text-secondary))' }}>
-                              {row.tab_switches}
-                            </span>
-                          </td>
-
-                          <td className="px-4 py-3">
-                            <span className="text-sm" style={{ color: row.focus_lost_count > 2 ? '#facc15' : 'rgb(var(--text-secondary))' }}>
-                              {row.focus_lost_count}
-                            </span>
-                          </td>
-
-                          <td className="px-4 py-3">
-                            {row.behavioral_flags.length > 0 ? (
-                              <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                                style={{ backgroundColor: 'rgba(239,68,68,0.12)', color: '#f87171' }}>
-                                {row.behavioral_flags.length} flag{row.behavioral_flags.length !== 1 ? 's' : ''}
-                              </span>
-                            ) : (
-                              <span className="text-xs" style={{ color: '#4ade80' }}>Clean</span>
+                            {isExpanded && (
+                                <div className="px-6 pb-6 pt-2 border-t border-white/5 animate-in slide-in-from-top-2 duration-300">
+                                    <div className="mb-4 flex items-center gap-2">
+                                        <div className="h-px flex-1 bg-white/5" />
+                                        <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em]">Behavioral Telemetry</p>
+                                        <div className="h-px flex-1 bg-white/5" />
+                                    </div>
+                                    <BehavioralPanel
+                                        detail={row.behavioral_detail}
+                                        flags={row.behavioral_flags}
+                                    />
+                                </div>
                             )}
-                          </td>
-
-                          <td className="px-4 py-3">
-                            {row.similarity_flag_count > 0 ? (
-                              <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                                style={{ backgroundColor: 'rgba(234,179,8,0.12)', color: '#facc15' }}>
-                                {row.similarity_flag_count}
-                              </span>
-                            ) : (
-                              <span className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>—</span>
-                            )}
-                          </td>
-
-                          <td className="px-4 py-3">
-                            <button
-                              onClick={() => setExpanded(isExpanded ? null : row.attempt_id)}
-                              className="text-xs px-2 py-1 rounded transition-opacity hover:opacity-80"
-                              style={{ backgroundColor: 'rgba(99,102,241,0.12)', color: 'rgb(var(--accent))' }}>
-                              {isExpanded ? 'Collapse ▲' : 'Expand ▼'}
-                            </button>
-                          </td>
-                        </tr>
-
-                        {isExpanded && (
-                          <tr key={`${row.attempt_id}-detail`}
-                            style={{ borderBottom: '1px solid var(--glass-border)', backgroundColor: 'rgba(99,102,241,0.03)' }}>
-                            <td colSpan={8} className="px-6 py-4">
-                              <BehavioralPanel
-                                detail={row.behavioral_detail}
-                                flags={row.behavioral_flags}
-                              />
-                            </td>
-                          </tr>
-                        )}
-                      </>
+                        </div>
                     );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          {/* Similarity Report View */}
-          <div className="flex items-start justify-between gap-4 mb-6">
-            <div>
-              <h2 className="text-xl font-bold" style={{ color: 'rgb(var(--text-primary))' }}>
-                Similarity Report
-              </h2>
-              {similarityFlags.length > 0 && (
-                <div className="flex gap-2 mt-2 flex-wrap">
-                  <span className="text-xs px-2 py-0.5 rounded-full"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'rgb(var(--text-secondary))' }}>
-                    {similarityFlags.length} pair{similarityFlags.length !== 1 ? 's' : ''} flagged
-                  </span>
-                  {confirmed > 0 && (
-                    <span className="text-xs px-2 py-0.5 rounded-full"
-                      style={{ backgroundColor: 'rgba(239,68,68,0.12)', color: '#f87171' }}>
-                      {confirmed} confirmed
-                    </span>
-                  )}
-                  {dismissed > 0 && (
-                    <span className="text-xs px-2 py-0.5 rounded-full"
-                      style={{ backgroundColor: 'rgba(74,222,128,0.12)', color: '#4ade80' }}>
-                      {dismissed} dismissed
-                    </span>
-                  )}
-                  {pending > 0 && (
-                    <span className="text-xs px-2 py-0.5 rounded-full"
-                      style={{ backgroundColor: 'rgba(234,179,8,0.12)', color: '#facc15' }}>
-                      {pending} pending
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={handleRunSimilarity}
-              disabled={runningSimilarity}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50 shrink-0"
-              style={{ backgroundColor: 'rgb(var(--accent))' }}>
-              {runningSimilarity ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Analyzing...
-                </>
-              ) : '🔍 Run Similarity Check'}
-            </button>
+                  }}
+                />
+              </div>
+            )}
           </div>
-
-          {similarityResult && (
-            <div className="glass px-5 py-3 mb-4 flex items-center gap-3"
-              style={{ border: '1px solid rgba(99,102,241,0.3)' }}>
-              <span style={{ color: 'rgb(var(--accent))' }}>✓</span>
-              <p className="text-sm" style={{ color: 'rgb(var(--text-primary))' }}>
-                Analysis complete — {similarityResult.pairs_analyzed} pair{similarityResult.pairs_analyzed !== 1 ? 's' : ''} analyzed,{' '}
-                <span style={{ color: similarityResult.flags_raised > 0 ? '#f87171' : '#4ade80' }}>
-                  {similarityResult.flags_raised} new flag{similarityResult.flags_raised !== 1 ? 's' : ''} raised
-                </span>
-              </p>
-            </div>
-          )}
-
-          {loadingSimilarity ? (
-            <p className="text-sm text-center py-12" style={{ color: 'rgb(var(--text-secondary))' }}>Loading...</p>
-          ) : similarityFlags.length === 0 ? (
-            <div className="glass p-12 text-center">
-              <p className="text-lg mb-2" style={{ color: 'rgb(var(--text-primary))' }}>No flags yet</p>
-              <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>
-                Run the similarity check after the test ends to analyze submissions.
-              </p>
-            </div>
-          ) : (
-            <div className="glass overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                    {['Student 1', 'Student 2', 'Question', 'Similarity', 'Status', 'Actions'].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wide"
-                        style={{ color: 'rgb(var(--text-secondary))' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {similarityFlags.map((flag, i) => {
-                    const pct = Math.round(flag.similarity_score * 100);
-                    const scoreColor = pct >= 95 ? '#f87171' : pct >= 90 ? '#fb923c' : '#facc15';
-
-                    return (
-                      <tr key={flag.id}
-                        style={{ borderBottom: i < similarityFlags.length - 1 ? '1px solid var(--glass-border)' : 'none' }}>
-                        <td className="px-4 py-3 font-medium" style={{ color: 'rgb(var(--text-primary))' }}>
-                          {flag.student1}
-                        </td>
-                        <td className="px-4 py-3 font-medium" style={{ color: 'rgb(var(--text-primary))' }}>
-                          {flag.student2}
-                        </td>
-                        <td className="px-4 py-3 max-w-xs">
-                          <p className="truncate text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
-                            {flag.question_statement}
-                          </p>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="font-bold tabular-nums" style={{ color: scoreColor }}>
-                            {pct}%
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <VerdictBadge verdict={flag.admin_verdict} />
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2">
-                            {flag.admin_verdict === 'pending' && (
-                              <>
-                                <button
-                                  onClick={() => handleVerdict(flag.id, 'confirmed')}
-                                  className="text-xs px-2 py-1 rounded transition-opacity hover:opacity-80"
-                                  style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#f87171' }}>
-                                  Confirm
-                                </button>
-                                <button
-                                  onClick={() => handleVerdict(flag.id, 'dismissed')}
-                                  className="text-xs px-2 py-1 rounded transition-opacity hover:opacity-80"
-                                  style={{ backgroundColor: 'rgba(74,222,128,0.1)', color: '#4ade80' }}>
-                                  Dismiss
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 }

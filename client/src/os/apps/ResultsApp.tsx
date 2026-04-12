@@ -1,12 +1,17 @@
-import { useEffect, useState, useRef } from 'react';
+
+import { useEffect, useState, useRef, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import api from '../../lib/axios';
 import { useTheme } from '../../context/ThemeContext';
-import Lenis from 'lenis';
+import AnimatedList from '../../components/AnimatedList';
+import { FiArrowLeft, FiSearch, FiChevronRight, FiUser, FiCalendar, FiClock, FiFileText } from 'react-icons/fi';
+import { GlassIcon } from '../components/AppIcons';
 
 interface ResultsAppProps {
-  attemptId: string;
+  testId?: string;
+  testTitle?: string;
+  attemptId?: string;
 }
 
 function gradeBand(pct: number) {
@@ -107,7 +112,7 @@ function QuestionRow({ q, idx, monacoTheme }: { q: any; idx: number; monacoTheme
             className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0"
             style={{ backgroundColor: 'rgba(99,102,241,0.12)', color: 'rgb(var(--accent))' }}
           >
-            {q.visible_cases_passed}/{q.visible_cases_total} vis · {q.hidden_cases_passed}/{q.hidden_cases_total} hid
+            {q.visible_cases_passed}/{q.visible_cases_total} vis
           </span>
         )}
 
@@ -155,16 +160,6 @@ function QuestionRow({ q, idx, monacoTheme }: { q: any; idx: number; monacoTheme
                       </span>
                     )}
                     <span style={{ color: 'rgb(var(--text-primary))' }}>{opt.option_text}</span>
-                    {selected && !correct && (
-                      <span className="ml-auto text-xs" style={{ color: '#f87171' }}>
-                        Your answer
-                      </span>
-                    )}
-                    {correct && (
-                      <span className="ml-auto text-xs" style={{ color: '#4ade80' }}>
-                        Correct
-                      </span>
-                    )}
                   </div>
                 );
               })}
@@ -194,16 +189,8 @@ function QuestionRow({ q, idx, monacoTheme }: { q: any; idx: number; monacoTheme
                   className="rounded-lg p-3 text-center"
                   style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)' }}
                 >
-                  <p
-                    className="text-lg font-bold"
-                    style={{
-                      color: q.hidden_cases_passed === q.hidden_cases_total ? '#4ade80' : '#f87171',
-                    }}
-                  >
-                    {q.hidden_cases_passed}/{q.hidden_cases_total}
-                  </p>
-                  <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>
-                    Hidden cases
+                   <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>
+                    Automated Verification
                   </p>
                 </div>
               </div>
@@ -239,330 +226,268 @@ function QuestionRow({ q, idx, monacoTheme }: { q: any; idx: number; monacoTheme
   );
 }
 
-function TimeTooltip({ active, payload }: any) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="glass px-3 py-2 text-xs" style={{ color: 'rgb(var(--text-primary))' }}>
-      <p className="font-medium">{payload[0].payload.label}</p>
-      <p style={{ color: 'rgb(var(--accent))' }}>{payload[0].value}s</p>
-    </div>
-  );
-}
-
-export default function ResultsApp({ attemptId }: ResultsAppProps) {
+export default function ResultsApp({ testId, testTitle, attemptId }: ResultsAppProps) {
   const { theme } = useTheme();
   const monacoTheme = theme === 'dark' ? 'vs-dark' : 'light';
 
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [view, setView] = useState<'tests' | 'students' | 'details'>('tests');
+  const [selectedTest, setSelectedTest] = useState<{ id: string; title: string } | null>(null);
+  const [selectedAttempt, setSelectedAttempt] = useState<string | null>(null);
 
+  const [tests, setTests] = useState<any[]>([]);
+  const [attempts, setAttempts] = useState<any[]>([]);
+  const [detailData, setDetailData] = useState<any>(null);
+  
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+
+  // Initial routing
   useEffect(() => {
-    if (!attemptId) return;
-    api
-      .get(`/attempts/${attemptId}/result`)
-      .then(r => setData(r.data))
-      .catch(e => setError(e.response?.data?.error ?? 'Failed to load results'))
-      .finally(() => setLoading(false));
-  }, [attemptId]);
-
-  // Lenis smooth scroll
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const lenis = new Lenis({
-      wrapper: containerRef.current,
-      duration: 1.2,
-      easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    });
-
-    function raf(time: number) {
-      lenis.raf(time);
-      requestAnimationFrame(raf);
+    if (attemptId) {
+      setSelectedAttempt(attemptId);
+      setView('details');
+    } else if (testId) {
+      setSelectedTest({ id: testId, title: testTitle || 'Selected Test' });
+      setView('students');
+    } else {
+      loadTests();
     }
+  }, [testId, testTitle, attemptId]);
 
-    const rafId = requestAnimationFrame(raf);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      lenis.destroy();
-    };
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <span className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>
-            Loading results...
-          </p>
-        </div>
-      </div>
-    );
+  async function loadTests() {
+    setLoading(true);
+    try {
+      const r = await api.get('/tests');
+      setTests(r.data.tests ?? []);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  if (error) {
-    return (
-      <div className="h-full flex items-center justify-center p-8">
-        <div className="glass p-10 text-center max-w-md">
-          <p className="text-red-400 mb-4">{error}</p>
-        </div>
-      </div>
-    );
+  async function loadAttempts(tId: string) {
+    setLoading(true);
+    try {
+      const r = await api.get(`/admin/tests/${tId}/integrity`);
+      setAttempts(r.data.attempts ?? []);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  const { attempt, result, section_scores, breakdown } = data;
-  const { grade, color } = gradeBand(result.percentage);
-  const pct = Math.round(result.percentage);
+  async function loadDetail(aId: string) {
+    setLoading(true);
+    try {
+      const r = await api.get(`/attempts/${aId}/result`);
+      setDetailData(r.data);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  // Integrity violation banner
-  const isIntegrityViolation = attempt.auto_submit_reason === 'integrity_violation';
+  useEffect(() => {
+    if (view === 'students' && selectedTest) {
+      loadAttempts(selectedTest.id);
+    }
+  }, [view, selectedTest]);
 
-  // Topic breakdown
-  const topicMap: Record<string, { earned: number; total: number }> = {};
-  breakdown.forEach((q: any) => {
-    if (!q.topic_tag) return;
-    if (!topicMap[q.topic_tag]) topicMap[q.topic_tag] = { earned: 0, total: 0 };
-    topicMap[q.topic_tag].earned += q.marks_awarded;
-    topicMap[q.topic_tag].total += q.marks_total;
-  });
+  useEffect(() => {
+    if (view === 'details' && selectedAttempt) {
+      loadDetail(selectedAttempt);
+    }
+  }, [view, selectedAttempt]);
 
-  // Time chart data
-  const timeData = breakdown
-    .filter((q: any) => q.time_spent_seconds != null)
-    .map((q: any) => ({
-      label: `Q${q.number}`,
-      value: q.time_spent_seconds,
-      color: marksColor(q.marks_awarded, q.marks_total),
-    }));
+  const filteredTests = useMemo(() => {
+    return tests.filter(t => 
+      (t.title ?? '').toLowerCase().includes(search.toLowerCase()) || 
+      (t.subject ?? '').toLowerCase().includes(search.toLowerCase())
+    );
+  }, [tests, search]);
 
-  // MCQ accuracy
-  const mcqAnswered = breakdown.filter(
-    (q: any) => (q.type === 'mcq_single' || q.type === 'mcq_multi') && q.answered
-  );
-  const mcqAccuracy = mcqAnswered.length
-    ? Math.round((mcqAnswered.filter((q: any) => q.is_correct).length / mcqAnswered.length) * 100)
-    : null;
+  const filteredAttempts = useMemo(() => {
+    return attempts.filter(a => 
+      (a.student_name ?? '').toLowerCase().includes(search.toLowerCase()) || 
+      (a.student_email ?? '').toLowerCase().includes(search.toLowerCase())
+    );
+  }, [attempts, search]);
 
-  // Debug avg test cases
-  const debugAnswered = breakdown.filter((q: any) => q.type === 'debugging' && q.answered);
-  const debugAvg = debugAnswered.length
-    ? Math.round(
-        (debugAnswered.reduce(
-          (s: number, q: any) => s + (q.visible_cases_total > 0 ? q.visible_cases_passed / q.visible_cases_total : 0),
-          0
-        ) /
-          debugAnswered.length) *
-          100
-      )
-    : null;
+  const handleBack = () => {
+    if (view === 'details') {
+      if (attemptId) {
+          if (testId) setView('students');
+      } else {
+          setView('students');
+      }
+    } else if (view === 'students') {
+      setView('tests');
+      setSearch('');
+    }
+  };
 
   return (
-    <div ref={containerRef} className="h-full overflow-auto">
-      <div className="p-8 space-y-8">
-        {/* Integrity violation banner */}
-        {isIntegrityViolation && (
-          <div
-            className="rounded-xl p-5 flex items-center gap-3"
-            style={{ backgroundColor: 'rgba(239,68,68,0.15)', border: '2px solid rgba(239,68,68,0.5)' }}
-          >
-            <span className="text-3xl">⚠️</span>
-            <div>
-              <p className="text-base font-bold" style={{ color: '#f87171' }}>
-                Submitted due to integrity violation
-              </p>
-              <p className="text-sm mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>
-                Your test was auto-submitted after exceeding the allowed tab switches.
-              </p>
-            </div>
-          </div>
+    <div className="h-full flex flex-col bg-transparent">
+      {/* App Header */}
+      <div className="flex items-center gap-4 p-6 border-b border-white/5">
+        {(view !== 'tests' || (view === 'tests' && testId)) && (
+          <button onClick={handleBack} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+            <FiArrowLeft className="text-white" />
+          </button>
         )}
-
-        {/* Score Hero */}
-        <div className="glass p-8">
-          <p className="text-sm font-medium text-center mb-1" style={{ color: 'rgb(var(--text-secondary))' }}>
-            {attempt.test_title}
+        <div className="flex-1">
+          <h1 className="text-xl font-bold text-white">
+            {view === 'tests' && "Results Explorer"}
+            {view === 'students' && (selectedTest?.title || "Student Results")}
+            {view === 'details' && detailData?.attempt?.student_name}
+          </h1>
+          <p className="text-xs text-white/50">
+            {view === 'tests' && "Select a test to view performance analytics"}
+            {view === 'students' && "Select a student to view detailed results"}
+            {view === 'details' && detailData?.attempt?.test_title}
           </p>
-          <p className="text-xs text-center mb-6" style={{ color: 'rgb(var(--text-secondary))' }}>
-            Submitted {attempt.submitted_at ? new Date(attempt.submitted_at).toLocaleString() : '—'}
-            {attempt.time_taken_mins != null && ` · ${attempt.time_taken_mins} min`}
-          </p>
-
-          <div className="flex flex-col md:flex-row items-center gap-8">
-            <div className="shrink-0">
-              <ScoreCircle score={result.total_score} total={result.total_marks} pct={pct} />
-              <p className="text-center text-2xl font-bold mt-2" style={{ color }}>
-                {pct}%
-              </p>
+        </div>
+        {view !== 'details' && (
+            <div className="relative w-64">
+                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                <input 
+                    type="text" 
+                    placeholder="Search..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                />
             </div>
+        )}
+      </div>
 
-            <div className="flex-1 w-full space-y-4">
-              {result.rank && (
-                <div
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                  style={{ backgroundColor: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)' }}
-                >
-                  <span className="text-2xl">🏆</span>
-                  <div>
-                    <p className="text-lg font-bold" style={{ color: 'rgb(var(--accent))' }}>
-                      #{result.rank} on leaderboard
-                    </p>
-                    <p className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
-                      {result.pass_fail_overall ? 'Passed' : 'Failed'}
-                    </p>
+      <div className="flex-1 overflow-auto custom-scrollbar">
+        {loading ? (
+          <div className="h-full flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+              <p className="text-sm font-medium text-white/50 tracking-widest uppercase">Loading</p>
+            </div>
+          </div>
+        ) : (
+          <div className="p-6">
+            {view === 'tests' && (
+              <AnimatedList 
+                items={filteredTests}
+                containerClassName="w-full"
+                className="flex flex-col gap-4"
+                renderItem={(t) => (
+                  <div className="group relative glass p-5 flex items-center gap-5 transition-all hover:bg-white/[0.08] hover:border-white/20">
+                    <div className="p-3 bg-indigo-500/20 rounded-2xl group-hover:scale-110 transition-transform duration-500">
+                        <GlassIcon id="prism" size="sm" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-bold text-base truncate">{t.title}</h3>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-white/50">
+                            <span className="flex items-center gap-1"><FiCalendar className="text-indigo-400" /> {t.year}</span>
+                            <span className="w-1 h-1 rounded-full bg-white/20" />
+                            <span className="flex items-center gap-1"><FiFileText className="text-indigo-400" /> {t.subject}</span>
+                        </div>
+                    </div>
+                    <FiChevronRight className="text-white/20 group-hover:text-white group-hover:translate-x-1 transition-all" />
                   </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-3 gap-3">
-                <div
-                  className="rounded-xl p-3 text-center"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)' }}
-                >
-                  <p className="text-base font-bold" style={{ color: '#4ade80' }}>
-                    {section_scores.mcqScore}/{section_scores.mcqTotal}
-                  </p>
-                  <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>
-                    MCQ Score
-                  </p>
-                </div>
-                <div
-                  className="rounded-xl p-3 text-center"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)' }}
-                >
-                  <p className="text-base font-bold" style={{ color: 'rgb(var(--accent))' }}>
-                    {section_scores.debugScore}/{section_scores.debugTotal}
-                  </p>
-                  <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>
-                    Coding Score
-                  </p>
-                </div>
-                <div
-                  className="rounded-xl p-3 text-center"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)' }}
-                >
-                  <p className="text-base font-bold" style={{ color: 'rgb(var(--text-primary))' }}>
-                    {breakdown.filter((q: any) => q.answered).length}/{breakdown.length}
-                  </p>
-                  <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>
-                    Attempted
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Question Breakdown */}
-        <div>
-          <h2 className="text-lg font-semibold mb-4" style={{ color: 'rgb(var(--text-primary))' }}>
-            Question Breakdown
-          </h2>
-          <div className="space-y-2">
-            {breakdown.map((q: any, i: number) => (
-              <QuestionRow key={q.question_id} q={q} idx={i} monacoTheme={monacoTheme} />
-            ))}
-          </div>
-        </div>
-
-        {/* Performance Summary */}
-        <div>
-          <h2 className="text-lg font-semibold mb-4" style={{ color: 'rgb(var(--text-primary))' }}>
-            Performance Summary
-          </h2>
-
-          <div className="grid md:grid-cols-2 gap-4 mb-4">
-            {mcqAccuracy !== null && (
-              <div className="glass p-5">
-                <p className="text-xs font-medium mb-1" style={{ color: 'rgb(var(--text-secondary))' }}>
-                  MCQ Accuracy
-                </p>
-                <p className="text-3xl font-bold" style={{ color: mcqAccuracy >= 60 ? '#4ade80' : '#f87171' }}>
-                  {mcqAccuracy}%
-                </p>
-                <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-secondary))' }}>
-                  {mcqAnswered.filter((q: any) => q.is_correct).length} correct of {mcqAnswered.length} answered
-                </p>
-              </div>
+                )}
+                onItemSelect={(t) => {
+                  setSelectedTest(t);
+                  setView('students');
+                  setSearch('');
+                }}
+              />
             )}
-            {debugAvg !== null && (
-              <div className="glass p-5">
-                <p className="text-xs font-medium mb-1" style={{ color: 'rgb(var(--text-secondary))' }}>
-                  Avg Visible Cases Passed
-                </p>
-                <p className="text-3xl font-bold" style={{ color: debugAvg >= 60 ? '#4ade80' : '#f87171' }}>
-                  {debugAvg}%
-                </p>
-                <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-secondary))' }}>
-                  across {debugAnswered.length} coding question{debugAnswered.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-            )}
-          </div>
 
-          {timeData.length > 0 && (
-            <div className="glass p-5 mb-4">
-              <p className="text-xs font-medium mb-4" style={{ color: 'rgb(var(--text-secondary))' }}>
-                Time Spent per Question (seconds)
-              </p>
-              <ResponsiveContainer width="100%" height={160}>
-                <BarChart data={timeData} barSize={28}>
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fontSize: 11, fill: 'rgb(148 163 184)' }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: 'rgb(148 163 184)' }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={32}
-                  />
-                  <Tooltip content={<TimeTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                    {timeData.map((entry: any, i: number) => (
-                      <Cell key={i} fill={entry.color} fillOpacity={0.8} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {Object.keys(topicMap).length > 0 && (
-            <div className="glass p-5">
-              <p className="text-xs font-medium mb-4" style={{ color: 'rgb(var(--text-secondary))' }}>
-                Topic-wise Breakdown
-              </p>
-              <div className="space-y-3">
-                {Object.entries(topicMap).map(([topic, { earned, total }]) => {
-                  const topicPct = total > 0 ? Math.round((earned / total) * 100) : 0;
-                  const tc = marksColor(earned, total);
+            {view === 'students' && (
+              <AnimatedList 
+                items={filteredAttempts}
+                containerClassName="w-full"
+                className="flex flex-col gap-3"
+                renderItem={(a) => {
+                  const sc = a.percentage;
+                  const color = gradeBand(sc ?? 0).color;
                   return (
-                    <div key={topic}>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span style={{ color: 'rgb(var(--text-primary))' }}>{topic}</span>
-                        <span style={{ color: tc }}>
-                          {earned}/{total} ({topicPct}%)
-                        </span>
-                      </div>
-                      <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
-                        <div
-                          className="h-full rounded-full transition-all duration-700"
-                          style={{ width: `${topicPct}%`, backgroundColor: tc }}
-                        />
-                      </div>
+                    <div className="group relative glass p-4 flex items-center gap-4 transition-all hover:bg-white/[0.08] hover:border-white/20">
+                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                            <FiUser className="text-white/40" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h3 className="text-white font-bold text-sm truncate">{a.student_name}</h3>
+                            <p className="text-[10px] text-white/40 mt-0.5 uppercase tracking-wider">{a.division} • {a.year}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-sm font-black tabular-nums" style={{ color }}>{a.total_score}/{a.total_marks}</p>
+                            <p className="text-[10px] text-white/30 font-bold">{Math.round(sc ?? 0)}%</p>
+                        </div>
+                        <FiChevronRight className="text-white/20 group-hover:text-white transition-all" />
                     </div>
                   );
-                })}
+                }}
+                onItemSelect={(a) => {
+                  setSelectedAttempt(a.attempt_id);
+                  setView('details');
+                }}
+              />
+            )}
+
+            {view === 'details' && detailData && (
+              <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
+                {/* Score Hero */}
+                <div className="glass p-8 flex flex-col md:flex-row items-center gap-8 border-indigo-500/20 shadow-2xl shadow-indigo-500/10">
+                    <div className="shrink-0">
+                        <ScoreCircle 
+                            score={detailData.result?.total_score ?? 0} 
+                            total={detailData.result?.total_marks ?? 0} 
+                            pct={Math.round(detailData.result?.percentage ?? 0)} 
+                        />
+                        <p className="text-center text-3xl font-black mt-4 tracking-tighter" style={{ color: gradeBand(detailData.result?.percentage ?? 0).color }}>
+                            {Math.round(detailData.result?.percentage ?? 0)}%
+                        </p>
+                    </div>
+
+                    <div className="flex-1 w-full space-y-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                                <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">Rank</p>
+                                <p className="text-2xl font-black text-indigo-400">#{detailData.result?.rank || '--'}</p>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                                <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">Status</p>
+                                <p className="text-2xl font-black" style={{ color: detailData.result?.pass_fail_overall ? '#4ade80' : '#f87171' }}>
+                                    {detailData.result?.pass_fail_overall ? 'PASSED' : 'FAILED'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="text-center p-3 rounded-xl bg-white/[0.02]">
+                                <p className="text-[9px] font-bold text-white/30 uppercase mb-1">MCQ</p>
+                                <p className="text-sm font-black text-white">{detailData.section_scores?.mcqScore ?? 0}/{detailData.section_scores?.mcqTotal ?? 0}</p>
+                            </div>
+                            <div className="text-center p-3 rounded-xl bg-white/[0.02]">
+                                <p className="text-[9px] font-bold text-white/30 uppercase mb-1">Coding</p>
+                                <p className="text-sm font-black text-white">{detailData.section_scores?.debugScore ?? 0}/{detailData.section_scores?.debugTotal ?? 0}</p>
+                            </div>
+                            <div className="text-center p-3 rounded-xl bg-white/[0.02]">
+                                <p className="text-[9px] font-bold text-white/30 uppercase mb-1">Time</p>
+                                <p className="text-sm font-black text-white">{detailData.attempt?.time_taken_mins || '--'}m</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Breakdown */}
+                <div className="space-y-4">
+                    <h2 className="text-xs font-black text-white/40 uppercase tracking-[0.3em] ml-2">Question Breakdown</h2>
+                    <div className="grid gap-3">
+                        {detailData.breakdown.map((q: any, i: number) => (
+                            <QuestionRow key={q.question_id} q={q} idx={i} monacoTheme={monacoTheme} />
+                        ))}
+                    </div>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

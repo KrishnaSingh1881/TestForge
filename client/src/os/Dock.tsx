@@ -43,21 +43,24 @@ export default function Dock() {
   if (isMobile) {
     return (
       <nav style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0,
+        position: 'fixed', bottom: 12, left: 12, right: 12,
         display: 'flex', alignItems: 'center', justifyContent: 'space-around',
-        padding: '8px 12px',
-        background: 'rgba(15,10,40,0.85)',
-        backdropFilter: 'blur(20px)',
-        borderTop: '1px solid rgba(120,100,200,0.2)',
-        height: 64, zIndex: 200,
+        padding: '8px',
+        background: 'rgba(15, 12, 35, 0.45)',
+        backdropFilter: 'blur(30px) saturate(200%)',
+        WebkitBackdropFilter: 'blur(30px) saturate(200%)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: 20,
+        height: 68, zIndex: 200,
+        boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
       }}>
         {apps.map(app => {
           const isOpen = windows.some(w => w.appType === app.id && !w.isMinimized);
           return (
             <button key={app.id} onClick={() => handleAppClick(app.id)}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'none', border: 'none', cursor: 'pointer' }}>
-              <span style={{ fontSize: 22 }}>{app.icon}</span>
-              <span style={{ fontSize: 10, color: isOpen ? 'rgb(167,139,250)' : 'rgba(255,255,255,0.4)' }}>{app.name}</span>
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', flex: 1 }}>
+              <span style={{ fontSize: 24, opacity: isOpen ? 1 : 0.6, filter: isOpen ? 'drop-shadow(0 0 8px rgba(99,102,241,0.5))' : 'none' }}>{app.icon}</span>
+              <span style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: isOpen ? '#818cf8' : 'rgba(255,255,255,0.3)' }}>{app.name}</span>
             </button>
           );
         })}
@@ -74,25 +77,23 @@ export default function Dock() {
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 200,
-        transition: dockAutohide
-          ? 'bottom 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), background 0.8s ease, border-color 0.8s ease'
-          : 'background 0.8s ease, border-color 0.8s ease, box-shadow 0.8s ease',
+        transition: 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)',
         background: isLight
-          ? 'rgba(210, 175, 120, 0.45)'
-          : 'rgba(20, 14, 50, 0.55)',
-        backdropFilter: 'blur(28px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+          ? 'rgba(255, 255, 255, 0.35)'
+          : 'rgba(15, 12, 35, 0.35)',
+        backdropFilter: 'blur(40px) saturate(200%)',
+        WebkitBackdropFilter: 'blur(40px) saturate(200%)',
         border: isLight
-          ? '1px solid rgba(180, 130, 60, 0.35)'
-          : '1px solid rgba(120, 90, 200, 0.25)',
-        borderRadius: 24,
+          ? '1px solid rgba(0, 0, 0, 0.08)'
+          : '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: 28,
         padding: '10px 14px',
         boxShadow: isLight
-          ? '0 8px 32px rgba(120,80,20,0.25), inset 0 1px 0 rgba(255,220,150,0.2)'
-          : '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
+          ? '0 20px 40px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.4)'
+          : '0 20px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)',
         display: 'flex',
         alignItems: 'flex-end',
-        gap: 8,
+        gap: 12,
       }}
       onMouseMove={e => mouseX.set(e.clientX)}
       onMouseLeave={() => { mouseX.set(Infinity); setHovered(false); }}

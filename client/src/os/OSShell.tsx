@@ -6,6 +6,7 @@ import Desktop from './Desktop';
 import MenuBar from './MenuBar';
 import Dock from './Dock';
 import LockScreen from './LockScreen';
+import ClickSpark from '../components/ClickSpark';
 
 export default function OSShell(): JSX.Element {
   const { session, user } = useAuth();
@@ -89,15 +90,17 @@ export default function OSShell(): JSX.Element {
 
   return (
     <div className="os-shell">
-      {session === null ? (
-        <LockScreen />
-      ) : (
-        <>
-          <Desktop />
-          <MenuBar />
-          <Dock />
-        </>
-      )}
+      <ClickSpark sparkColor="rgba(255,255,255,0.4)" sparkCount={8} sparkRadius={20}>
+        {session === null ? (
+          <LockScreen />
+        ) : (
+          <>
+            <Desktop />
+            <MenuBar />
+            <Dock />
+          </>
+        )}
+      </ClickSpark>
     </div>
   );
 }

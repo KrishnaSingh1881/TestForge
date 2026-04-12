@@ -12,7 +12,6 @@ import {
   Cell,
 } from 'recharts';
 import api from '../../lib/axios';
-import Lenis from 'lenis';
 
 function pctColor(pct: number) {
   if (pct >= 70) return '#4ade80';
@@ -104,30 +103,6 @@ export default function AnalyticsApp() {
       .then(r => setData(r.data))
       .catch(e => setError(e.response?.data?.error ?? 'Failed to load analytics'))
       .finally(() => setLoading(false));
-  }, []);
-
-  // Lenis smooth scroll
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const lenis = new Lenis({
-      wrapper: containerRef.current,
-      duration: 1.2,
-      easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    });
-
-    function raf(time: number) {
-      lenis.raf(time);
-      requestAnimationFrame(raf);
-    }
-
-    const rafId = requestAnimationFrame(raf);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      lenis.destroy();
-    };
   }, []);
 
   if (loading) {
