@@ -3,6 +3,7 @@ import Editor from '@monaco-editor/react';
 import api from '../../lib/axios';
 import VariantReviewPanel from './VariantReviewPanel';
 import { useTheme } from '../../context/ThemeContext';
+import GlassSelect from './GlassSelect';
 
 interface TestCase { input: string; expected_output: string; is_hidden: boolean; }
 
@@ -138,12 +139,15 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Difficulty</label>
-              <select value={difficulty} onChange={e => setDifficulty(e.target.value)}
-                className={inputCls} style={inputStyle}>
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
+              <GlassSelect 
+                value={difficulty} 
+                onChange={setDifficulty}
+                options={[
+                  { value: 'easy', label: 'Easy' },
+                  { value: 'medium', label: 'Medium' },
+                  { value: 'hard', label: 'Hard' },
+                ]}
+              />
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Marks</label>

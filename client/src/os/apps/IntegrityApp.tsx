@@ -7,6 +7,7 @@ import {
   FiChevronRight, FiCheckCircle, FiTarget, FiSlash, FiUsers, FiFileText, FiList,
 } from 'react-icons/fi';
 import AnimatedList from '../../components/AnimatedList';
+import GlassSelect from '../../components/admin/GlassSelect';
 
 interface IntegrityAppProps {
   testId?: string;
@@ -391,13 +392,17 @@ function AdminStudentList({ testId, testTitle, onSelectStudent }: {
                 placeholder="Search students..."
                 className="w-full pl-11 pr-4 py-2.5 bg-black/10 border border-white/10 rounded-2xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all placeholder:text-white/10 font-bold" />
             </div>
-            <select value={sort} onChange={e => setSort(e.target.value as any)}
-              className="px-4 py-2.5 bg-black/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-secondary focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all appearance-none">
-              <option value="integrity_asc">⬆ Integrity ↑ Risk First</option>
-              <option value="integrity_desc">⬇ Integrity ↓ Clean First</option>
-              <option value="flags">🚩 Most Flags First</option>
-              <option value="name">A–Z Name</option>
-            </select>
+            <GlassSelect 
+              value={sort}
+              onChange={(v) => setSort(v as any)}
+              options={[
+                { value: 'integrity_asc', label: '⬆ Integrity ↑ Risk First' },
+                { value: 'integrity_desc', label: '⬇ Integrity ↓ Clean First' },
+                { value: 'flags', label: '🚩 Most Flags First' },
+                { value: 'name', label: 'A–Z Name' },
+              ]}
+              className="w-56"
+            />
           </>
         )}
       </div>

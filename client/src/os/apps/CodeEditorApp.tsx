@@ -3,6 +3,7 @@ import Editor from '@monaco-editor/react';
 import api from '../../lib/axios';
 import { useTheme } from '../../context/ThemeContext';
 import { FiPlay, FiTerminal, FiCode, FiCpu, FiAlertCircle } from 'react-icons/fi';
+import GlassSelect from '../../components/admin/GlassSelect';
 
 const LANGUAGES = [
   { label: 'Python 3', value: 'python', starter: '# Write your Python code here\nprint("Hello, World!")\n' },
@@ -60,13 +61,12 @@ export default function CodeEditorApp() {
           <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
             <FiCode />
           </div>
-          <select 
+          <GlassSelect 
             value={lang.value} 
-            onChange={e => handleLangChange(e.target.value)}
-            className="bg-black/5 text-primary border border-white/10 rounded-xl px-4 py-1.5 text-xs font-black uppercase tracking-widest focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
-          >
-            {LANGUAGES.map(l => <option key={l.value} value={l.value} className="bg-[#1e1e1e] text-white">{l.label}</option>)}
-          </select>
+            onChange={handleLangChange}
+            options={LANGUAGES.map(l => ({ value: l.value, label: l.label }))}
+            className="w-40"
+          />
         </div>
 
         <button 

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import api from '../../lib/axios';
+import GlassSelect from './GlassSelect';
 
 interface Option {
   option_text: string;
@@ -192,13 +193,16 @@ export default function MCQForm({ onSuccess, initial }: MCQFormProps) {
               </div>
               <div>
                 <label className={labelCls} style={labelStyle}>Difficulty</label>
-                <select value={difficulty} onChange={e => setDifficulty(e.target.value)}
-                  className={inputCls} style={inputStyle}>
-                  <option value="">Select</option>
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
+                <GlassSelect 
+                  value={difficulty} 
+                  onChange={setDifficulty}
+                  options={[
+                    { value: 'easy', label: 'Easy' },
+                    { value: 'medium', label: 'Medium' },
+                    { value: 'hard', label: 'Hard' },
+                  ]}
+                  placeholder="Select"
+                />
               </div>
               <div>
                 <label className={labelCls} style={labelStyle}>Marks</label>

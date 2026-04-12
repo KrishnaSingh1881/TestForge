@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../lib/axios';
+import GlassSelect from './GlassSelect';
 
 interface Test { id: string; title: string; status: string; }
 
@@ -66,13 +67,15 @@ export default function AttachToTestModal({ questionId, preselectedTestId, onClo
           <form onSubmit={handleAttach} className="space-y-4">
             <div>
               <label className="block text-xs mb-1" style={{ color: 'rgb(var(--text-secondary))' }}>Test</label>
-              <select value={testId} onChange={e => setTestId(e.target.value)}
-                className={inputCls} style={inputStyle}>
-                <option value="">Select a test...</option>
-                {tests.map(t => (
-                  <option key={t.id} value={t.id}>{t.title} ({t.status})</option>
-                ))}
-              </select>
+              <GlassSelect 
+                value={testId}
+                onChange={setTestId}
+                options={tests.map(t => ({
+                  value: t.id,
+                  label: `${t.title} (${t.status})`
+                }))}
+                placeholder="Select a test..."
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">

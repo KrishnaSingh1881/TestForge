@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../../lib/axios';
 import MCQForm from '../../components/admin/MCQForm';
 import DebugQuestionForm from '../../components/admin/DebugQuestionForm';
+import GlassSelect from '../../components/admin/GlassSelect';
 
 interface Test { id: string; title: string; subject: string; status: string; }
 interface Question {
@@ -355,14 +356,17 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
           <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)}
             className="px-3 py-1.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500 w-44"
             style={inputStyle} />
-          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-            style={inputStyle}>
-            <option value="">All Types</option>
-            <option value="mcq_single">MCQ Single</option>
-            <option value="mcq_multi">MCQ Multi</option>
-            <option value="debugging">Debugging</option>
-          </select>
+          <GlassSelect 
+            value={typeFilter}
+            onChange={setTypeFilter}
+            options={[
+              { value: '', label: 'All Types' },
+              { value: 'mcq_single', label: 'MCQ Single' },
+              { value: 'mcq_multi', label: 'MCQ Multi' },
+              { value: 'debugging', label: 'Debugging' },
+            ]}
+            className="w-44"
+          />
           <span className="ml-auto text-xs self-center" style={{ color: 'rgb(var(--text-secondary))' }}>
             {filtered.length} questions
           </span>

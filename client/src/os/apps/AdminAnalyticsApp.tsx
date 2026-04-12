@@ -9,6 +9,7 @@ import BorderGlow from '../../components/BorderGlow';
 import AnimatedList from '../../components/AnimatedList';
 import { FiArrowLeft, FiSearch, FiChevronRight, FiBarChart2, FiCalendar } from 'react-icons/fi';
 import { GlassIcon } from '../components/AppIcons';
+import GlassSelect from '../../components/admin/GlassSelect';
 
 interface TestRow {
   id: string; title: string; subject: string; year: string; division: string;
@@ -255,35 +256,51 @@ export default function AdminAnalyticsApp() {
                   <div className="glass no-shadow p-4 flex flex-wrap gap-3 items-end bg-black/5">
                     <div>
                       <p className="text-xs mb-1 text-secondary opacity-60">Year</p>
-                      <select value={filters.year} onChange={e => setFilters(f => ({ ...f, year: e.target.value }))}
-                        className={`${inputCls} bg-black/5 border-white/10 text-primary`}>
-                        <option value="">All Years</option>
-                        {['FE','SE','TE','BE'].map(y => <option key={y} value={y}>{y}</option>)}
-                      </select>
+                      <GlassSelect 
+                        value={filters.year} 
+                        onChange={v => setFilters(f => ({ ...f, year: v }))}
+                        options={[
+                          { value: '', label: 'All Years' },
+                          ...['FE','SE','TE','BE'].map(y => ({ value: y, label: y }))
+                        ]}
+                        className="w-32"
+                      />
                     </div>
                     <div>
                       <p className="text-xs mb-1 text-secondary opacity-60">Division</p>
-                      <select value={filters.division} onChange={e => setFilters(f => ({ ...f, division: e.target.value }))}
-                        className={`${inputCls} bg-black/5 border-white/10 text-primary`}>
-                        <option value="">All Divisions</option>
-                        {['A','B','C','D'].map(d => <option key={d} value={d}>Div {d}</option>)}
-                      </select>
+                      <GlassSelect 
+                        value={filters.division} 
+                        onChange={v => setFilters(f => ({ ...f, division: v }))}
+                        options={[
+                          { value: '', label: 'All Divisions' },
+                          ...['A','B','C','D'].map(d => ({ value: d, label: `Div ${d}` }))
+                        ]}
+                        className="w-36"
+                      />
                     </div>
                     <div>
                       <p className="text-xs mb-1 text-secondary opacity-60">Subject</p>
-                      <select value={filters.subject} onChange={e => setFilters(f => ({ ...f, subject: e.target.value }))}
-                        className={`${inputCls} bg-black/5 border-white/10 text-primary`}>
-                        <option value="">All Subjects</option>
-                        {subjects.map((s: string) => <option key={s} value={s}>{s}</option>)}
-                      </select>
+                      <GlassSelect 
+                        value={filters.subject} 
+                        onChange={v => setFilters(f => ({ ...f, subject: v }))}
+                        options={[
+                          { value: '', label: 'All Subjects' },
+                          ...subjects.map((s: string) => ({ value: s, label: s }))
+                        ]}
+                        className="w-44"
+                      />
                     </div>
                     <div>
                       <p className="text-xs mb-1 text-secondary opacity-60">Test</p>
-                      <select value={filters.test_id} onChange={e => setFilters(f => ({ ...f, test_id: e.target.value }))}
-                        className={`${inputCls} bg-black/5 border-white/10 text-primary`}>
-                        <option value="">All Tests</option>
-                        {testOptions.map((t: TestRow) => <option key={t.id} value={t.id}>{t.title}</option>)}
-                      </select>
+                      <GlassSelect 
+                        value={filters.test_id} 
+                        onChange={v => setFilters(f => ({ ...f, test_id: v }))}
+                        options={[
+                          { value: '', label: 'All Tests' },
+                          ...testOptions.map((t: TestRow) => ({ value: t.id, label: t.title }))
+                        ]}
+                        className="w-56"
+                      />
                     </div>
                     <div>
                       <p className="text-xs mb-1 text-secondary opacity-60">From</p>
@@ -457,11 +474,15 @@ export default function AdminAnalyticsApp() {
                           <input type="text" placeholder="Search by name..."
                             value={studentSearch} onChange={e => setStudentSearch(e.target.value)}
                             className={`${inputCls} w-44`} style={inputStyle} />
-                          <select value={studentSort} onChange={e => setStudentSort(e.target.value as any)}
-                            className={inputCls} style={inputStyle}>
-                            <option value="avg">Sort: Avg %</option>
-                            <option value="attempts">Sort: Attempts</option>
-                          </select>
+                          <GlassSelect 
+                            value={studentSort}
+                            onChange={(v) => setStudentSort(v as any)}
+                            options={[
+                              { value: 'avg', label: 'Sort: Avg %' },
+                              { value: 'attempts', label: 'Sort: Attempts' },
+                            ]}
+                            className="w-44"
+                          />
                         </div>
                       </div>
                       <div className="glass overflow-hidden">

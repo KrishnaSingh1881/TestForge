@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import GlassSelect from '../components/admin/GlassSelect';
 
 const inputStyle = {
   backgroundColor: 'rgba(255,255,255,0.07)',
@@ -19,8 +20,11 @@ export default function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(prev => ({ ...prev, [field]: e.target.value }));
+
+  const updateField = (field: string, value: string) =>
+    setForm(prev => ({ ...prev, [field]: value }));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -80,12 +84,14 @@ export default function Register() {
           {/* Role */}
           <div>
             <label className="block text-sm mb-1" style={labelStyle}>Role</label>
-            <select value={form.role} onChange={set('role')}
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-              style={inputStyle}>
-              <option value="student" style={{ background: '#1e293b', color: '#f8fafc' }}>Student</option>
-              <option value="admin" style={{ background: '#1e293b', color: '#f8fafc' }}>Admin (Teacher)</option>
-            </select>
+            <GlassSelect 
+              value={form.role} 
+              onChange={v => updateField('role', v)}
+              options={[
+                { value: 'student', label: 'Student' },
+                { value: 'admin', label: 'Admin (Teacher)' },
+              ]}
+            />
           </div>
 
           {/* Student-only fields */}
@@ -93,25 +99,25 @@ export default function Register() {
             <>
               <div>
                 <label className="block text-sm mb-1" style={labelStyle}>Year</label>
-                <select value={form.year} onChange={set('year')}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-                  style={inputStyle}>
-                  <option value="" style={{ background: '#1e293b', color: '#f8fafc' }}>Select year</option>
-                  {['FE', 'SE', 'TE', 'BE'].map(y => (
-                    <option key={y} value={y} style={{ background: '#1e293b', color: '#f8fafc' }}>{y}</option>
-                  ))}
-                </select>
+                <GlassSelect 
+                  value={form.year} 
+                  onChange={v => updateField('year', v)}
+                  options={[
+                    { value: '', label: 'Select year' },
+                    ...['FE', 'SE', 'TE', 'BE'].map(y => ({ value: y, label: y }))
+                  ]}
+                />
               </div>
               <div>
                 <label className="block text-sm mb-1" style={labelStyle}>Division</label>
-                <select value={form.division} onChange={set('division')}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-                  style={inputStyle}>
-                  <option value="" style={{ background: '#1e293b', color: '#f8fafc' }}>Select division</option>
-                  {['A', 'B', 'C', 'D'].map(d => (
-                    <option key={d} value={d} style={{ background: '#1e293b', color: '#f8fafc' }}>{d}</option>
-                  ))}
-                </select>
+                <GlassSelect 
+                  value={form.division} 
+                  onChange={v => updateField('division', v)}
+                  options={[
+                    { value: '', label: 'Select division' },
+                    ...['A', 'B', 'C', 'D'].map(d => ({ value: d, label: d }))
+                  ]}
+                />
               </div>
             </>
           )}
