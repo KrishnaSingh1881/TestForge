@@ -218,41 +218,43 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
 
     const handlers: Array<[string, EventListener]> = [];
 
-    if (!testSettings.allow_copy) {
-      const h = (e: Event) => e.preventDefault();
-      document.addEventListener('copy', h);
-      handlers.push(['copy', h]);
-    }
-    if (!testSettings.allow_paste) {
-      const h = (e: Event) => {
-        e.preventDefault();
-        deductIntegrity(30, 'Paste attempt blocked (−30)');
-      };
-      document.addEventListener('paste', h);
-      handlers.push(['paste', h]);
-    }
+    // Always block copy during test (no exceptions)
+    const copyHandler = (e: Event) => {
+      e.preventDefault();
+      deductIntegrity(5, 'Copy attempt blocked (−5)');
+    };
+    document.addEventListener('copy', copyHandler);
+    handlers.push(['copy', copyHandler]);
+
+    // Always block paste during test
+    const pasteHandler = (e: Event) => {
+      e.preventDefault();
+      deductIntegrity(5, 'Paste attempt blocked (−5)');
+    };
+    document.addEventListener('paste', pasteHandler);
+    handlers.push(['paste', pasteHandler]);
+
     if (!testSettings.allow_right_click) {
       const h = (e: Event) => e.preventDefault();
       document.addEventListener('contextmenu', h);
       handlers.push(['contextmenu', h]);
     }
 
-    // Block keyboard shortcuts: Ctrl+C (copy) and Ctrl+V (paste)
+    // Block keyboard shortcuts
     const keyHandler = (e: KeyboardEvent) => {
       const ctrl = e.ctrlKey || e.metaKey;
-      if (ctrl && e.key === 'c' && !testSettings.allow_copy) {
+      if (ctrl && (e.key === 'c' || e.key === 'C')) {
         e.preventDefault();
         e.stopPropagation();
       }
-      if (ctrl && e.key === 'v' && !testSettings.allow_paste) {
+      if (ctrl && (e.key === 'v' || e.key === 'V')) {
         e.preventDefault();
         e.stopPropagation();
-        deductIntegrity(30, 'Paste attempt detected (−30)');
+        deductIntegrity(5, 'Paste attempt blocked (−5)');
       }
-      if (ctrl && e.key === 'c' && !testSettings.allow_copy) {
+      if (ctrl && (e.key === 'x' || e.key === 'X')) {
         e.preventDefault();
         e.stopPropagation();
-        deductIntegrity(10, 'Copy attempt detected (−10)');
       }
       // Block inspect / dev tools
       if (e.key === 'F12') e.preventDefault();
@@ -515,7 +517,7 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
             runsRemaining={runsRemaining}
             timeLeft={timeLeft}
             disablePaste={!testSettings.allow_paste}
-            onPasteAttempt={() => deductIntegrity(30, 'Paste in editor blocked (−30)')}
+            onPasteAttempt={() => deductIntegrity(5, 'Paste in editor blocked (−5)')}
             onSubmit={(qid) => {
               onAnswered(qid, true);
               setCodingOverlayQ(null);
