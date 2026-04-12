@@ -233,14 +233,18 @@ router.patch('/:id/integrity', async (req, res) => {
 
   if (!current) return res.status(404).json({ error: 'Active attempt not found' });
 
+  const newCount = (current[field] ?? 0) + 1;
+
   const { error } = await supabase
     .from('attempts')
-    .update({ [field]: (current[field] ?? 0) + 1 })
+    .update({ [field]: newCount })
     .eq('id', id);
 
   if (error) return res.status(500).json({ error: error.message });
-  return res.json({ ok: true });
+  // Return the new count so the client can decide auto-submit without a second fetch
+  return res.json({ ok: true, [field]: newCount });
 });
+
 
 // ── GET /api/attempts/:id/questions ──────────────────────────
 router.get('/:id/questions', async (req, res) => {

@@ -6,7 +6,11 @@ import { useIntegrityListeners } from '../../hooks/useIntegrityListeners';
 import QuestionNavigator from '../../components/test/QuestionNavigator';
 import MCQQuestion from '../../components/test/MCQQuestion';
 import SubmitConfirmModal from '../../components/test/SubmitConfirmModal';
-import VSCodeLayout from '../components/VSCodeLayout';
+import CodingEditorOverlay from '../components/CodingEditorOverlay';
+import {
+  FiAlertTriangle, FiShield, FiClock, FiBox, FiPlus, FiPlay, FiArrowLeft, FiCode,
+} from 'react-icons/fi';
+
 
 type SessionPhase = 'start-screen' | 'active' | 'evaluating' | 'done' | 'integrity-failed';
 
@@ -62,6 +66,9 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
   // Elapsed minutes for unlock logic
   const startedAtRef = useRef<Date | null>(null);
   const [elapsedMins, setElapsedMins] = useState(0);
+
+  // Fullscreen coding overlay
+  const [codingOverlayQ, setCodingOverlayQ] = useState<any | null>(null);
 
   // Integrity toast helper — defined early so effects can capture it
   const showToast = useCallback((msg: string) => {
@@ -254,12 +261,18 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
         ? `⚠️ Tab switch detected — ${(testSettings.max_tab_switches ?? 3)} max allowed`
         : msg
       );
-      if (msg.includes('Tab switch')) {
-        checkIntegrityViolation();
+    },
+    onTabSwitchCount: (count) => {
+      // Server-confirmed count — trigger auto-submit immediately if over limit
+      const maxSwitches = testSettings.max_tab_switches ?? 3;
+      if (count >= maxSwitches && testSettings.auto_submit_on_tab_limit !== false) {
+        handleSubmit(true, 'integrity_violation');
       }
     },
   });
 
+  // checkIntegrityViolation is now driven by onTabSwitchCount callback above
+  // Kept for manual checks if needed
   async function checkIntegrityViolation() {
     if (!attemptId) return;
     const maxSwitches = testSettings.max_tab_switches ?? 3;
@@ -471,6 +484,27 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
   if (phase === 'active' || phase === 'evaluating') {
     return (
       <div className="h-full flex flex-col">
+        {/* ── Fullscreen coding overlay (z-99999, covers everything) ── */}
+        {codingOverlayQ && (
+          <CodingEditorOverlay
+            key={codingOverlayQ.id}
+            question={codingOverlayQ}
+            questionNumber={currentIdx + 1}
+            totalQuestions={questions.length}
+            attemptId={attemptId!}
+            initialCode={codingOverlayQ.saved_response?.submitted_code || codingOverlayQ.buggy_code || ''}
+            runsRemaining={runsRemaining}
+            timeLeft={timeLeft}
+            onSubmit={(qid) => {
+              onAnswered(qid, true);
+              setCodingOverlayQ(null);
+              // Auto-advance to next question if not last
+              setCurrentIdx(i => Math.min(i + 1, questions.length - 1));
+            }}
+            onSkip={() => setCodingOverlayQ(null)}
+            onClose={() => setCodingOverlayQ(null)}
+          />
+        )}
         {/* Top bar with timer and submit */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/5 backdrop-blur-md">
           <div className="flex flex-col">
@@ -543,35 +577,60 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
                   </p>
                 </div>
               </div>
-            ) : currentQ.type === 'debugging' ? (
-              // Debugging questions get full height — no scroll wrapper
-              <div className="h-full flex flex-col">
-                <VSCodeLayout
-                  key={currentQ.id}
-                  question={currentQ}
-                  attemptId={attemptId!}
-                  questionNumber={currentIdx + 1}
-                  initialCode={currentQ.saved_response?.submitted_code || currentQ.buggy_code}
-                  initialRunsRemaining={runsRemaining}
-                  sessionPhase={phase}
-                  onCodeChange={() => {}}
-                  onAnswered={onAnswered}
-                  onPasteWarning={showToast}
-                  onIdleWarning={showToast}
-                />
-                {/* Nav buttons for debug questions */}
-                <div className="flex items-center justify-between px-8 py-4 border-t border-white/10 bg-black/20 backdrop-blur-md">
-                  <button disabled={currentIdx === 0} onClick={() => setCurrentIdx(i => i - 1)}
-                    className="flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-black/5 text-secondary border border-white/5 hover:bg-black/10 hover:text-primary transition-all disabled:opacity-20">
-                    <FiArrowLeft /> Previous
-                  </button>
-                  <div className="px-4 py-1 bg-black/5 rounded-full border border-white/5">
-                    <span className="text-[10px] font-black text-secondary tracking-widest opacity-60">{currentIdx + 1} <span className="opacity-20 mx-1">/</span> {questions.length}</span>
+            ) : (currentQ.type === 'debugging' || currentQ.type === 'coding') ? (
+              // Coding/Debugging — show question card + Launch Editor button
+              <div className="h-full overflow-y-auto p-8 flex items-center justify-center">
+                <div className="max-w-2xl w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  {/* Question header */}
+                  <div className="glass no-shadow p-6 rounded-[2rem] border-white/5 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest"
+                        style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
+                        {currentQ.type === 'debugging' ? '🐛 Debugging' : '💻 Coding'}
+                      </span>
+                      {currentQ.marks && (
+                        <span className="text-[10px] font-bold text-secondary opacity-50">{currentQ.marks} marks</span>
+                      )}
+                    </div>
+                    <p className="text-base font-semibold text-primary leading-relaxed">{currentQ.statement}</p>
                   </div>
-                  <button disabled={currentIdx === questions.length - 1} onClick={() => setCurrentIdx(i => i + 1)}
-                    className="flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all disabled:opacity-20">
-                    Next Question →
+
+                  {/* Buggy code preview */}
+                  {currentQ.buggy_code && (
+                    <div className="glass no-shadow rounded-[2rem] border-white/5 overflow-hidden">
+                      <div className="px-4 py-2 flex items-center gap-2 border-b"
+                        style={{ background: 'rgba(239,68,68,0.06)', borderColor: 'rgba(239,68,68,0.15)' }}>
+                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                        <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: '#f87171' }}>Buggy Code</span>
+                      </div>
+                      <pre className="p-4 text-xs font-mono text-primary/70 overflow-x-auto max-h-48 custom-scrollbar leading-relaxed whitespace-pre-wrap">
+                        {currentQ.buggy_code}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Launch button */}
+                  <button
+                    onClick={() => setCodingOverlayQ(currentQ)}
+                    className="w-full flex items-center justify-center gap-4 py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.25em] text-white transition-all hover:-translate-y-1 active:translate-y-0"
+                    style={{ background: 'linear-gradient(135deg, rgb(99,102,241) 0%, rgb(139,92,246) 100%)', boxShadow: '0 8px 32px rgba(99,102,241,0.5)' }}
+                  >
+                    <FiCode className="text-xl" />
+                    Launch Full-Screen Editor
                   </button>
+
+                  {/* Nav buttons */}
+                  <div className="flex items-center justify-between pt-2">
+                    <button disabled={currentIdx === 0} onClick={() => setCurrentIdx(i => i - 1)}
+                      className="flex items-center gap-2 px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-black/5 text-secondary border border-white/5 hover:bg-black/10 hover:text-primary transition-all disabled:opacity-20">
+                      <FiArrowLeft /> Previous
+                    </button>
+                    <span className="text-[10px] font-black text-secondary opacity-40">{currentIdx + 1} / {questions.length}</span>
+                    <button disabled={currentIdx === questions.length - 1} onClick={() => setCurrentIdx(i => i + 1)}
+                      className="flex items-center gap-2 px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all disabled:opacity-20">
+                      Next Question →
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
