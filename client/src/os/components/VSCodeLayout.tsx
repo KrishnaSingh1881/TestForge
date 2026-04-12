@@ -30,6 +30,8 @@ interface VSCodeLayoutProps {
   sessionPhase: 'start-screen' | 'active' | 'evaluating' | 'done';
   onCodeChange: (code: string) => void;
   onAnswered: (qid: string, answered: boolean) => void;
+  onPasteWarning?: (msg: string) => void;  // for parent to show toast
+  onIdleWarning?: (msg: string) => void;   // for parent to show toast
 }
 
 type ActiveTab = 'buggy' | 'fix';
@@ -53,6 +55,8 @@ export default function VSCodeLayout({
   sessionPhase,
   onCodeChange,
   onAnswered,
+  onPasteWarning,
+  onIdleWarning,
 }: VSCodeLayoutProps) {
   const [state, setState] = useState<VSCodeLayoutState>({
     activeTab: 'fix',
@@ -68,7 +72,7 @@ export default function VSCodeLayout({
   const containerRef = useRef<HTMLDivElement>(null);
   const questionOpenTime = useRef(Date.now());
 
-  const { meta, onKeyDown, onPaste, onRunCode } = useBehavioralTracking(questionOpenTime.current);
+  const { meta, onKeyDown, onPaste, onRunCode, lastIdleWarningRef } = useBehavioralTracking(questionOpenTime.current);
 
   // Update code when it changes
   useEffect(() => {
@@ -76,6 +80,22 @@ export default function VSCodeLayout({
       onCodeChange(state.code);
     }
   }, [state.code, initialCode, onCodeChange]);
+
+  // Idle warning — fire when useBehavioralTracking detects >2 min idle
+  const idleWarnIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (sessionPhase !== 'active') return;
+    idleWarnIntervalRef.current = setInterval(() => {
+      // Check if we're currently in an idle (using exposed lastIdleWarningRef)
+      if (lastIdleWarningRef?.current) {
+        const idleSecs = Math.round((Date.now() - lastIdleWarningRef.current) / 1000);
+        if (idleSecs > 120 && idleSecs % 60 < 11) { // warn every ~60s while idle
+          onIdleWarning?.(`😴 Idle for ${Math.floor(idleSecs / 60)}m — this is being recorded`);
+        }
+      }
+    }, 10_000);
+    return () => { if (idleWarnIntervalRef.current) clearInterval(idleWarnIntervalRef.current); };
+  }, [sessionPhase, onIdleWarning]);
 
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -87,6 +107,7 @@ export default function VSCodeLayout({
 
     editor.onDidPaste(() => {
       onPaste();
+      onPasteWarning?.('📋 Paste detected — this is flagged and recorded');
     });
 
     // Track cursor position
@@ -150,34 +171,35 @@ export default function VSCodeLayout({
     : 400;
 
   return (
-    <div ref={containerRef} className="vscode-layout flex h-full">
-      {/* Left sidebar - Question Navigator (placeholder for now, will be implemented in TestSessionApp) */}
-      <div
-        className="w-[200px] flex-shrink-0 border-r"
-        style={{
-          backgroundColor: 'var(--vscode-sidebar-bg)',
-          borderColor: 'rgba(255,255,255,0.1)',
-        }}
-      >
-        <div className="p-3">
-          <div className="text-xs font-semibold mb-2" style={{ color: '#cccccc' }}>
-            QUESTIONS
+    <div ref={containerRef} className="vscode-layout flex flex-col h-full">
+      {/* ── Question statement panel ── */}
+      <div className="flex-shrink-0 border-b px-5 py-3 flex items-start gap-4"
+        style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.25)' }}>
+        <div className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-lg text-[10px] font-black"
+          style={{ background: 'rgba(99,102,241,0.2)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)' }}>
+          {questionNumber}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
+              style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
+              🐛 Debugging
+            </span>
+            {question.marks && (
+              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(255,255,255,0.05)', color: '#9ca3af', border: '1px solid rgba(255,255,255,0.08)' }}>
+                {question.marks} marks
+              </span>
+            )}
           </div>
-          <div
-            className="flex items-center gap-2 px-2 py-1.5 rounded text-sm"
-            style={{
-              backgroundColor: 'var(--vscode-selection)',
-              color: '#ffffff',
-            }}
-          >
-            <span>🐛</span>
-            <span>Q{questionNumber}</span>
-          </div>
+          <p className="text-xs font-semibold leading-relaxed" style={{ color: '#d1d5db' }}>
+            {question.statement}
+          </p>
         </div>
       </div>
 
-      {/* Main editor area */}
-      <div className="flex-1 flex flex-col">
+      {/* ── Editor + Terminal ── */}
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Tab bar */}
         <div
           className="flex items-center border-b"
@@ -263,7 +285,7 @@ export default function VSCodeLayout({
 
         {/* Status bar */}
         <div
-          className="flex items-center justify-between px-4 py-0.5 text-xs"
+          className="flex items-center justify-between px-4 py-0.5 text-xs flex-shrink-0"
           style={{
             height: '22px',
             backgroundColor:
@@ -289,7 +311,7 @@ export default function VSCodeLayout({
             )}
           </div>
         </div>
-      </div>
+      </div>{/* end editor+terminal flex-1 */}
     </div>
   );
 }

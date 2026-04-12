@@ -51,6 +51,10 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
   const [starting, setStarting] = useState(false);
   const [testSettings, setTestSettings] = useState<any>({});
 
+  // Integrity warning toast
+  const [integrityToast, setIntegrityToast] = useState<string>('');
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Track answered + review state
   const [answeredIds, setAnsweredIds] = useState<Set<string>>(new Set());
   const [reviewIds, setReviewIds] = useState<Set<string>>(new Set());
@@ -58,6 +62,13 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
   // Elapsed minutes for unlock logic
   const startedAtRef = useRef<Date | null>(null);
   const [elapsedMins, setElapsedMins] = useState(0);
+
+  // Integrity toast helper — defined early so effects can capture it
+  const showToast = useCallback((msg: string) => {
+    setIntegrityToast(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setIntegrityToast(''), 4000);
+  }, []);
 
   // Load test/attempt data
   useEffect(() => {
@@ -179,7 +190,7 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
     return () => clearInterval(id);
   }, [phase, timeLeft]);
 
-  // Enforce test settings (copy-paste, right-click) during active test
+  // Enforce test settings (copy-paste, right-click, keyboard shortcuts) during active test
   useEffect(() => {
     if (phase !== 'active') return;
 
@@ -201,8 +212,28 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
       handlers.push(['contextmenu', h]);
     }
 
+    // Block keyboard shortcuts: Ctrl+C (copy) and Ctrl+V (paste)
+    const keyHandler = (e: KeyboardEvent) => {
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (ctrl && e.key === 'c' && !testSettings.allow_copy) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      if (ctrl && e.key === 'v' && !testSettings.allow_paste) {
+        e.preventDefault();
+        e.stopPropagation();
+        showToast('⛔ Paste is disabled during this test');
+      }
+      // Block inspect / dev tools
+      if (e.key === 'F12') e.preventDefault();
+      if (ctrl && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) e.preventDefault();
+      if (ctrl && e.key === 'u') e.preventDefault();
+    };
+    document.addEventListener('keydown', keyHandler, true);
+    handlers.push(['keydown', keyHandler as EventListener]);
+
     return () => {
-      handlers.forEach(([event, handler]) => document.removeEventListener(event, handler));
+      handlers.forEach(([event, handler]) => document.removeEventListener(event, handler, true as any));
     };
   }, [phase, testSettings]);
 
@@ -214,12 +245,15 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
   }, [testId, test?.id]);
   // Heartbeat + integrity
   useHeartbeat(attemptId, phase === 'active');
+
   useIntegrityListeners({
     attemptId,
     active: phase === 'active',
     onEvent: (msg) => {
-      console.warn('Integrity event:', msg);
-      // Check if tab_switch count reached 3
+      showToast(msg.includes('Tab switch')
+        ? `⚠️ Tab switch detected — ${(testSettings.max_tab_switches ?? 3)} max allowed`
+        : msg
+      );
       if (msg.includes('Tab switch')) {
         checkIntegrityViolation();
       }
@@ -467,6 +501,18 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
           </button>
         </div>
 
+        {/* Integrity warning toast */}
+        {integrityToast && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[95] animate-in slide-in-from-top-4 duration-300 fade-in">
+            <div className="flex items-center gap-3 px-6 py-3 rounded-2xl border shadow-2xl shadow-black/50"
+              style={{ background: 'linear-gradient(135deg, rgba(220,38,38,0.95), rgba(180,20,20,0.95))', borderColor: 'rgba(255,120,120,0.4)', backdropFilter: 'blur(20px)' }}>
+              <span className="text-xl">⚠️</span>
+              <p className="text-[11px] font-black uppercase tracking-widest text-white">{integrityToast}</p>
+              <button onClick={() => setIntegrityToast('')} className="ml-2 text-white/50 hover:text-white text-lg leading-none transition-colors">×</button>
+            </div>
+          </div>
+        )}
+
         {/* Body: sidebar + main */}
         <div className="flex flex-1 min-h-0">
           {/* Question navigator */}
@@ -510,6 +556,8 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
                   sessionPhase={phase}
                   onCodeChange={() => {}}
                   onAnswered={onAnswered}
+                  onPasteWarning={showToast}
+                  onIdleWarning={showToast}
                 />
                 {/* Nav buttons for debug questions */}
                 <div className="flex items-center justify-between px-8 py-4 border-t border-white/10 bg-black/20 backdrop-blur-md">

@@ -8,18 +8,24 @@ router.use(requireAuth);
 // ── GET /api/analytics/student ────────────────────────────────
 router.get('/student', async (req, res) => {
   const userId = req.user.id;
+  const { attemptId } = req.query;
 
   // All submitted attempts with test + result data
-  const { data: attempts, error: aErr } = await supabase
+  let query = supabase
     .from('attempts')
     .select(`
       id, started_at, submitted_at,
-      tests ( title, subject, total_marks ),
+      tests ( id, title, subject, total_marks ),
       results ( total_score, percentage, rank, computed_at )
     `)
     .eq('user_id', userId)
-    .in('status', ['submitted', 'auto_submitted'])
-    .order('submitted_at', { ascending: true });
+    .in('status', ['submitted', 'auto_submitted']);
+
+  if (attemptId) {
+    query = query.eq('id', attemptId);
+  }
+
+  const { data: attempts, error: aErr } = await query.order('submitted_at', { ascending: true });
 
   if (aErr) return res.status(500).json({ error: aErr.message });
   if (!attempts?.length) {
@@ -61,6 +67,7 @@ router.get('/student', async (req, res) => {
     const result = Array.isArray(a.results) ? a.results[0] : a.results;
     const test   = Array.isArray(a.tests)   ? a.tests[0]   : a.tests;
     return {
+      id:          a.id,
       test_title:  test?.title      ?? 'Unknown',
       date:        a.submitted_at,
       percentage:  result?.percentage ?? 0,
@@ -144,10 +151,10 @@ router.get('/student', async (req, res) => {
 
 // ── GET /api/analytics/admin ──────────────────────────────────
 router.get('/admin', async (req, res) => {
-  if (!['admin', 'super_admin'].includes(req.user.role)) {
+  if (!['admin', 'super_admin', 'master_admin'].includes(req.user.role)) {
     return res.status(403).json({ error: 'Admin access required' });
   }
-
+  const isMaster = req.user.role === 'master_admin';
   const adminId = req.user.id;
   const { year, division, subject, test_id, date_from, date_to } = req.query;
 
@@ -155,8 +162,11 @@ router.get('/admin', async (req, res) => {
   let testsQuery = supabase
     .from('tests')
     .select('id, title, subject, year, division, total_marks, status, created_at')
-    .eq('created_by', adminId)
     .order('created_at', { ascending: false });
+
+  if (!isMaster) {
+    testsQuery = testsQuery.eq('created_by', adminId);
+  }
 
   if (year)    testsQuery = testsQuery.eq('year', year);
   if (division) testsQuery = testsQuery.eq('division', division);

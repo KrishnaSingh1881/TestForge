@@ -16,7 +16,7 @@ export default function Dock() {
   const isLight = theme === 'light';
   const [hovered, setHovered] = useState(false);
 
-  const role = (user?.role ?? 'student') as 'student' | 'admin' | 'super_admin';
+  const role = (user?.role ?? 'student') as 'student' | 'admin' | 'super_admin' | 'master_admin';
   const apps = getAppsForRole(role);
   const isMobile = responsiveMode === 'mobile';
 

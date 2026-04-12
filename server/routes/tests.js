@@ -5,14 +5,19 @@ import { requireAuth, requireAdmin } from '../middleware/auth.js';
 const router = Router();
 router.use(requireAuth);
 
-// ── GET /api/tests — admin: list own tests ────────────────────
+// ── GET /api/tests — admin: list own tests (master_admin: all tests) ──
 router.get('/', requireAdmin, async (req, res) => {
-  const { data: tests, error } = await supabase
+  const isMaster = req.user.role === 'master_admin';
+  let query = supabase
     .from('tests')
-    .select('id, title, subject, year, division, status, duration_mins, start_time, end_time, total_marks, questions_per_attempt, created_at')
-    .eq('created_by', req.user.id)
+    .select('id, title, subject, year, division, status, duration_mins, start_time, end_time, total_marks, questions_per_attempt, created_at, created_by')
     .order('created_at', { ascending: false });
 
+  if (!isMaster) {
+    query = query.eq('created_by', req.user.id);
+  }
+
+  const { data: tests, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
   return res.json({ tests });
 });
@@ -24,14 +29,14 @@ router.get('/available', async (req, res) => {
 
   const now = new Date().toISOString();
 
-  // Fetch active tests (can attempt) AND draft/upcoming tests (can see but not start)
+  // Fetch all assigned tests (active, draft, and ended)
   const { data: tests, error: testsErr } = await supabase
     .from('tests')
     .select('id, title, subject, year, division, duration_mins, start_time, end_time, questions_per_attempt, total_marks, status')
     .eq('year', year)
     .in('division', [division, 'ALL'])
-    .in('status', ['active', 'draft'])
-    .gte('end_time', now);  // not ended yet
+    .in('status', ['active', 'ended', 'draft'])
+    .order('start_time', { ascending: false });
 
   if (testsErr) return res.status(500).json({ error: testsErr.message });
 

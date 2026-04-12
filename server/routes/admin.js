@@ -19,7 +19,7 @@ router.get('/tests/:id/integrity', async (req, res) => {
     .single();
 
   if (testErr || !test) return res.status(404).json({ error: 'Test not found' });
-  if (test.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+  if (req.user.role !== 'master_admin' && test.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
 
   // Fetch all submitted attempts with user info + result integrity_score
   const { data: attempts, error: aErr } = await supabase
@@ -66,24 +66,46 @@ router.get('/tests/:id/integrity', async (req, res) => {
     }
   });
 
-  // Compute behavioral flags per attempt
-  function computeBehavioralFlags(attemptResponses) {
+  // Compute behavioral flags per attempt (with severity)
+  function computeBehavioralFlags(attemptResponses, tabSwitches, focusLost) {
     const flags = [];
     for (const resp of (attemptResponses ?? [])) {
       const m = resp.behavioral_meta;
       if (!m) continue;
-
-      if ((m.paste_events ?? 0) > 0) {
-        flags.push({ type: 'paste', label: 'Paste event detected', question_id: resp.question_id });
-      }
       const codeLen = (resp.submitted_code ?? '').length;
-      if ((m.backspace_count ?? 0) === 0 && codeLen > 100) {
-        flags.push({ type: 'no_backspace', label: 'No backspaces on long submission', question_id: resp.question_id });
-      }
-      if (m.time_to_first_keystroke !== null && m.time_to_first_keystroke < 5000) {
-        flags.push({ type: 'fast_start', label: 'Typed within 5s of opening question', question_id: resp.question_id });
-      }
+
+      if ((m.paste_events ?? 0) >= 1)
+        flags.push({ type: 'paste', severity: 'high', label: `Paste event detected (${m.paste_events}×)`, question_id: resp.question_id });
+
+      if ((m.backspace_count ?? 99) <= 2 && (m.wpm_consistency ?? 0) > 100)
+        flags.push({ type: 'no_corrections', severity: 'high', label: 'No corrections at high WPM — likely pre-typed', question_id: resp.question_id });
+      else if ((m.backspace_count ?? 99) === 0 && codeLen > 100)
+        flags.push({ type: 'no_backspace', severity: 'medium', label: 'No backspaces on long submission', question_id: resp.question_id });
+
+      if (m.time_to_first_keystroke !== null && m.time_to_first_keystroke < 3000)
+        flags.push({ type: 'fast_start', severity: 'high', label: 'Typed within 3s of opening question', question_id: resp.question_id });
+      else if (m.time_to_first_keystroke !== null && m.time_to_first_keystroke < 8000)
+        flags.push({ type: 'fast_start', severity: 'medium', label: 'Typed within 8s of opening question', question_id: resp.question_id });
+
+      if ((m.wpm_consistency ?? 0) > 120)
+        flags.push({ type: 'high_wpm', severity: 'medium', label: `Extreme typing speed (${Math.round(m.wpm_consistency)} WPM)`, question_id: resp.question_id });
+
+      if ((m.test_runs_before_submit ?? 1) === 0 && codeLen > 50)
+        flags.push({ type: 'no_test_run', severity: 'medium', label: 'Submitted without running visible test cases', question_id: resp.question_id });
+
+      const longIdlePeriods = (m.idle_periods ?? []).filter(p => (p.duration_seconds ?? p.duration ?? 0) > 180);
+      if (longIdlePeriods.length > 0)
+        flags.push({ type: 'long_idle', severity: 'medium', label: `${longIdlePeriods.length} idle period(s) >3 min detected`, question_id: resp.question_id });
     }
+
+    if ((tabSwitches ?? 0) >= 5)
+      flags.push({ type: 'tab_switch', severity: 'high', label: `Excessive tab switches (${tabSwitches}×)`, question_id: null });
+    else if ((tabSwitches ?? 0) >= 2)
+      flags.push({ type: 'tab_switch', severity: 'medium', label: `Tab switches detected (${tabSwitches}×)`, question_id: null });
+
+    if ((focusLost ?? 0) >= 5)
+      flags.push({ type: 'focus_loss', severity: 'medium', label: `Window focus lost ${focusLost} times`, question_id: null });
+
     return flags;
   }
 
@@ -92,7 +114,7 @@ router.get('/tests/:id/integrity', async (req, res) => {
     const user   = Array.isArray(a.users)   ? a.users[0]   : a.users;
     const result = Array.isArray(a.results) ? a.results[0] : a.results;
     const attemptResps   = respByAttempt[a.id] ?? [];
-    const behavioralFlags = computeBehavioralFlags(attemptResps);
+    const behavioralFlags = computeBehavioralFlags(attemptResps, a.tab_switches, a.focus_lost_count);
 
     // Per-question behavioral detail for expanded view
     const behavioralDetail = attemptResps.map(r => ({
@@ -156,7 +178,7 @@ router.post('/tests/:id/run-similarity', async (req, res) => {
     .single();
 
   if (testErr || !test) return res.status(404).json({ error: 'Test not found' });
-  if (test.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+  if (req.user.role !== 'master_admin' && test.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
 
   // 1. Fetch all submitted attempts for this test
   const { data: attempts, error: aErr } = await supabase
@@ -299,7 +321,8 @@ router.get('/tests/:id/similarity-flags', async (req, res) => {
     .eq('id', testId)
     .single();
 
-  if (!test || test.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+  if (!test) return res.status(404).json({ error: 'Test not found' });
+  if (req.user.role !== 'master_admin' && test.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
 
   const { data: flags, error } = await supabase
     .from('similarity_flags')
@@ -388,7 +411,7 @@ router.patch('/flags/:id/verdict', async (req, res) => {
     .eq('id', flag.test_id)
     .single();
 
-  if (!test || test.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+  if (!test || (req.user.role !== 'master_admin' && test.created_by !== req.user.id)) return res.status(403).json({ error: 'Forbidden' });
 
   const { data, error } = await supabase
     .from('similarity_flags')

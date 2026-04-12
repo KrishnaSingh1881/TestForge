@@ -1,15 +1,18 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import api from '../../lib/axios';
+import { useTheme } from '../../context/ThemeContext';
+import { FiPlay, FiTerminal, FiCode, FiCpu, FiAlertCircle } from 'react-icons/fi';
 
 const LANGUAGES = [
-  { label: 'Python', value: 'python', starter: '# Write your Python code here\nprint("Hello, World!")\n' },
-  { label: 'C++',    value: 'cpp',    starter: '#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Hello, World!" << endl;\n    return 0;\n}\n' },
-  { label: 'C',      value: 'c',      starter: '#include <stdio.h>\n\nint main() {\n    printf("Hello, World!\\n");\n    return 0;\n}\n' },
-  { label: 'Java',   value: 'java',   starter: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n    }\n}\n' },
+  { label: 'Python 3', value: 'python', starter: '# Write your Python code here\nprint("Hello, World!")\n' },
+  { label: 'C++ 17',    value: 'cpp',    starter: '#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Hello, World!" << endl;\n    return 0;\n}\n' },
+  { label: 'C 11',      value: 'c',      starter: '#include <stdio.h>\n\nint main() {\n    printf("Hello, World!\\n");\n    return 0;\n}\n' },
+  { label: 'Java 11',   value: 'java',   starter: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n    }\n}\n' },
 ];
 
 export default function CodeEditorApp() {
+  const { theme } = useTheme();
   const [lang, setLang] = useState(LANGUAGES[0]);
   const [code, setCode] = useState(LANGUAGES[0].starter);
   const [stdin, setStdin] = useState('');
@@ -19,7 +22,7 @@ export default function CodeEditorApp() {
   const [running, setRunning] = useState(false);
   const outputRef = useRef<HTMLDivElement>(null);
 
-  const editorFontSize = Math.round(parseFloat(getComputedStyle(document.documentElement).fontSize) * 0.93);
+  const monacoTheme = theme === 'dark' ? 'vs-dark' : 'light';
 
   async function handleRun() {
     setRunning(true);
@@ -50,84 +53,120 @@ export default function CodeEditorApp() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#1e1e1e', color: '#d4d4d4', fontFamily: 'monospace' }}>
+    <div className="h-full flex flex-col bg-transparent animate-in fade-in duration-500">
+      {/* Premium Toolbar */}
+      <div className="flex items-center gap-4 px-6 py-4 bg-black/5 border-b border-white/5 backdrop-blur-md shrink-0">
+        <div className="flex items-center gap-3 pr-4 border-r border-white/10">
+          <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
+            <FiCode />
+          </div>
+          <select 
+            value={lang.value} 
+            onChange={e => handleLangChange(e.target.value)}
+            className="bg-black/5 text-primary border border-white/10 rounded-xl px-4 py-1.5 text-xs font-black uppercase tracking-widest focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+          >
+            {LANGUAGES.map(l => <option key={l.value} value={l.value} className="bg-[#1e1e1e] text-white">{l.label}</option>)}
+          </select>
+        </div>
 
-      {/* Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#2d2d2d', borderBottom: '1px solid #3c3c3c', flexShrink: 0 }}>
-        <select value={lang.value} onChange={e => handleLangChange(e.target.value)}
-          style={{ background: '#3c3c3c', color: '#d4d4d4', border: '1px solid #555', borderRadius: 6, padding: '4px 8px', fontSize: 12, cursor: 'pointer' }}>
-          {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-        </select>
-
-        <button onClick={handleRun} disabled={running}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: running ? '#444' : '#007acc', color: '#fff',
-            border: 'none', borderRadius: 6, padding: '5px 14px',
-            fontSize: 12, fontWeight: 600, cursor: running ? 'not-allowed' : 'pointer',
-          }}>
-          {running ? '⏳ Running…' : '▶ Run'}
+        <button 
+          onClick={handleRun} 
+          disabled={running}
+          className={`flex items-center gap-3 px-8 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-xl disabled:opacity-50 ${running ? 'bg-black/10 text-secondary' : 'bg-indigo-600 text-white hover:bg-indigo-500 hover:-translate-y-0.5 shadow-indigo-600/20'}`}
+        >
+          {running ? (
+            <>
+              <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              Executing...
+            </>
+          ) : (
+            <>
+              <FiPlay className="text-sm" /> Initiate Logic
+            </>
+          )}
         </button>
 
-        <span style={{ fontSize: 11, color: '#888', marginLeft: 'auto' }}>Scratch pad — code is not saved</span>
+        <div className="ml-auto flex items-center gap-3 px-4 py-1.5 bg-black/5 rounded-full border border-white/5">
+           <FiCpu className="text-indigo-400 opacity-40 text-sm" />
+           <span className="text-[9px] font-black uppercase tracking-widest text-secondary opacity-40">Scratchpad Environment v1.0.4</span>
+        </div>
       </div>
 
-      {/* Editor + right panel */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-
-        {/* Monaco editor */}
-        <div style={{ flex: 1, overflow: 'hidden' }}>
+      {/* Main Workspace */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Editor Zone */}
+        <div className="flex-1 min-w-0 bg-transparent">
           <Editor
             height="100%"
             language={lang.value === 'cpp' ? 'cpp' : lang.value}
             value={code}
             onChange={v => setCode(v ?? '')}
-            theme="vs-dark"
+            theme={monacoTheme}
             options={{
-              fontSize: editorFontSize,
+              fontSize: 13,
               minimap: { enabled: false },
               scrollBeyondLastLine: false,
               lineNumbers: 'on',
               wordWrap: 'on',
-              padding: { top: 8 },
+              padding: { top: 16 },
+              backgroundColor: 'transparent',
+              fontFamily: "'JetBrains Mono', monospace",
             }}
           />
         </div>
 
-        {/* Right panel: stdin + output */}
-        <div style={{ width: 320, display: 'flex', flexDirection: 'column', borderLeft: '1px solid #3c3c3c', flexShrink: 0 }}>
-
+        {/* Console Sidecar */}
+        <div className="w-80 flex flex-col border-l border-white/10 bg-black/10 backdrop-blur-sm shrink-0">
           {/* Stdin */}
-          <div style={{ padding: '8px 10px', background: '#252526', borderBottom: '1px solid #3c3c3c', flexShrink: 0 }}>
-            <div style={{ fontSize: 10, color: '#888', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>Input (stdin)</div>
+          <div className="p-6 border-b border-white/5">
+            <div className="flex items-center gap-2 mb-3 text-[9px] font-black uppercase tracking-[0.3em] text-secondary opacity-40">
+                <FiTerminal /> Data Stream (stdin)
+            </div>
             <textarea
               value={stdin}
               onChange={e => setStdin(e.target.value)}
-              placeholder="Provide input for your program here..."
-              style={{
-                width: '100%', height: 80, resize: 'none',
-                background: '#1e1e1e', color: '#d4d4d4',
-                border: '1px solid #3c3c3c', borderRadius: 4,
-                padding: '6px 8px', fontSize: 12, fontFamily: 'monospace', outline: 'none',
-              }}
+              placeholder="Inject programmatic inputs..."
+              className="w-full h-32 resize-none bg-black/5 text-primary border border-white/5 rounded-2xl p-4 text-xs font-mono outline-none focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:opacity-20"
             />
           </div>
 
-          {/* Output */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ padding: '6px 10px', background: '#252526', borderBottom: '1px solid #3c3c3c', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: 1 }}>Output</span>
+          {/* Stdout / Stderr */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between bg-black/5">
+              <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-secondary opacity-40">
+                Processed Output
+              </div>
               {exitCode !== null && (
-                <span style={{ fontSize: 10, fontWeight: 700, color: exitCode === 0 ? '#4ade80' : '#f87171' }}>
-                  {exitCode === 0 ? '✓ OK' : `✗ Exit ${exitCode}`}
+                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${exitCode === 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                   {exitCode === 0 ? 'SUCCESS' : `FAULT ${exitCode}`}
                 </span>
               )}
             </div>
-            <div ref={outputRef} style={{ flex: 1, overflow: 'auto', padding: '8px 10px', background: '#1e1e1e', fontSize: 12, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-              {!stdout && !stderr && !running && <span style={{ color: '#555' }}>Run your code to see output here.</span>}
-              {running && <span style={{ color: '#888' }}>Running…</span>}
-              {stdout && <span style={{ color: '#d4d4d4' }}>{stdout}</span>}
-              {stderr && <span style={{ color: '#f87171' }}>{stderr}</span>}
+            <div 
+                ref={outputRef} 
+                className="flex-1 overflow-auto p-6 font-mono text-[11px] leading-relaxed custom-scrollbar selection:bg-indigo-500/30"
+            >
+              {!stdout && !stderr && !running && (
+                <div className="h-full flex flex-col items-center justify-center text-center opacity-20 group">
+                    <FiTerminal className="text-3xl mb-3 group-hover:scale-110 transition-transform" />
+                    <p className="text-[9px] font-black uppercase tracking-widest">Awaiting Command Execution</p>
+                </div>
+              )}
+              {running && (
+                <div className="flex items-center gap-3 text-indigo-400/60">
+                    <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Processing Logic...</span>
+                </div>
+              )}
+              {stdout && <div className="text-primary/90 whitespace-pre-wrap animate-in fade-in slide-in-from-top-1">{stdout}</div>}
+              {stderr && (
+                <div className="mt-2 p-3 bg-red-400/5 border border-red-400/20 rounded-xl text-red-400/80 whitespace-pre-wrap animate-in zoom-in duration-300">
+                    <div className="flex items-center gap-2 mb-1 opacity-60">
+                        <FiAlertCircle /> <span className="text-[9px] font-black uppercase tracking-widest">Exception Trace</span>
+                    </div>
+                    {stderr}
+                </div>
+              )}
             </div>
           </div>
         </div>

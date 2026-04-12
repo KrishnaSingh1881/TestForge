@@ -41,7 +41,7 @@ router.post('/start', async (req, res) => {
 
   const now = new Date();
   if (new Date(test.start_time) > now) return res.status(400).json({ error: 'Test has not started yet' });
-  if (new Date(test.end_time)   < now) return res.status(400).json({ error: 'Test has ended' });
+  if (new Date(test.end_time) < now) return res.status(400).json({ error: 'Test has ended' });
 
   // 2. Check for existing attempt
   const { data: existing } = await supabase
@@ -56,15 +56,15 @@ router.post('/start', async (req, res) => {
       return res.status(400).json({ error: 'You have already submitted this test' });
     }
     // Resume in-progress attempt
-    const elapsedSecs  = Math.floor((now - new Date(existing.started_at)) / 1000);
-    const totalSecs    = test.duration_mins * 60;
+    const elapsedSecs = Math.floor((now - new Date(existing.started_at)) / 1000);
+    const totalSecs = test.duration_mins * 60;
     const timeRemaining = Math.max(0, totalSecs - elapsedSecs);
 
     return res.json({
-      attempt_id:              existing.id,
-      question_ids:            existing.question_selection ?? [],
-      time_remaining_seconds:  timeRemaining,
-      resumed:                 true,
+      attempt_id: existing.id,
+      question_ids: existing.question_selection ?? [],
+      time_remaining_seconds: timeRemaining,
+      resumed: true,
     });
   }
 
@@ -91,13 +91,13 @@ router.post('/start', async (req, res) => {
   const { data: attempt, error: attemptErr } = await supabase
     .from('attempts')
     .insert({
-      user_id:            userId,
+      user_id: userId,
       test_id,
-      status:             'in_progress',
-      session_token:      sessionToken,
-      started_at:         now.toISOString(),
-      last_active_at:     now.toISOString(),
-      ip_address:         req.ip ?? null,
+      status: 'in_progress',
+      session_token: sessionToken,
+      started_at: now.toISOString(),
+      last_active_at: now.toISOString(),
+      ip_address: req.ip ?? null,
       question_selection: selectedIds,
     })
     .select('id')
@@ -126,9 +126,9 @@ router.post('/start', async (req, res) => {
     if (variants?.length) {
       const picked = variants[Math.floor(Math.random() * variants.length)];
       await supabase.from('variant_assignments').insert({
-        attempt_id:  attemptId,
+        attempt_id: attemptId,
         question_id: qid,
-        variant_id:  picked.id,
+        variant_id: picked.id,
       });
     }
   }
@@ -147,8 +147,8 @@ router.post('/start', async (req, res) => {
     if (options?.length) {
       const shuffledOrder = shuffle(options.map(o => o.id));
       await supabase.from('option_shuffle').insert({
-        attempt_id:    attemptId,
-        question_id:   qid,
+        attempt_id: attemptId,
+        question_id: qid,
         shuffled_order: shuffledOrder,
       });
     }
@@ -157,11 +157,11 @@ router.post('/start', async (req, res) => {
   const timeRemaining = test.duration_mins * 60;
 
   return res.status(201).json({
-    attempt_id:             attemptId,
-    session_token:          sessionToken,
-    question_ids:           selectedIds,
+    attempt_id: attemptId,
+    session_token: sessionToken,
+    question_ids: selectedIds,
     time_remaining_seconds: timeRemaining,
-    resumed:                false,
+    resumed: false,
   });
 });
 
@@ -183,15 +183,15 @@ router.get('/:id', async (req, res) => {
   if (error || !attempt) return res.status(404).json({ error: 'Attempt not found' });
 
   const test = Array.isArray(attempt.tests) ? attempt.tests[0] : attempt.tests;
-  const elapsedSecs   = Math.floor((Date.now() - new Date(attempt.started_at)) / 1000);
-  const totalSecs     = (test?.duration_mins ?? 0) * 60;
+  const elapsedSecs = Math.floor((Date.now() - new Date(attempt.started_at)) / 1000);
+  const totalSecs = (test?.duration_mins ?? 0) * 60;
   const timeRemaining = Math.max(0, totalSecs - elapsedSecs);
 
   return res.json({
     ...attempt,
-    test_title:             test?.title   ?? null,
-    test_subject:           test?.subject ?? null,
-    duration_mins:          test?.duration_mins ?? null,
+    test_title: test?.title ?? null,
+    test_subject: test?.subject ?? null,
+    duration_mins: test?.duration_mins ?? null,
     time_remaining_seconds: timeRemaining,
   });
 });
@@ -327,7 +327,7 @@ router.get('/:id/questions', async (req, res) => {
       variantMap[va.question_id] = {
         variant_id: va.variant_id,
         buggy_code: dv?.buggy_code ?? null,
-        language:   dv?.language   ?? null,
+        language: dv?.language ?? null,
       };
     });
   }
@@ -350,13 +350,13 @@ router.get('/:id/questions', async (req, res) => {
     if (!q) return null;
 
     const base = {
-      id:                  q.id,
-      type:                q.type,
-      statement:           q.statement,
+      id: q.id,
+      type: q.type,
+      statement: q.statement,
       statement_image_url: q.statement_image_url ?? null,
-      marks:               q.marks,
-      unlock_at_minutes:   unlockMap[qid] ?? 0,
-      saved_response:      responseMap[qid] ?? null,
+      marks: q.marks,
+      unlock_at_minutes: unlockMap[qid] ?? 0,
+      saved_response: responseMap[qid] ?? null,
     };
 
     if (q.type === 'mcq_single' || q.type === 'mcq_multi') {
@@ -377,7 +377,7 @@ router.get('/:id/questions', async (req, res) => {
       return {
         ...base,
         buggy_code: v?.buggy_code ?? null,
-        language:   v?.language   ?? q.language ?? null,
+        language: v?.language ?? q.language ?? null,
         variant_id: v?.variant_id ?? null,
       };
     }
@@ -420,13 +420,13 @@ router.post('/:id/responses', async (req, res) => {
     .maybeSingle();
 
   const payload = {
-    attempt_id:          attemptId,
+    attempt_id: attemptId,
     question_id,
     selected_option_ids: selected_option_ids ?? null,
-    submitted_code:      submitted_code      ?? null,
-    language:            language            ?? null,
-    time_spent_seconds:  time_spent_seconds  ?? null,
-    behavioral_meta:     behavioral_meta     ?? null,
+    submitted_code: submitted_code ?? null,
+    language: language ?? null,
+    time_spent_seconds: time_spent_seconds ?? null,
+    behavioral_meta: behavioral_meta ?? null,
   };
 
   let error;
@@ -446,7 +446,7 @@ router.post('/:id/responses', async (req, res) => {
 // ── GET /api/attempts/:id/result — full result breakdown ─────
 router.get('/:id/result', async (req, res) => {
   const { id: attemptId } = req.params;
-  const requestingUser    = req.user;
+  const requestingUser = req.user;
 
   // Fetch attempt — allow owner OR admin
   const { data: attempt, error: aErr } = await supabase
@@ -458,7 +458,7 @@ router.get('/:id/result', async (req, res) => {
   if (aErr || !attempt) return res.status(404).json({ error: 'Attempt not found' });
 
   const isOwner = attempt.user_id === requestingUser.id;
-  const isAdmin = ['admin', 'super_admin'].includes(requestingUser.role);
+  const isAdmin = ['admin', 'super_admin', 'master_admin'].includes(requestingUser.role);
   if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
   // Must be submitted
@@ -529,21 +529,21 @@ router.get('/:id/result', async (req, res) => {
 
   // Build per-question breakdown in selection order
   const breakdown = questionIds.map((qid, idx) => {
-    const q    = qMap[qid];
+    const q = qMap[qid];
     const resp = respMap[qid];
     if (!q) return null;
 
     const base = {
-      number:       idx + 1,
-      question_id:  qid,
-      type:         q.type,
-      statement:    q.statement,
-      topic_tag:    q.topic_tag ?? null,
-      marks_total:  Number(q.marks),
+      number: idx + 1,
+      question_id: qid,
+      type: q.type,
+      statement: q.statement,
+      topic_tag: q.topic_tag ?? null,
+      marks_total: Number(q.marks),
       marks_awarded: resp ? Number(resp.marks_awarded ?? 0) : 0,
-      is_correct:   resp?.is_correct ?? false,
+      is_correct: resp?.is_correct ?? false,
       time_spent_seconds: resp?.time_spent_seconds ?? null,
-      answered:     !!resp,
+      answered: !!resp,
     };
 
     if (q.type === 'mcq_single' || q.type === 'mcq_multi') {
@@ -552,9 +552,9 @@ router.get('/:id/result', async (req, res) => {
         ...base,
         selected_option_ids: resp?.selected_option_ids ?? [],
         options: options.map(o => ({
-          id:         o.id,
+          id: o.id,
           option_text: o.option_text,
-          is_correct:  o.is_correct,
+          is_correct: o.is_correct,
           was_selected: (resp?.selected_option_ids ?? []).includes(o.id),
         })),
       };
@@ -563,12 +563,12 @@ router.get('/:id/result', async (req, res) => {
     if (q.type === 'debugging') {
       return {
         ...base,
-        submitted_code:       resp?.submitted_code       ?? null,
-        language:             resp?.language             ?? q.language,
+        submitted_code: resp?.submitted_code ?? null,
+        language: resp?.language ?? q.language,
         visible_cases_passed: resp?.visible_cases_passed ?? 0,
-        visible_cases_total:  resp?.visible_cases_total  ?? 0,
-        hidden_cases_passed:  resp?.hidden_cases_passed  ?? 0,
-        hidden_cases_total:   resp?.hidden_cases_total   ?? 0,
+        visible_cases_total: resp?.visible_cases_total ?? 0,
+        hidden_cases_passed: resp?.hidden_cases_passed ?? 0,
+        hidden_cases_total: resp?.hidden_cases_total ?? 0,
       };
     }
 
@@ -576,28 +576,28 @@ router.get('/:id/result', async (req, res) => {
   }).filter(Boolean);
 
   // Compute section scores
-  const mcqBreakdown   = breakdown.filter(q => q.type === 'mcq_single' || q.type === 'mcq_multi');
+  const mcqBreakdown = breakdown.filter(q => q.type === 'mcq_single' || q.type === 'mcq_multi');
   const debugBreakdown = breakdown.filter(q => q.type === 'debugging');
 
-  const mcqScore   = mcqBreakdown.reduce((s, q)   => s + q.marks_awarded, 0);
-  const mcqTotal   = mcqBreakdown.reduce((s, q)   => s + q.marks_total, 0);
+  const mcqScore = mcqBreakdown.reduce((s, q) => s + q.marks_awarded, 0);
+  const mcqTotal = mcqBreakdown.reduce((s, q) => s + q.marks_total, 0);
   const debugScore = debugBreakdown.reduce((s, q) => s + q.marks_awarded, 0);
   const debugTotal = debugBreakdown.reduce((s, q) => s + q.marks_total, 0);
 
   return res.json({
     attempt: {
-      id:             attemptId,
-      test_title:     test?.title     ?? null,
-      test_subject:   test?.subject   ?? null,
-      submitted_at:   attempt.submitted_at,
+      id: attemptId,
+      test_title: test?.title ?? null,
+      test_subject: test?.subject ?? null,
+      submitted_at: attempt.submitted_at,
       time_taken_mins: timeTakenMins,
-      status:         attempt.status,
+      status: attempt.status,
     },
     result: {
-      total_score:      result?.total_score      ?? 0,
-      total_marks:      result?.total_marks      ?? test?.total_marks ?? 0,
-      percentage:       result?.percentage       ?? 0,
-      rank:             result?.rank             ?? null,
+      total_score: result?.total_score ?? 0,
+      total_marks: result?.total_marks ?? test?.total_marks ?? 0,
+      percentage: result?.percentage ?? 0,
+      rank: result?.rank ?? null,
       pass_fail_overall: result?.pass_fail_overall ?? false,
       // integrity_score only for admins
       ...(isAdmin ? { integrity_score: result?.integrity_score ?? null } : {}),
@@ -607,53 +607,117 @@ router.get('/:id/result', async (req, res) => {
   });
 });
 
-// ── GET /api/attempts/my — student's past attempts ────────────
-router.get('/my', async (req, res) => {
-  const { id: userId } = req.user;
+// ── GET /api/attempts/test/:testId/integrity/me — student's own integrity ─────────
+router.get('/test/:testId/integrity/me', async (req, res) => {
+  const { testId } = req.params;
+  const userId = req.user.id;
 
-  const { data: attempts, error } = await supabase
+  const { data: attempt, error } = await supabase
+    .from('attempts')
+    .select(`
+      id, tab_switches, focus_lost_count, started_at, submitted_at, status,
+      results ( total_score, total_marks, percentage, integrity_score )
+    `)
+    .eq('test_id', testId)
+    .eq('user_id', userId)
+    .single();
+
+  if (error || !attempt) return res.status(404).json({ error: 'Integrity data not found for this test.' });
+
+  const result = Array.isArray(attempt.results) ? attempt.results[0] : attempt.results;
+
+  // Fetch behavioral detail if needed or just flags
+  const { data: flags } = await supabase.from('behavioral_flags').select('type, label, question_id').eq('attempt_id', attempt.id);
+  const { data: details } = await supabase.from('behavioral_details').select('*').eq('attempt_id', attempt.id);
+
+  return res.json({
+    attempt_id: attempt.id,
+    tab_switches: attempt.tab_switches,
+    focus_lost_count: attempt.focus_lost_count,
+    integrity_score: result?.integrity_score ?? 100,
+    behavioral_flags: flags ?? [],
+    behavioral_detail: details ?? [],
+    total_score: result?.total_score,
+    total_marks: result?.total_marks,
+    percentage: result?.percentage,
+  });
+});
+
+// ── GET /api/attempts/my — student's past attempts + absentees ────
+router.get('/my', async (req, res) => {
+  const { id: userId, year, division } = req.user;
+
+  // 1. Fetch all submitted attempts with joined test + result data
+  const { data: attempts, error: aErr } = await supabase
     .from('attempts')
     .select(`
       id, test_id, status, started_at, submitted_at,
-      tests ( title, subject ),
-      results ( total_score, total_marks, percentage, rank, computed_at )
+      tests ( id, title, subject, end_time, total_marks ),
+      results ( total_score, total_marks, percentage, rank )
     `)
     .eq('user_id', userId)
     .in('status', ['submitted', 'auto_submitted'])
     .order('submitted_at', { ascending: false });
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (aErr) return res.status(500).json({ error: aErr.message });
 
-  const enriched = (attempts ?? []).map(a => {
+  const attemptedTestIds = (attempts ?? []).map(a => a.test_id);
+
+  // 2. Fetch ENDED tests assigned to this student that they MISSED
+  let missedQuery = supabase
+    .from('tests')
+    .select('id, title, subject, end_time, total_marks')
+    .eq('year', year)
+    .in('division', [division, 'ALL'])
+    .eq('status', 'ended');
+
+  // Exclude tests already attempted — use array filter (safe for empty arrays)
+  if (attemptedTestIds.length > 0) {
+    missedQuery = missedQuery.not('id', 'in', `(${attemptedTestIds.map(id => `'${id}'`).join(',')})`);
+  }
+
+  const { data: missedTests, error: mErr } = await missedQuery;
+  if (mErr) return res.status(500).json({ error: mErr.message });
+
+  // 3. Build unified history — submitted attempts + absent records
+  const submittedHistory = (attempts ?? []).map(a => {
     const result = Array.isArray(a.results) ? a.results[0] : a.results;
     const test   = Array.isArray(a.tests)   ? a.tests[0]   : a.tests;
-    const timeTakenMins = a.started_at && a.submitted_at
-      ? Math.round((new Date(a.submitted_at) - new Date(a.started_at)) / 60000)
-      : null;
-
     return {
-      id:              a.id,
-      test_id:         a.test_id,
-      test_title:      test?.title   ?? 'Unknown',
-      test_subject:    test?.subject ?? null,
-      status:          a.status,
-      started_at:      a.started_at,
-      submitted_at:    a.submitted_at,
-      time_taken_mins: timeTakenMins,
-      total_score:     result?.total_score ?? null,
-      total_marks:     result?.total_marks ?? null,
-      percentage:      result?.percentage  ?? null,
-      rank:            result?.rank        ?? null,
+      id:           a.id,
+      test_id:      a.test_id,
+      test_title:   test?.title   ?? 'Unknown',
+      test_subject: test?.subject ?? null,
+      status:       a.status,
+      submitted_at: a.submitted_at,
+      total_score:  result?.total_score  ?? 0,
+      total_marks:  result?.total_marks  ?? test?.total_marks ?? 0,
+      percentage:   result?.percentage   ?? 0,
     };
   });
 
-  return res.json({ attempts: enriched });
+  const absentHistory = (missedTests ?? []).map(t => ({
+    id:           null,
+    test_id:      t.id,
+    test_title:   t.title,
+    test_subject: t.subject,
+    status:       'absent',
+    submitted_at: t.end_time,
+    total_score:  0,
+    total_marks:  t.total_marks ?? 0,
+    percentage:   0,
+  }));
+
+  const history = [...submittedHistory, ...absentHistory]
+    .sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
+
+  return res.json({ attempts: history });
 });
 
 // ── POST /api/attempts/:id/submit ────────────────────────────
 router.post('/:id/submit', async (req, res) => {
   const { id: attemptId } = req.params;
-  const { auto = false }  = req.body;
+  const { auto = false } = req.body;
   const userId = req.user.id;
 
   // ── 1. Verify attempt ─────────────────────────────────────
@@ -664,7 +728,7 @@ router.post('/:id/submit', async (req, res) => {
     .eq('user_id', userId)
     .single();
 
-  if (aErr || !attempt)              return res.status(404).json({ error: 'Attempt not found' });
+  if (aErr || !attempt) return res.status(404).json({ error: 'Attempt not found' });
   if (attempt.status !== 'in_progress') {
     // Idempotent: already submitted — return existing result
     const { data: existing } = await supabase
@@ -677,7 +741,7 @@ router.post('/:id/submit', async (req, res) => {
 
   // ── 2. Mark attempt submitted immediately ─────────────────
   const submittedAt = new Date().toISOString();
-  const newStatus   = auto ? 'auto_submitted' : 'submitted';
+  const newStatus = auto ? 'auto_submitted' : 'submitted';
 
   await supabase
     .from('attempts')
@@ -702,10 +766,10 @@ router.post('/:id/submit', async (req, res) => {
   if (!responses?.length) {
     // No responses — insert zero result
     await supabase.from('results').insert({
-      attempt_id:        attemptId,
-      total_score:       0,
-      total_marks:       totalMarks,
-      percentage:        0,
+      attempt_id: attemptId,
+      total_score: 0,
+      total_marks: totalMarks,
+      percentage: 0,
       pass_fail_overall: false,
     });
     return res.json({ attempt_id: attemptId, total_score: 0, percentage: 0, redirect: `/results/${attemptId}` });
@@ -777,15 +841,15 @@ router.post('/:id/submit', async (req, res) => {
       responseUpdates.push({ id: resp.id, is_correct, marks_awarded });
 
     } else if (q.type === 'debugging') {
-      const code      = resp.submitted_code ?? '';
-      const language  = resp.language ?? q.language ?? 'python';
+      const code = resp.submitted_code ?? '';
+      const language = resp.language ?? q.language ?? 'python';
       const testCases = testCasesMap[q.id] ?? [];
 
       if (!code.trim() || !testCases.length) {
         responseUpdates.push({
           id: resp.id, is_correct: false, marks_awarded: 0,
           visible_cases_passed: 0, visible_cases_total: testCases.filter(t => !t.is_hidden).length,
-          hidden_cases_passed: 0,  hidden_cases_total:  testCases.filter(t => t.is_hidden).length,
+          hidden_cases_passed: 0, hidden_cases_total: testCases.filter(t => t.is_hidden).length,
         });
         continue;
       }
@@ -809,9 +873,9 @@ router.post('/:id/submit', async (req, res) => {
     : 0;
 
   const { error: resultErr } = await supabase.from('results').insert({
-    attempt_id:        attemptId,
-    total_score:       totalScore,
-    total_marks:       totalMarks,
+    attempt_id: attemptId,
+    total_score: totalScore,
+    total_marks: totalMarks,
     percentage,
     pass_fail_overall: percentage >= 40,
   });
@@ -824,11 +888,11 @@ router.post('/:id/submit', async (req, res) => {
   }
 
   return res.json({
-    attempt_id:  attemptId,
+    attempt_id: attemptId,
     total_score: totalScore,
     total_marks: totalMarks,
     percentage,
-    redirect:    `/results/${attemptId}`,
+    redirect: `/results/${attemptId}`,
   });
 });
 

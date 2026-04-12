@@ -80,7 +80,7 @@ const APP_TITLES: Record<AppType, string> = {
 
 // Singleton app types — only one instance allowed
 const SINGLETON_APPS: Set<AppType> = new Set([
-  'tests', 'analytics', 'question-bank', 'test-manager', 'admin-analytics', 'code-editor', 'test-settings',
+  'tests', 'analytics', 'question-bank', 'test-manager', 'admin-analytics', 'results', 'integrity', 'code-editor', 'test-settings',
 ]);
 
 export const useOSStore = create<OSStore>((set, get) => ({
@@ -100,11 +100,15 @@ export const useOSStore = create<OSStore>((set, get) => ({
       id = `${appType}-${Date.now()}`;
     }
 
-    // Singleton: focus existing window if already open
+    // Singleton: focus and UPDATE existing window if already open
     if (SINGLETON_APPS.has(appType)) {
       const existing = state.windows.find(w => w.appType === appType);
       if (existing) {
-        get().focusWindow(existing.id);
+        set(s => ({
+          windows: s.windows.map(w => w.id === existing.id ? { ...w, appProps, zIndex: s.nextZIndex } : w),
+          focusedWindowId: existing.id,
+          nextZIndex: s.nextZIndex + 1
+        }));
         if (existing.isMinimized) get().restoreWindow(existing.id);
         return existing.id;
       }

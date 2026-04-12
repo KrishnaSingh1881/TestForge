@@ -118,5 +118,5 @@ export function useBehavioralTracking(questionOpenTime: number) {
     flush();
   }, []);
 
-  return { meta, onKeyDown, onPaste, onRunCode };
+  return { meta, onKeyDown, onPaste, onRunCode, lastIdleWarningRef: lastKeystrokeRef };
 }

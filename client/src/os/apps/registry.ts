@@ -6,7 +6,7 @@ export interface AppDefinition {
   icon: string;
   defaultSize: { width: number; height: number };
   defaultPosition: { x: number; y: number };
-  allowedRoles: Array<'student' | 'admin' | 'super_admin'>;
+  allowedRoles: Array<'student' | 'admin' | 'super_admin' | 'master_admin'>;
   singleton: boolean;
 }
 
@@ -36,7 +36,7 @@ export const APP_REGISTRY: AppDefinition[] = [
     icon: '📊',
     defaultSize: { width: 800, height: 600 },
     defaultPosition: { x: 100, y: 80 },
-    allowedRoles: ['student', 'admin', 'super_admin'],
+    allowedRoles: ['student', 'admin', 'super_admin', 'master_admin'],
     singleton: false,
   },
   {
@@ -55,7 +55,7 @@ export const APP_REGISTRY: AppDefinition[] = [
     icon: '🗃️',
     defaultSize: { width: 1000, height: 680 },
     defaultPosition: { x: 80, y: 50 },
-    allowedRoles: ['admin', 'super_admin'],
+    allowedRoles: ['admin', 'super_admin', 'master_admin'],
     singleton: true,
   },
   {
@@ -64,7 +64,7 @@ export const APP_REGISTRY: AppDefinition[] = [
     icon: '🗓️',
     defaultSize: { width: 960, height: 660 },
     defaultPosition: { x: 100, y: 60 },
-    allowedRoles: ['admin', 'super_admin'],
+    allowedRoles: ['admin', 'super_admin', 'master_admin'],
     singleton: true,
   },
   {
@@ -73,7 +73,7 @@ export const APP_REGISTRY: AppDefinition[] = [
     icon: '🔍',
     defaultSize: { width: 1000, height: 680 },
     defaultPosition: { x: 90, y: 55 },
-    allowedRoles: ['admin', 'super_admin'],
+    allowedRoles: ['student', 'admin', 'super_admin', 'master_admin'],
     singleton: false,
   },
   {
@@ -82,7 +82,7 @@ export const APP_REGISTRY: AppDefinition[] = [
     icon: '📈',
     defaultSize: { width: 960, height: 660 },
     defaultPosition: { x: 110, y: 65 },
-    allowedRoles: ['admin', 'super_admin'],
+    allowedRoles: ['admin', 'super_admin', 'master_admin'],
     singleton: true,
   },
   {
@@ -91,7 +91,7 @@ export const APP_REGISTRY: AppDefinition[] = [
     icon: '💻',
     defaultSize: { width: 1100, height: 720 },
     defaultPosition: { x: 70, y: 45 },
-    allowedRoles: ['admin', 'super_admin'],
+    allowedRoles: ['student', 'admin', 'super_admin', 'master_admin'],
     singleton: true,
   },
   {
@@ -100,14 +100,14 @@ export const APP_REGISTRY: AppDefinition[] = [
     icon: '⚙️',
     defaultSize: { width: 720, height: 580 },
     defaultPosition: { x: 130, y: 70 },
-    allowedRoles: ['admin', 'super_admin'],
+    allowedRoles: ['admin', 'super_admin', 'master_admin'],
     singleton: true,
   },
 ];
 
 /** Returns apps visible in the Dock for a given role */
 export function getAppsForRole(
-  role: 'student' | 'admin' | 'super_admin'
+  role: 'student' | 'admin' | 'super_admin' | 'master_admin'
 ): AppDefinition[] {
   // test-session is never shown in the dock (opened programmatically)
   return APP_REGISTRY.filter(

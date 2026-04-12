@@ -28,9 +28,9 @@ export async function requireAuth(req, res, next) {
   next();
 }
 
-// Gate to admin/super_admin only
+// Gate to admin/super_admin/master_admin only
 export function requireAdmin(req, res, next) {
-  if (!['admin', 'super_admin'].includes(req.user?.role)) {
+  if (!['admin', 'super_admin', 'master_admin'].includes(req.user?.role)) {
     return res.status(403).json({ error: 'Admin access required' });
   }
   next();

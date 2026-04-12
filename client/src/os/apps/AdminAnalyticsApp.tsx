@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, Fragment } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, Legend,
@@ -6,6 +6,9 @@ import {
 import api from '../../lib/axios';
 import { useOSStore } from '../store/useOSStore';
 import BorderGlow from '../../components/BorderGlow';
+import AnimatedList from '../../components/AnimatedList';
+import { FiArrowLeft, FiSearch, FiChevronRight, FiBarChart2, FiCalendar } from 'react-icons/fi';
+import { GlassIcon } from '../components/AppIcons';
 
 interface TestRow {
   id: string; title: string; subject: string; year: string; division: string;
@@ -68,6 +71,8 @@ function DivTooltip({ active, payload, label }: any) {
 export default function AdminAnalyticsApp() {
   const { openWindow } = useOSStore();
 
+  const [view, setView] = useState<'tests' | 'dashboard'>('tests');
+
   // Filter state
   const [filters, setFilters] = useState({ year: '', division: '', subject: '', test_id: '', date_from: '', date_to: '' });
   const [applied, setApplied] = useState({ year: '', division: '', subject: '', test_id: '', date_from: '', date_to: '' });
@@ -75,6 +80,8 @@ export default function AdminAnalyticsApp() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  const [search, setSearch] = useState('');
 
   // Table state
   const [expandedTest, setExpandedTest] = useState<string | null>(null);
@@ -146,285 +153,369 @@ export default function AdminAnalyticsApp() {
   }, [data]);
 
   const testOptions = useMemo(() => data?.tests ?? [], [data]);
+  const filteredTestsList = useMemo(() => {
+    if (!data?.tests) return [];
+    return data.tests.filter((t: any) => 
+        (t.title ?? '').toLowerCase().includes(search.toLowerCase()) || 
+        (t.subject ?? '').toLowerCase().includes(search.toLowerCase())
+    );
+  }, [data, search]);
+
+  const handleSelectTest = (t: any) => {
+    setFilters(f => ({ ...f, test_id: t.id }));
+    setApplied(f => ({ ...f, test_id: t.id }));
+    setView('dashboard');
+  };
 
   return (
-    <div className="h-full overflow-auto p-6 space-y-6 bg-transparent custom-scrollbar">
-      <h1 className="text-2xl font-bold text-primary">Analytics</h1>
-
-      {/* Filter bar */}
-      <div className="glass no-shadow p-4 flex flex-wrap gap-3 items-end bg-black/5">
-        <div>
-          <p className="text-xs mb-1 text-secondary opacity-60">Year</p>
-          <select value={filters.year} onChange={e => setFilters(f => ({ ...f, year: e.target.value }))}
-            className={`${inputCls} bg-black/5 border-white/10 text-primary`}>
-            <option value="">All Years</option>
-            {['FE','SE','TE','BE'].map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-        </div>
-        <div>
-          <p className="text-xs mb-1 text-secondary opacity-60">Division</p>
-          <select value={filters.division} onChange={e => setFilters(f => ({ ...f, division: e.target.value }))}
-            className={`${inputCls} bg-black/5 border-white/10 text-primary`}>
-            <option value="">All Divisions</option>
-            {['A','B','C','D'].map(d => <option key={d} value={d}>Div {d}</option>)}
-          </select>
-        </div>
-        <div>
-          <p className="text-xs mb-1 text-secondary opacity-60">Subject</p>
-          <select value={filters.subject} onChange={e => setFilters(f => ({ ...f, subject: e.target.value }))}
-            className={`${inputCls} bg-black/5 border-white/10 text-primary`}>
-            <option value="">All Subjects</option>
-            {subjects.map((s: string) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-        <div>
-          <p className="text-xs mb-1 text-secondary opacity-60">Test</p>
-          <select value={filters.test_id} onChange={e => setFilters(f => ({ ...f, test_id: e.target.value }))}
-            className={`${inputCls} bg-black/5 border-white/10 text-primary`}>
-            <option value="">All Tests</option>
-            {testOptions.map((t: TestRow) => <option key={t.id} value={t.id}>{t.title}</option>)}
-          </select>
-        </div>
-        <div>
-          <p className="text-xs mb-1 text-secondary opacity-60">From</p>
-          <input type="date" value={filters.date_from}
-            onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
-            className={`${inputCls} bg-black/5 border-white/10 text-primary`} />
-        </div>
-        <div>
-          <p className="text-xs mb-1 text-secondary opacity-60">To</p>
-          <input type="date" value={filters.date_to}
-            onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
-            className={`${inputCls} bg-black/5 border-white/10 text-primary`} />
-        </div>
-        <button onClick={applyFilters} disabled={loading}
-          className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-          style={{ backgroundColor: 'rgb(var(--accent))' }}>
-          {loading ? 'Loading...' : 'Apply Filters'}
-        </button>
-        {(Object.values(applied).some(Boolean)) && (
-          <button onClick={() => { setFilters({ year:'',division:'',subject:'',test_id:'',date_from:'',date_to:'' }); setApplied({ year:'',division:'',subject:'',test_id:'',date_from:'',date_to:'' }); load({ year:'',division:'',subject:'',test_id:'',date_from:'',date_to:'' }); }}
-            className="text-xs px-3 py-1.5 rounded-lg text-secondary hover:opacity-100 transition-opacity">
-            Clear
+    <div className="h-full flex flex-col bg-transparent animate-in fade-in duration-500 overflow-hidden">
+      {/* App Header */}
+      <div className="flex items-center gap-4 p-6 border-b border-white/5 bg-black/5 backdrop-blur-md shrink-0">
+        {view === 'dashboard' && (
+          <button onClick={() => setView('tests')} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+            <FiArrowLeft className="text-secondary" />
           </button>
+        )}
+        <div className="flex-1">
+          <h1 className="text-xl font-bold text-primary tracking-tight flex items-center gap-2 uppercase tracking-wide">
+            <FiBarChart2 className="text-indigo-500" />
+            Performance Intel
+          </h1>
+          <p className="text-[10px] font-black uppercase text-secondary tracking-widest mt-0.5 opacity-60">
+            {view === 'tests' ? "Select an evaluation for deep-dive diagnostics" : "Cross-Examination Behavioral Telemetry"}
+          </p>
+        </div>
+        
+        {view === 'tests' && (
+          <div className="relative w-64">
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary opacity-40" />
+              <input 
+                  type="text" 
+                  placeholder="Search evaluations..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-black/5 border border-white/10 rounded-xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:opacity-20"
+              />
+          </div>
         )}
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
-
-      {!loading && data && (
-        <>
-          {/* Summary stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="Total Tests Run"       value={data.total_tests} />
-            <StatCard label="Students Tested"       value={data.total_students_tested} />
-            <StatCard label="Platform Avg Score"    value={`${data.avg_score_across_tests}%`}
-              color={pctColor(data.avg_score_across_tests)} />
-            <StatCard label="Completion Rate"       value={`${data.overall_completion_rate}%`}
-              color={data.overall_completion_rate >= 70 ? '#4ade80' : '#facc15'} />
-          </div>
-
-          {/* Per-test table */}
-          {data.tests.length > 0 && (
-            <div>
-              <p className="text-sm font-semibold mb-3" style={{ color: 'rgb(var(--text-primary))' }}>
-                Test Analytics
-              </p>
-              <div className="glass overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                      {['Test', 'Subject', 'Year/Div', 'Attempts', 'Avg %', 'Completion', 'Avg Time', 'Hardest Q', ''].map(h => (
-                        <th key={h} className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wide"
-                          style={{ color: 'rgb(var(--text-secondary))' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.tests.map((t: TestRow, i: number) => {
-                      const isExp = expandedTest === t.id;
-                      return (
-                        <>
-                          <tr key={t.id}
-                            style={{ borderBottom: '1px solid var(--glass-border)', backgroundColor: isExp ? 'rgba(99,102,241,0.05)' : 'transparent' }}>
-                            <td className="px-4 py-3 font-medium max-w-[160px]">
-                              <p className="truncate" style={{ color: 'rgb(var(--text-primary))' }}>{t.title}</p>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="text-xs px-2 py-0.5 rounded-full"
-                                style={{ backgroundColor: 'rgba(99,102,241,0.12)', color: 'rgb(var(--accent))' }}>
-                                {t.subject}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
-                              {t.year} · {t.division}
-                            </td>
-                            <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-primary))' }}>
-                              {t.submitted_count}/{t.total_attempts}
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="font-semibold" style={{ color: pctColor(t.avg_percentage) }}>
-                                {t.avg_percentage}%
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="text-xs" style={{ color: pctColor(t.completion_rate) }}>
-                                {t.completion_rate}%
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
-                              {t.avg_time_mins > 0 ? `${t.avg_time_mins}m` : '—'}
-                            </td>
-                            <td className="px-4 py-3 max-w-[140px]">
-                              {t.hardest_question ? (
-                                <div>
-                                  <p className="text-xs truncate" style={{ color: 'rgb(var(--text-primary))' }}>
-                                    {t.hardest_question.statement_preview}
-                                  </p>
-                                  <p className="text-xs" style={{ color: '#f87171' }}>
-                                    {t.hardest_question.correct_rate}% correct
-                                  </p>
+      <div className="flex-1 overflow-auto custom-scrollbar">
+        {loading && !data ? (
+            <div className="h-full flex items-center justify-center">
+                <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+            </div>
+        ) : (
+          <div className="p-8">
+            {view === 'tests' && (
+                <div className="max-w-5xl mx-auto">
+                    <AnimatedList 
+                        items={filteredTestsList}
+                        className="flex flex-col gap-4"
+                        renderItem={(t) => (
+                            <div className="group relative glass no-shadow p-6 flex items-center gap-6 transition-all hover:bg-white/[0.08] hover:border-white/20 border-white/5">
+                                <div className="p-4 bg-white/5 rounded-2xl group-hover:bg-indigo-500/10 transition-all duration-500">
+                                    <FiCalendar className="text-indigo-400 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all" />
                                 </div>
-                              ) : <span style={{ color: 'rgb(var(--text-secondary))' }}>—</span>}
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex gap-1.5">
-                                <button onClick={() => setExpandedTest(isExp ? null : t.id)}
-                                  className="text-xs px-2 py-1 rounded"
-                                  style={{ backgroundColor: 'rgba(99,102,241,0.12)', color: 'rgb(var(--accent))' }}>
-                                  {isExp ? '▲' : '▼'}
-                                </button>
-                                <button onClick={() => openWindow('integrity', { testId: t.id })}
-                                  className="text-xs px-2 py-1 rounded"
-                                  style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'rgb(var(--text-secondary))' }}>
-                                  Integrity
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                          {isExp && (
-                            <tr key={`${t.id}-exp`} style={{ borderBottom: '1px solid var(--glass-border)', backgroundColor: 'rgba(99,102,241,0.03)' }}>
-                              <td colSpan={9} className="px-6 py-4">
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                  {[
-                                    { label: 'Total Attempts',  value: t.total_attempts },
-                                    { label: 'Submitted',       value: t.submitted_count },
-                                    { label: 'Avg Score',       value: `${t.avg_percentage}%` },
-                                    { label: 'Avg Time',        value: t.avg_time_mins > 0 ? `${t.avg_time_mins} min` : '—' },
-                                  ].map(s => (
-                                    <div key={s.label} className="rounded-xl p-3 text-center"
-                                      style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)' }}>
-                                      <p className="text-lg font-bold" style={{ color: 'rgb(var(--accent))' }}>{s.value}</p>
-                                      <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>{s.label}</p>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-primary font-black text-lg truncate uppercase tracking-tight">{t.title}</h3>
+                                    <div className="flex items-center gap-3 mt-1.5 font-bold uppercase tracking-widest opacity-40 text-[10px]">
+                                        <span className="text-indigo-400">{t.subject}</span>
+                                        <span>•</span>
+                                        <span>{t.year} · {t.division}</span>
+                                        <span>•</span>
+                                        <span>{t.submitted_count}/{t.total_attempts} ATTEMPTS</span>
                                     </div>
-                                  ))}
                                 </div>
-                              </td>
-                            </tr>
-                          )}
-                        </>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Division comparison chart */}
-          {divCompData.length > 0 && allDivisions.length > 1 && (
-            <div className="glass p-5">
-              <p className="text-sm font-semibold mb-4" style={{ color: 'rgb(var(--text-primary))' }}>
-                Division Comparison
-                {applied.test_id && data.tests.find((t: TestRow) => t.id === applied.test_id) && (
-                  <span className="ml-2 text-xs font-normal" style={{ color: 'rgb(var(--text-secondary))' }}>
-                    — {data.tests.find((t: TestRow) => t.id === applied.test_id)?.title}
-                  </span>
-                )}
-              </p>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={divCompData} barSize={24} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                  <XAxis dataKey="test" tick={axisStyle} axisLine={false} tickLine={false} />
-                  <YAxis domain={[0, 100]} tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
-                  <Tooltip content={<DivTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                  <Legend wrapperStyle={{ fontSize: 11, color: 'rgb(148 163 184)' }} />
-                  {allDivisions.map((div: string, i: number) => (
-                    <Bar key={div} dataKey={div} name={`Div ${div}`} fill={DIV_COLORS[i % DIV_COLORS.length]}
-                      fillOpacity={0.85} radius={[3, 3, 0, 0]} />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {/* Student performance table */}
-          {students.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
-                <p className="text-sm font-semibold" style={{ color: 'rgb(var(--text-primary))' }}>
-                  Student Performance
-                </p>
-                <div className="flex gap-2">
-                  <input type="text" placeholder="Search by name..."
-                    value={studentSearch} onChange={e => setStudentSearch(e.target.value)}
-                    className={`${inputCls} w-44`} style={inputStyle} />
-                  <select value={studentSort} onChange={e => setStudentSort(e.target.value as any)}
-                    className={inputCls} style={inputStyle}>
-                    <option value="avg">Sort: Avg %</option>
-                    <option value="attempts">Sort: Attempts</option>
-                  </select>
+                                <div className="text-right pr-4">
+                                    <p className="text-xl font-black tabular-nums tracking-tighter" style={{ color: pctColor(t.avg_percentage) }}>{t.avg_percentage}%</p>
+                                    <p className="text-[9px] text-secondary font-black uppercase opacity-40">Avg Accuracy</p>
+                                </div>
+                                <FiChevronRight className="text-secondary opacity-20 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                            </div>
+                        )}
+                        onItemSelect={handleSelectTest}
+                    />
                 </div>
-              </div>
-              <div className="glass overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                      {['Name', 'Year', 'Division', 'Tests', 'Avg %', 'Best Score'].map(h => (
-                        <th key={h} className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wide"
-                          style={{ color: 'rgb(var(--text-secondary))' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {students.map((s, i) => (
-                      <tr key={s.user_id}
-                        style={{ borderBottom: i < students.length - 1 ? '1px solid var(--glass-border)' : 'none' }}>
-                        <td className="px-4 py-3 font-medium" style={{ color: 'rgb(var(--text-primary))' }}>
-                          {s.name}
-                        </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>{s.year}</td>
-                        <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>{s.division}</td>
-                        <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-primary))' }}>{s.tests_attempted}</td>
-                        <td className="px-4 py-3">
-                          <span className="font-semibold" style={{ color: pctColor(s.avg_percentage) }}>
-                            {s.avg_percentage}%
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
-                          {s.best_score > 0 ? s.best_score : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+            )}
 
-          {data.total_tests === 0 && (
-            <div className="glass p-12 text-center">
-              <p className="text-lg mb-2" style={{ color: 'rgb(var(--text-primary))' }}>No data yet</p>
-              <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>
-                Create and run tests to see analytics here.
-              </p>
-            </div>
-          )}
-        </>
-      )}
+            {view === 'dashboard' && data && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  {/* Summary stats */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <StatCard label="Total Tests Run"       value={data.total_tests} />
+                    <StatCard label="Students Tested"       value={data.total_students_tested} />
+                    <StatCard label="Platform Avg Score"    value={`${data.avg_score_across_tests}%`}
+                      color={pctColor(data.avg_score_across_tests)} />
+                    <StatCard label="Completion Rate"       value={`${data.overall_completion_rate}%`}
+                      color={data.overall_completion_rate >= 70 ? '#4ade80' : '#facc15'} />
+                  </div>
+
+                  {/* Filter bar */}
+                  <div className="glass no-shadow p-4 flex flex-wrap gap-3 items-end bg-black/5">
+                    <div>
+                      <p className="text-xs mb-1 text-secondary opacity-60">Year</p>
+                      <select value={filters.year} onChange={e => setFilters(f => ({ ...f, year: e.target.value }))}
+                        className={`${inputCls} bg-black/5 border-white/10 text-primary`}>
+                        <option value="">All Years</option>
+                        {['FE','SE','TE','BE'].map(y => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <p className="text-xs mb-1 text-secondary opacity-60">Division</p>
+                      <select value={filters.division} onChange={e => setFilters(f => ({ ...f, division: e.target.value }))}
+                        className={`${inputCls} bg-black/5 border-white/10 text-primary`}>
+                        <option value="">All Divisions</option>
+                        {['A','B','C','D'].map(d => <option key={d} value={d}>Div {d}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <p className="text-xs mb-1 text-secondary opacity-60">Subject</p>
+                      <select value={filters.subject} onChange={e => setFilters(f => ({ ...f, subject: e.target.value }))}
+                        className={`${inputCls} bg-black/5 border-white/10 text-primary`}>
+                        <option value="">All Subjects</option>
+                        {subjects.map((s: string) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <p className="text-xs mb-1 text-secondary opacity-60">Test</p>
+                      <select value={filters.test_id} onChange={e => setFilters(f => ({ ...f, test_id: e.target.value }))}
+                        className={`${inputCls} bg-black/5 border-white/10 text-primary`}>
+                        <option value="">All Tests</option>
+                        {testOptions.map((t: TestRow) => <option key={t.id} value={t.id}>{t.title}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <p className="text-xs mb-1 text-secondary opacity-60">From</p>
+                      <input type="date" value={filters.date_from}
+                        onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
+                        className={`${inputCls} bg-black/5 border-white/10 text-primary`} />
+                    </div>
+                    <div>
+                      <p className="text-xs mb-1 text-secondary opacity-60">To</p>
+                      <input type="date" value={filters.date_to}
+                        onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
+                        className={`${inputCls} bg-black/5 border-white/10 text-primary`} />
+                    </div>
+                    <button onClick={applyFilters} disabled={loading}
+                      className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+                      style={{ backgroundColor: 'rgb(var(--accent))' }}>
+                      {loading ? 'Loading...' : 'Apply Filters'}
+                    </button>
+                    {(Object.values(applied).some(Boolean)) && (
+                      <button onClick={() => { setFilters({ year:'',division:'',subject:'',test_id:'',date_from:'',date_to:'' }); setApplied({ year:'',division:'',subject:'',test_id:'',date_from:'',date_to:'' }); load({ year:'',division:'',subject:'',test_id:'',date_from:'',date_to:'' }); }}
+                        className="text-xs px-3 py-1.5 rounded-lg text-secondary hover:opacity-100 transition-opacity">
+                        Clear
+                      </button>
+                    )}
+                  </div>
+
+                  {error && <p className="text-sm text-red-400">{error}</p>}
+
+                  {/* Per-test table */}
+                  {data.tests.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold mb-3" style={{ color: 'rgb(var(--text-primary))' }}>
+                        Test Analytics
+                      </p>
+                      <div className="glass overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                              {['Test', 'Subject', 'Year/Div', 'Attempts', 'Avg %', 'Completion', 'Avg Time', 'Hardest Q', ''].map(h => (
+                                <th key={h} className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wide"
+                                  style={{ color: 'rgb(var(--text-secondary))' }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {data.tests.map((t: TestRow, i: number) => {
+                              const isExp = expandedTest === t.id;
+                              return (
+                                <Fragment key={t.id}>
+                                  <tr
+                                    style={{ borderBottom: '1px solid var(--glass-border)', backgroundColor: isExp ? 'rgba(99,102,241,0.05)' : 'transparent' }}>
+                                    <td className="px-4 py-3 font-medium max-w-[160px]">
+                                      <p className="truncate" style={{ color: 'rgb(var(--text-primary))' }}>{t.title}</p>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <span className="text-xs px-2 py-0.5 rounded-full"
+                                        style={{ backgroundColor: 'rgba(99,102,241,0.12)', color: 'rgb(var(--accent))' }}>
+                                        {t.subject}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
+                                      {t.year} · {t.division}
+                                    </td>
+                                    <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-primary))' }}>
+                                      {t.submitted_count}/{t.total_attempts}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <span className="font-semibold" style={{ color: pctColor(t.avg_percentage) }}>
+                                        {t.avg_percentage}%
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <span className="text-xs" style={{ color: pctColor(t.completion_rate) }}>
+                                        {t.completion_rate}%
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
+                                      {t.avg_time_mins > 0 ? `${t.avg_time_mins}m` : '—'}
+                                    </td>
+                                    <td className="px-4 py-3 max-w-[140px]">
+                                      {t.hardest_question ? (
+                                        <div>
+                                          <p className="text-xs truncate" style={{ color: 'rgb(var(--text-primary))' }}>
+                                            {t.hardest_question.statement_preview}
+                                          </p>
+                                          <p className="text-xs" style={{ color: '#f87171' }}>
+                                            {t.hardest_question.correct_rate}% correct
+                                          </p>
+                                        </div>
+                                      ) : <span style={{ color: 'rgb(var(--text-secondary))' }}>—</span>}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <div className="flex gap-1.5">
+                                        <button onClick={() => setExpandedTest(isExp ? null : t.id)}
+                                          className="text-xs px-2 py-1 rounded"
+                                          style={{ backgroundColor: 'rgba(99,102,241,0.12)', color: 'rgb(var(--accent))' }}>
+                                          {isExp ? '▲' : '▼'}
+                                        </button>
+                                        <button onClick={() => openWindow('integrity', { testId: t.id })}
+                                          className="text-xs px-2 py-1 rounded"
+                                          style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'rgb(var(--text-secondary))' }}>
+                                          Integrity
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                  {isExp && (
+                                    <tr style={{ borderBottom: '1px solid var(--glass-border)', backgroundColor: 'rgba(99,102,241,0.03)' }}>
+                                      <td colSpan={9} className="px-6 py-4">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                          {[
+                                            { label: 'Total Attempts',  value: t.total_attempts },
+                                            { label: 'Submitted',       value: t.submitted_count },
+                                            { label: 'Avg Score',       value: `${t.avg_percentage}%` },
+                                            { label: 'Avg Time',        value: t.avg_time_mins > 0 ? `${t.avg_time_mins} min` : '—' },
+                                          ].map(s => (
+                                            <div key={s.label} className="rounded-xl p-3 text-center"
+                                              style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)' }}>
+                                              <p className="text-lg font-bold" style={{ color: 'rgb(var(--accent))' }}>{s.value}</p>
+                                              <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>{s.label}</p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </Fragment>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Division comparison chart */}
+                  {divCompData.length > 0 && allDivisions.length > 1 && (
+                    <div className="glass p-5">
+                      <p className="text-sm font-semibold mb-4" style={{ color: 'rgb(var(--text-primary))' }}>
+                        Division Comparison
+                        {applied.test_id && data.tests.find((t: TestRow) => t.id === applied.test_id) && (
+                          <span className="ml-2 text-xs font-normal" style={{ color: 'rgb(var(--text-secondary))' }}>
+                            — {data.tests.find((t: TestRow) => t.id === applied.test_id)?.title}
+                          </span>
+                        )}
+                      </p>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={divCompData} barSize={24} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                          <XAxis dataKey="test" tick={axisStyle} axisLine={false} tickLine={false} />
+                          <YAxis domain={[0, 100]} tick={axisStyle} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
+                          <Tooltip content={<DivTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                          <Legend wrapperStyle={{ fontSize: 11, color: 'rgb(148 163 184)' }} />
+                          {allDivisions.map((div: string, i: number) => (
+                            <Bar key={div} dataKey={div} name={`Div ${div}`} fill={DIV_COLORS[i % DIV_COLORS.length]}
+                              fillOpacity={0.85} radius={[3, 3, 0, 0]} />
+                          ))}
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* Student performance table */}
+                  {students.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
+                        <p className="text-sm font-semibold" style={{ color: 'rgb(var(--text-primary))' }}>
+                          Student Performance
+                        </p>
+                        <div className="flex gap-2">
+                          <input type="text" placeholder="Search by name..."
+                            value={studentSearch} onChange={e => setStudentSearch(e.target.value)}
+                            className={`${inputCls} w-44`} style={inputStyle} />
+                          <select value={studentSort} onChange={e => setStudentSort(e.target.value as any)}
+                            className={inputCls} style={inputStyle}>
+                            <option value="avg">Sort: Avg %</option>
+                            <option value="attempts">Sort: Attempts</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="glass overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                              {['Name', 'Year', 'Division', 'Tests', 'Avg %', 'Best Score'].map(h => (
+                                <th key={h} className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wide"
+                                  style={{ color: 'rgb(var(--text-secondary))' }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {students.map((s, i) => (
+                              <tr key={s.user_id}
+                                style={{ borderBottom: i < students.length - 1 ? '1px solid var(--glass-border)' : 'none' }}>
+                                <td className="px-4 py-3 font-medium" style={{ color: 'rgb(var(--text-primary))' }}>
+                                  {s.name}
+                                </td>
+                                <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>{s.year}</td>
+                                <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>{s.division}</td>
+                                <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-primary))' }}>{s.tests_attempted}</td>
+                                <td className="px-4 py-3">
+                                  <span className="font-semibold" style={{ color: pctColor(s.avg_percentage) }}>
+                                    {s.avg_percentage}%
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
+                                  {s.best_score > 0 ? s.best_score : '—'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {data.total_tests === 0 && (
+                    <div className="glass p-12 text-center">
+                      <p className="text-lg mb-2" style={{ color: 'rgb(var(--text-primary))' }}>No data yet</p>
+                      <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>
+                        Create and run tests to see analytics here.
+                      </p>
+                    </div>
+                  )}
+                </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {loading && (
-        <div className="flex items-center justify-center py-16">
+        <div className="flex items-center justify-center py-16 absolute inset-0 pointer-events-none">
           <span className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
         </div>
       )}

@@ -1,13 +1,16 @@
-
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import api from '../../lib/axios';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
+import { useOSStore } from '../store/useOSStore';
 import AnimatedList from '../../components/AnimatedList';
-import { FiArrowLeft, FiSearch, FiChevronRight, FiUser, FiCalendar, FiClock, FiFileText } from 'react-icons/fi';
-import { GlassIcon } from '../components/AppIcons';
-import BorderGlow from '../../components/BorderGlow';
+import {
+  FiArrowLeft, FiSearch, FiChevronRight, FiCalendar, FiClock,
+  FiActivity, FiAward, FiCheckCircle, FiShield, FiBarChart2,
+  FiSlash, FiUsers, FiFileText, FiList,
+} from 'react-icons/fi';
 
 interface ResultsAppProps {
   testId?: string;
@@ -15,475 +18,466 @@ interface ResultsAppProps {
   attemptId?: string;
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 function gradeBand(pct: number) {
   if (pct >= 90) return { grade: 'A+', color: '#4ade80' };
-  if (pct >= 80) return { grade: 'A', color: '#4ade80' };
-  if (pct >= 70) return { grade: 'B', color: '#86efac' };
-  if (pct >= 60) return { grade: 'C', color: '#facc15' };
-  if (pct >= 40) return { grade: 'D', color: '#fb923c' };
+  if (pct >= 80) return { grade: 'A',  color: '#4ade80' };
+  if (pct >= 70) return { grade: 'B',  color: '#86efac' };
+  if (pct >= 60) return { grade: 'C',  color: '#facc15' };
+  if (pct >= 40) return { grade: 'D',  color: '#fb923c' };
   return { grade: 'F', color: '#f87171' };
 }
 
-function marksColor(awarded: number, total: number) {
-  if (total === 0) return 'rgb(var(--text-secondary))';
-  const r = awarded / total;
-  if (r >= 1) return '#4ade80';
-  if (r >= 0.5) return '#facc15';
+function pctColor(pct: number) {
+  if (pct >= 70) return '#4ade80';
+  if (pct >= 40) return '#facc15';
   return '#f87171';
+}
+
+function fmtDate(iso: string | null) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' });
 }
 
 function ScoreCircle({ score, total, pct }: { score: number; total: number; pct: number }) {
   const { grade, color } = gradeBand(pct);
-  const r = 54;
-  const circ = 2 * Math.PI * r;
-  const dash = (pct / 100) * circ;
-
+  const r = 54, circ = 2 * Math.PI * r;
   return (
     <div className="relative w-40 h-40 mx-auto">
       <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
-        <circle cx="60" cy="60" r={r} fill="none" stroke="var(--glass-border)" strokeWidth="10" />
-        <circle
-          cx="60"
-          cy="60"
-          r={r}
-          fill="none"
-          stroke={color}
-          strokeWidth="10"
-          strokeDasharray={`${dash} ${circ}`}
-          strokeLinecap="round"
-          style={{ transition: 'stroke-dasharray 1s ease' }}
-        />
+        <circle cx="60" cy="60" r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="10" />
+        <circle cx="60" cy="60" r={r} fill="none" stroke={color} strokeWidth="10"
+          strokeDasharray={`${(pct / 100) * circ} ${circ}`} strokeLinecap="round"
+          style={{ transition: 'stroke-dasharray 1s ease' }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-extrabold tabular-nums" style={{ color: 'rgb(var(--text-primary))' }}>
-          {score}
-        </span>
-        <span className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
-          / {total}
-        </span>
-        <span className="text-lg font-bold mt-0.5" style={{ color }}>
-          {grade}
-        </span>
+        <span className="text-3xl font-black" style={{ color }}>{grade}</span>
+        <span className="text-xs font-black text-secondary opacity-40">{score}/{total}</span>
       </div>
     </div>
   );
 }
 
-function QuestionRow({ q, idx, monacoTheme }: { q: any; idx: number; monacoTheme: string }) {
-  const [open, setOpen] = useState(false);
-  const isMCQ = q.type === 'mcq_single' || q.type === 'mcq_multi';
-  const isDebug = q.type === 'debugging';
-  const mc = marksColor(q.marks_awarded, q.marks_total);
+// ── Student: ResultDetailView ─────────────────────────────────────────────────
+function ResultDetailView({ attemptId, monacoTheme, onBack }: { attemptId: string; monacoTheme: string; onBack: () => void }) {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    api.get(`/attempts/${attemptId}/result`)
+      .then(r => setData(r.data))
+      .catch(e => setError(e.response?.data?.error ?? 'Failed to load result'))
+      .finally(() => setLoading(false));
+  }, [attemptId]);
+
+  if (loading) return (
+    <div className="h-full flex items-center justify-center">
+      <div className="w-10 h-10 border-4 border-indigo-500/10 border-t-indigo-500 rounded-full animate-spin" />
+    </div>
+  );
+  if (error) return (
+    <div className="h-full flex items-center justify-center flex-col gap-3">
+      <FiBarChart2 className="text-4xl text-white/10" />
+      <p className="text-red-400 font-bold text-sm">{error}</p>
+    </div>
+  );
+  if (!data) return null;
+
+  const { result, attempt, breakdown, section_scores } = data;
+  const { grade, color: gradeColor } = gradeBand(result.percentage ?? 0);
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--glass-border)' }}>
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-4 px-5 py-4 text-left transition-all hover:bg-black/10 group"
-      >
-        <span className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-[10px] font-black shrink-0 border border-indigo-500/20 group-hover:scale-110 transition-transform">
-          {idx + 1}
-        </span>
-
-        <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 bg-black/5 text-secondary opacity-60 rounded-full shrink-0 border border-white/5">
-          {isMCQ ? (q.type === 'mcq_multi' ? 'MCQ Multi' : 'MCQ') : 'Debug'}
-        </span>
-
-        <span className="flex-1 text-sm font-bold text-primary truncate uppercase tracking-tight opacity-80 group-hover:opacity-100 transition-opacity">
-          {q.statement}
-        </span>
-
-        {isMCQ && (
-          <span className="text-[10px] font-black px-3 py-1 rounded-full shrink-0 border"
-            style={{ backgroundColor: `${mc}15`, color: mc, borderColor: `${mc}30` }}>
-            {q.marks_awarded}/{q.marks_total}
-          </span>
-        )}
-
-        {isDebug && (
-          <span className="text-[10px] font-black px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 shrink-0">
-            {q.visible_cases_passed}/{q.visible_cases_total} VISIBLE
-          </span>
-        )}
-
-        <FiChevronRight className={`text-secondary text-base transition-transform duration-300 ${open ? 'rotate-90' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="px-4 pb-4 pt-1 border-t space-y-3" style={{ borderColor: 'var(--glass-border)' }}>
-          {isMCQ && (
-            <div className="space-y-2">
-              {(q.options ?? []).map((opt: any) => {
-                const selected = opt.was_selected;
-                const correct = opt.is_correct;
-                let bg = 'rgba(255,255,255,0.04)';
-                let border = 'var(--glass-border)';
-                let icon = '';
-                if (correct && selected) {
-                  bg = 'rgba(74,222,128,0.1)';
-                  border = 'rgba(74,222,128,0.4)';
-                  icon = '✓';
-                } else if (correct) {
-                  bg = 'rgba(74,222,128,0.06)';
-                  border = 'rgba(74,222,128,0.25)';
-                  icon = '✓';
-                } else if (selected) {
-                  bg = 'rgba(239,68,68,0.1)';
-                  border = 'rgba(239,68,68,0.4)';
-                  icon = '✗';
-                }
-
-                return (
-                  <div
-                    key={opt.id}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm"
-                    style={{ backgroundColor: bg, border: `1px solid ${border}` }}
-                  >
-                    {icon && (
-                      <span
-                        className="font-bold text-xs shrink-0"
-                        style={{ color: correct ? '#4ade80' : '#f87171' }}
-                      >
-                        {icon}
-                      </span>
-                    )}
-                    <span style={{ color: 'rgb(var(--text-primary))' }}>{opt.option_text}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {isDebug && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div
-                  className="rounded-lg p-3 text-center"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)' }}
-                >
-                  <p
-                    className="text-lg font-bold"
-                    style={{
-                      color: q.visible_cases_passed === q.visible_cases_total ? '#4ade80' : '#facc15',
-                    }}
-                  >
-                    {q.visible_cases_passed}/{q.visible_cases_total}
-                  </p>
-                  <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>
-                    Visible cases
-                  </p>
-                </div>
-                <div
-                  className="rounded-lg p-3 text-center"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)' }}
-                >
-                   <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>
-                    Automated Verification
-                  </p>
+    <div className="p-8 space-y-8 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-6">
+      {/* Score hero */}
+      <div className="glass no-shadow p-10 rounded-[3rem] border-white/5 flex flex-col md:flex-row items-center gap-10">
+        <ScoreCircle score={result.total_score} total={result.total_marks} pct={result.percentage} />
+        <div className="flex-1 space-y-3 text-center md:text-left">
+          <h2 className="text-3xl font-black text-primary tracking-tight uppercase">{attempt.test_title}</h2>
+          <p className="text-[10px] font-black text-secondary uppercase tracking-widest opacity-40">{attempt.test_subject}</p>
+          <div className="flex flex-wrap gap-3 justify-center md:justify-start mt-4">
+            {[
+              { icon: FiAward, label: 'Rank', val: result.rank ? `#${result.rank}` : '—' },
+              { icon: FiClock, label: 'Time', val: attempt.time_taken_mins ? `${attempt.time_taken_mins}m` : '—' },
+              { icon: FiCalendar, label: 'Submitted', val: fmtDate(attempt.submitted_at) },
+            ].map(({ icon: Icon, label, val }) => (
+              <div key={label} className="glass no-shadow px-5 py-3 rounded-2xl border-white/5 flex items-center gap-3">
+                <Icon className="text-indigo-400 text-sm" />
+                <div>
+                  <p className="text-[8px] font-black text-secondary uppercase tracking-widest opacity-40">{label}</p>
+                  <p className="text-sm font-black text-primary">{val}</p>
                 </div>
               </div>
-
-              {q.submitted_code && (
-                <div>
-                  <p className="text-xs mb-1.5 font-medium" style={{ color: 'rgb(var(--text-secondary))' }}>
-                    Submitted Code
-                  </p>
-                  <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--glass-border)' }}>
-                    <Editor
-                      height="200px"
-                      language={q.language === 'cpp' ? 'cpp' : 'python'}
-                      theme={monacoTheme}
-                      value={q.submitted_code}
-                      options={{
-                        readOnly: true,
-                        fontSize: 12,
-                        minimap: { enabled: false },
-                        lineNumbers: 'on',
-                        scrollBeyondLastLine: false,
-                        padding: { top: 8 },
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+            ))}
+          </div>
         </div>
+      </div>
+
+      {/* Section breakdown */}
+      {section_scores && (
+        <div className="grid grid-cols-2 gap-4">
+          {[{ label: 'MCQ', score: section_scores.mcqScore, total: section_scores.mcqTotal },
+            { label: 'Debugging', score: section_scores.debugScore, total: section_scores.debugTotal }]
+            .filter(s => s.total > 0)
+            .map(s => (
+              <div key={s.label} className="glass no-shadow p-6 rounded-[2rem] border-white/5">
+                <p className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-40 mb-2">{s.label}</p>
+                <p className="text-2xl font-black" style={{ color: pctColor(s.total ? (s.score / s.total) * 100 : 0) }}>
+                  {s.score}/{s.total}
+                </p>
+              </div>
+            ))}
+        </div>
+      )}
+
+      {/* Question breakdown */}
+      <div className="space-y-3 pb-12">
+        <p className="text-[9px] font-black text-secondary uppercase tracking-[0.4em] opacity-40 px-2">Question Breakdown</p>
+        {(breakdown ?? []).map((q: any, i: number) => (
+          <div key={i} className="glass no-shadow p-5 rounded-[1.5rem] border-white/5 space-y-3">
+            <div className="flex items-start gap-4">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${q.is_correct ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                {q.number}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-primary line-clamp-2">{q.statement}</p>
+                <div className="flex items-center gap-4 mt-2">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-secondary opacity-40">{q.type}</span>
+                  {q.topic_tag && <span className="text-[9px] font-black uppercase bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded">{q.topic_tag}</span>}
+                  <span className="text-[9px] font-black text-secondary opacity-40">{q.time_spent_seconds ? `${Math.round(q.time_spent_seconds / 60)}m` : ''}</span>
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-lg font-black" style={{ color: pctColor(q.marks_total ? (q.marks_awarded / q.marks_total) * 100 : 0) }}>
+                  {q.marks_awarded}/{q.marks_total}
+                </p>
+              </div>
+            </div>
+            {q.type === 'debugging' && q.submitted_code && (
+              <div className="rounded-xl overflow-hidden border border-white/5 h-40">
+                <Editor value={q.submitted_code} language={q.language ?? 'python'} theme={monacoTheme}
+                  options={{ readOnly: true, minimap: { enabled: false }, fontSize: 11, lineNumbers: 'off', scrollBeyondLastLine: false }} />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Admin: StudentListView ────────────────────────────────────────────────────
+function AdminStudentListView({ testId, testTitle, onBack, onSelectAttempt }: {
+  testId: string; testTitle: string; onBack: () => void;
+  onSelectAttempt: (attemptId: string, studentName: string) => void;
+}) {
+  const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    // Use admin integrity endpoint which returns all students with attempt data
+    api.get(`/admin/tests/${testId}/integrity`)
+      .then(r => setStudents(r.data.attempts ?? []))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [testId]);
+
+  const filtered = useMemo(() =>
+    students.filter(s => s.student_name?.toLowerCase().includes(search.toLowerCase())),
+    [students, search]
+  );
+
+  return (
+    <div className="p-8 space-y-6 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-6">
+      <div className="relative w-full max-w-sm">
+        <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
+        <input
+          value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Search students..."
+          className="w-full pl-11 pr-4 py-2.5 bg-black/10 border border-white/10 rounded-2xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-white/10 font-bold"
+        />
+      </div>
+
+      {loading ? (
+        <div className="h-64 flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-indigo-500/10 border-t-indigo-500 rounded-full animate-spin" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="py-20 text-center glass no-shadow border-dashed border-white/10 rounded-[2.5rem]">
+          <FiUsers className="mx-auto text-4xl text-white/10 mb-4" />
+          <p className="text-[10px] font-black text-white/20 tracking-[0.4em] uppercase">No student submissions yet</p>
+        </div>
+      ) : (
+        <AnimatedList items={filtered} className="flex flex-col gap-3" renderItem={(s) => (
+          <div
+            onClick={() => onSelectAttempt(s.attempt_id, s.student_name)}
+            className="group glass no-shadow p-5 flex items-center gap-5 rounded-[1.5rem] border-white/5 hover:bg-white/[0.08] hover:border-indigo-500/30 cursor-pointer transition-all"
+          >
+            <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-xs font-black text-indigo-400 shrink-0">
+              {s.student_name?.[0] ?? '?'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-black text-primary truncate uppercase tracking-tight">{s.student_name}</p>
+              <p className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-40 mt-0.5">
+                {s.division} · {s.year}
+              </p>
+            </div>
+            <div className="text-right shrink-0 mr-2">
+              <p className="text-xl font-black tabular-nums" style={{ color: pctColor(s.percentage ?? 0) }}>
+                {Math.round(s.percentage ?? 0)}%
+              </p>
+              <p className="text-[9px] font-black text-secondary opacity-30 uppercase">Score</p>
+            </div>
+            <FiChevronRight className="text-secondary opacity-20 group-hover:translate-x-1 group-hover:opacity-100 transition-all" />
+          </div>
+        )} />
       )}
     </div>
   );
 }
 
-export default function ResultsApp({ testId, testTitle, attemptId }: ResultsAppProps) {
+// ── Main Component ────────────────────────────────────────────────────────────
+export default function ResultsApp({ testId: propTestId, testTitle: propTestTitle, attemptId: propAttemptId }: ResultsAppProps) {
   const { theme } = useTheme();
+  const { user } = useAuth();
+  const { openWindow } = useOSStore();
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'master_admin';
   const monacoTheme = theme === 'dark' ? 'vs-dark' : 'light';
 
-  const [view, setView] = useState<'tests' | 'students' | 'details'>('tests');
-  const [selectedTest, setSelectedTest] = useState<{ id: string; title: string } | null>(null);
-  const [selectedAttempt, setSelectedAttempt] = useState<string | null>(null);
+  // ── STUDENT FLOW ─────────────────────────────────────────────
+  // discovery (list) → detail
+  // ── ADMIN FLOW ───────────────────────────────────────────────
+  // tests (list) → students (list) → detail
 
-  const [tests, setTests] = useState<any[]>([]);
-  const [attempts, setAttempts] = useState<any[]>([]);
-  const [detailData, setDetailData] = useState<any>(null);
-  
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
+  type View = 'discovery' | 'detail' | 'tests' | 'students';
+  const [view, setView] = useState<View>(() => {
+    if (propAttemptId && !isAdmin) return 'detail';
+    if (isAdmin) return 'tests';
+    return 'discovery';
+  });
 
-  // Initial routing
+  const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(propAttemptId || null);
+  const [selectedStudentName, setSelectedStudentName] = useState<string | null>(null);
+  const [selectedTest, setSelectedTest] = useState<{ id: string; title: string } | null>(
+    propTestId ? { id: propTestId, title: propTestTitle ?? '' } : null
+  );
+
+  // Student discovery list
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [histSearch, setHistSearch] = useState('');
+
+  // Admin tests list
+  const [adminTests, setAdminTests] = useState<any[]>([]);
+  const [testsLoading, setTestsLoading] = useState(false);
+  const [testsSearch, setTestsSearch] = useState('');
+
+  // Load student history
   useEffect(() => {
-    if (attemptId) {
-      setSelectedAttempt(attemptId);
-      setView('details');
-    } else if (testId) {
-      setSelectedTest({ id: testId, title: testTitle || 'Selected Test' });
-      setView('students');
-    } else {
-      loadTests();
+    if (!isAdmin && view === 'discovery') {
+      setHistoryLoading(true);
+      api.get('/attempts/my')
+        .then(r => setHistory(r.data.attempts ?? []))
+        .catch(console.error)
+        .finally(() => setHistoryLoading(false));
     }
-  }, [testId, testTitle, attemptId]);
+  }, [view, isAdmin]);
 
-  async function loadTests() {
-    setLoading(true);
-    try {
-      const r = await api.get('/tests');
-      setTests(r.data.tests ?? []);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadAttempts(tId: string) {
-    setLoading(true);
-    try {
-      const r = await api.get(`/admin/tests/${tId}/integrity`);
-      setAttempts(r.data.attempts ?? []);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadDetail(aId: string) {
-    setLoading(true);
-    try {
-      const r = await api.get(`/attempts/${aId}/result`);
-      setDetailData(r.data);
-    } finally {
-      setLoading(false);
-    }
-  }
-
+  // Load admin tests list
   useEffect(() => {
-    if (view === 'students' && selectedTest) {
-      loadAttempts(selectedTest.id);
+    if (isAdmin && view === 'tests') {
+      setTestsLoading(true);
+      api.get('/tests')
+        .then(r => setAdminTests(r.data.tests ?? []))
+        .catch(console.error)
+        .finally(() => setTestsLoading(false));
     }
-  }, [view, selectedTest]);
+  }, [view, isAdmin]);
 
-  useEffect(() => {
-    if (view === 'details' && selectedAttempt) {
-      loadDetail(selectedAttempt);
-    }
-  }, [view, selectedAttempt]);
+  const filteredHistory = useMemo(() =>
+    history.filter(h => (h.test_title ?? '').toLowerCase().includes(histSearch.toLowerCase())),
+    [history, histSearch]
+  );
 
-  const filteredTests = useMemo(() => {
-    return tests.filter(t => 
-      (t.title ?? '').toLowerCase().includes(search.toLowerCase()) || 
-      (t.subject ?? '').toLowerCase().includes(search.toLowerCase())
-    );
-  }, [tests, search]);
+  const filteredTests = useMemo(() =>
+    adminTests.filter(t => (t.title ?? '').toLowerCase().includes(testsSearch.toLowerCase())),
+    [adminTests, testsSearch]
+  );
 
-  const filteredAttempts = useMemo(() => {
-    return attempts.filter(a => 
-      (a.student_name ?? '').toLowerCase().includes(search.toLowerCase()) || 
-      (a.student_email ?? '').toLowerCase().includes(search.toLowerCase())
-    );
-  }, [attempts, search]);
-
+  // Back navigation
   const handleBack = () => {
-    if (view === 'details') {
-      if (attemptId) {
-          if (testId) setView('students');
-      } else {
-          setView('students');
-      }
+    if (view === 'detail' && !propAttemptId) {
+      if (isAdmin && selectedTest) { setView('students'); return; }
+      setView('discovery');
     } else if (view === 'students') {
       setView('tests');
-      setSearch('');
+    } else if (view === 'discovery') {
+      // Student only: go back to tests hub
+      openWindow('tests');
     }
+    // Admin at 'tests' view: back button is a no-op (already at top level)
+  };
+
+  // Header title
+  const headerTitle = () => {
+    if (view === 'tests') return 'Evaluation Archive';
+    if (view === 'students') return selectedTest?.title ?? 'Student Results';
+    if (view === 'detail') return selectedStudentName ?? 'Result Breakdown';
+    return 'Evaluation Archive';
+  };
+
+  const headerSub = () => {
+    if (view === 'tests') return isAdmin ? 'Select a test to view student results' : 'Review your historical academic performance';
+    if (view === 'students') return 'Select a student to view their full result';
+    if (view === 'detail') return isAdmin ? selectedTest?.title ?? '' : 'Your full result breakdown';
+    return 'Select a concluded trial to review';
   };
 
   return (
-    <div className="h-full flex flex-col bg-transparent">
-      {/* App Header */}
-      <div className="flex items-center gap-4 p-6 border-b border-white/5">
-        {(view !== 'tests' || (view === 'tests' && testId)) && (
-          <button onClick={handleBack} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
-            <FiArrowLeft className="text-secondary" />
-          </button>
-        )}
+    <div className="h-full flex flex-col bg-transparent animate-in fade-in duration-500 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-4 p-6 border-b border-white/5 bg-black/5 shrink-0">
+        <button onClick={handleBack} className="p-2.5 rounded-xl hover:bg-white/10 transition-colors border border-white/5 active:scale-95">
+          <FiArrowLeft className="text-secondary" />
+        </button>
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-primary">
-            {view === 'tests' && "Results Explorer"}
-            {view === 'students' && (selectedTest?.title || "Student Results")}
-            {view === 'details' && detailData?.attempt?.student_name}
+          <h1 className="text-xl font-black text-primary tracking-tight flex items-center gap-3 uppercase">
+            <FiBarChart2 className="text-indigo-500" />
+            {headerTitle()}
           </h1>
-          <p className="text-xs text-secondary">
-            {view === 'tests' && "Select a test to view performance analytics"}
-            {view === 'students' && "Select a student to view detailed results"}
-            {view === 'details' && detailData?.attempt?.test_title}
-          </p>
+          <p className="text-[10px] font-black uppercase text-secondary tracking-widest mt-0.5 opacity-40">{headerSub()}</p>
         </div>
-        {view !== 'details' && (
-            <div className="relative w-64">
-                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                <input 
-                    type="text" 
-                    placeholder="Search..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-black/5 border border-white/10 rounded-xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
-                />
-            </div>
+        {/* Search bar for list views */}
+        {(view === 'discovery' || view === 'tests') && (
+          <div className="relative w-64">
+            <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
+            <input
+              type="text"
+              placeholder={view === 'tests' ? 'Search tests...' : 'Search trials...'}
+              value={view === 'tests' ? testsSearch : histSearch}
+              onChange={e => view === 'tests' ? setTestsSearch(e.target.value) : setHistSearch(e.target.value)}
+              className="w-full pl-11 pr-4 py-2.5 bg-black/10 border border-white/10 rounded-2xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-white/10 font-bold"
+            />
+          </div>
         )}
       </div>
 
       <div className="flex-1 overflow-auto custom-scrollbar">
-        {loading ? (
-          <div className="h-full flex items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-              <p className="text-sm font-medium text-white/50 tracking-widest uppercase">Loading</p>
-            </div>
-          </div>
-        ) : (
-          <div className="p-6">
-            {view === 'tests' && (
-              <AnimatedList 
-                items={filteredTests}
-                containerClassName="w-full"
-                className="flex flex-col gap-4"
-                renderItem={(t) => (
-                  <div className="group relative glass no-shadow p-5 flex items-center gap-5 transition-all hover:bg-white/[0.08] hover:border-white/20">
-                    <div className="p-3 bg-indigo-500/20 rounded-2xl group-hover:scale-110 transition-transform duration-500">
-                        <GlassIcon id="prism" size="sm" />
+
+        {/* ADMIN: Tests list */}
+        {isAdmin && view === 'tests' && (
+          <div className="p-8 max-w-5xl mx-auto">
+            {testsLoading ? (
+              <div className="h-64 flex items-center justify-center">
+                <div className="w-10 h-10 border-4 border-indigo-500/10 border-t-indigo-500 rounded-full animate-spin" />
+              </div>
+            ) : filteredTests.length === 0 ? (
+              <div className="py-20 text-center glass no-shadow border-dashed border-white/10 rounded-[2.5rem]">
+                <FiList className="mx-auto text-4xl text-white/10 mb-4" />
+                <p className="text-[10px] font-black text-white/20 tracking-[0.4em] uppercase">No tests found</p>
+              </div>
+            ) : (
+              <AnimatedList items={filteredTests} className="flex flex-col gap-3" renderItem={(t) => {
+                const statusColor = t.status === 'ended' ? '#4ade80' : t.status === 'active' ? '#facc15' : 'rgba(255,255,255,0.2)';
+                return (
+                  <div
+                    onClick={() => { setSelectedTest({ id: t.id, title: t.title }); setView('students'); }}
+                    className="group glass no-shadow p-5 flex items-center gap-5 rounded-[1.5rem] border-white/5 hover:bg-white/[0.08] hover:border-indigo-500/30 cursor-pointer transition-all"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5">
+                      <FiFileText className="text-secondary group-hover:text-indigo-400 text-xl transition-colors" />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h3 className="text-primary font-bold text-base truncate">{t.title}</h3>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-secondary">
-                            <span className="flex items-center gap-1"><FiCalendar className="text-indigo-400" /> {t.year}</span>
-                            <span className="w-1 h-1 rounded-full bg-white/20" />
-                            <span className="flex items-center gap-1"><FiFileText className="text-indigo-400" /> {t.subject}</span>
-                        </div>
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-base font-black text-primary truncate uppercase tracking-tight">{t.title}</h3>
+                        <span className="text-[8px] font-black px-2 py-0.5 rounded tracking-widest uppercase shrink-0"
+                          style={{ background: `${statusColor}20`, color: statusColor }}>
+                          {t.status}
+                        </span>
+                      </div>
+                      <p className="text-[9px] text-secondary font-black uppercase tracking-widest opacity-40 mt-1">
+                        {t.subject} · Year {t.year} · Div {t.division}
+                      </p>
                     </div>
-                    <FiChevronRight className="text-white/20 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                    <FiChevronRight className="text-secondary opacity-20 group-hover:translate-x-1 group-hover:opacity-100 transition-all" />
                   </div>
-                )}
-                onItemSelect={(t) => {
-                  setSelectedTest(t);
-                  setView('students');
-                  setSearch('');
-                }}
-              />
-            )}
-
-            {view === 'students' && (
-              <AnimatedList 
-                items={filteredAttempts}
-                containerClassName="w-full"
-                className="flex flex-col gap-3"
-                renderItem={(a) => {
-                  const sc = a.percentage;
-                  const color = gradeBand(sc ?? 0).color;
-                  return (
-                    <div className="group relative glass no-shadow p-4 flex items-center gap-4 transition-all hover:bg-white/[0.08] hover:border-white/20">
-                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
-                            <FiUser className="text-secondary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <h3 className="text-primary font-bold text-sm truncate">{a.student_name}</h3>
-                            <p className="text-[10px] text-secondary mt-0.5 uppercase tracking-wider">{a.division} • {a.year}</p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-sm font-black tabular-nums" style={{ color }}>{a.total_score}/{a.total_marks}</p>
-                            <p className="text-[10px] text-secondary font-bold">{Math.round(sc ?? 0)}%</p>
-                        </div>
-                        <FiChevronRight className="text-secondary group-hover:text-primary transition-all" />
-                    </div>
-                  );
-                }}
-                onItemSelect={(a) => {
-                  setSelectedAttempt(a.attempt_id);
-                  setView('details');
-                }}
-              />
-            )}
-
-            {view === 'details' && detailData && (
-              <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
-                {/* Score Hero */}
-                <BorderGlow 
-                    glowColor={gradeBand(detailData.result?.percentage ?? 0).color || '#6366f1'}
-                    backgroundColor="transparent"
-                    borderRadius={24}
-                    glowIntensity={0.6}
-                    className="no-shadow"
-                >
-                    <div className="p-8 flex flex-col md:flex-row items-center gap-8">
-                        <div className="shrink-0 text-center">
-                            <ScoreCircle 
-                                score={detailData.result?.total_score ?? 0} 
-                                total={detailData.result?.total_marks ?? 0} 
-                                pct={Math.round(detailData.result?.percentage ?? 0)} 
-                            />
-                            <p className="text-3xl font-black mt-4 tracking-tighter" style={{ color: gradeBand(detailData.result?.percentage ?? 0).color }}>
-                                {Math.round(detailData.result?.percentage ?? 0)}%
-                            </p>
-                        </div>
-
-                        <div className="flex-1 w-full space-y-6">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="p-4 rounded-2xl bg-black/5 border border-white/5">
-                                    <p className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] mb-1">Rank</p>
-                                    <p className="text-2xl font-black text-indigo-400">#{detailData.result?.rank || '--'}</p>
-                                </div>
-                                <div className="p-4 rounded-2xl bg-black/5 border border-white/5">
-                                    <p className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] mb-1">Status</p>
-                                    <p className="text-2xl font-black" style={{ color: detailData.result?.pass_fail_overall ? '#4ade80' : '#f87171' }}>
-                                        {detailData.result?.pass_fail_overall ? 'PASSED' : 'FAILED'}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="text-center p-3 rounded-xl bg-black/5">
-                                    <p className="text-[9px] font-bold text-secondary uppercase mb-1">MCQ</p>
-                                    <p className="text-sm font-black text-primary">{detailData.section_scores?.mcqScore ?? 0}/{detailData.section_scores?.mcqTotal ?? 0}</p>
-                                </div>
-                                <div className="text-center p-3 rounded-xl bg-black/5">
-                                    <p className="text-[9px] font-bold text-secondary uppercase mb-1">Coding</p>
-                                    <p className="text-sm font-black text-primary">{detailData.section_scores?.debugScore ?? 0}/{detailData.section_scores?.debugTotal ?? 0}</p>
-                                </div>
-                                <div className="text-center p-3 rounded-xl bg-black/5">
-                                    <p className="text-[9px] font-bold text-secondary uppercase mb-1">Time</p>
-                                    <p className="text-sm font-black text-primary">{detailData.attempt?.time_taken_mins || '--'}m</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </BorderGlow>
-
-                {/* Breakdown */}
-                <div className="space-y-4">
-                    <h2 className="text-xs font-black text-secondary opacity-60 uppercase tracking-[0.3em] ml-2">Question Breakdown</h2>
-                    <div className="grid gap-3">
-                        {detailData.breakdown.map((q: any, i: number) => (
-                            <QuestionRow key={q.question_id} q={q} idx={i} monacoTheme={monacoTheme} />
-                        ))}
-                    </div>
-                </div>
-              </div>
+                );
+              }} />
             )}
           </div>
         )}
+
+        {/* ADMIN: Students list */}
+        {isAdmin && view === 'students' && selectedTest && (
+          <AdminStudentListView
+            testId={selectedTest.id}
+            testTitle={selectedTest.title}
+            onBack={() => setView('tests')}
+            onSelectAttempt={(aId, name) => {
+              setSelectedAttemptId(aId);
+              setSelectedStudentName(name);
+              setView('detail');
+            }}
+          />
+        )}
+
+        {/* STUDENT: Discovery list */}
+        {!isAdmin && view === 'discovery' && (
+          <div className="p-8 max-w-5xl mx-auto">
+            {historyLoading ? (
+              <div className="h-64 flex items-center justify-center">
+                <div className="w-10 h-10 border-4 border-indigo-500/10 border-t-indigo-500 rounded-full animate-spin" />
+              </div>
+            ) : filteredHistory.length === 0 ? (
+              <div className="py-20 text-center glass no-shadow border-dashed border-white/10 rounded-[2.5rem]">
+                <FiBarChart2 className="mx-auto text-4xl text-white/10 mb-4" />
+                <p className="text-[10px] font-black text-white/20 tracking-[0.4em] uppercase">No concluded trials found</p>
+              </div>
+            ) : (
+              <AnimatedList items={filteredHistory} className="flex flex-col gap-3" renderItem={(h) => {
+                const isAbsent = h.status === 'absent';
+                return (
+                  <div
+                    onClick={() => { if (!isAbsent && h.id) { setSelectedAttemptId(h.id); setView('detail'); } }}
+                    className={`group glass no-shadow p-5 flex items-center gap-6 transition-all border-white/5 rounded-[1.5rem] ${
+                      isAbsent ? 'cursor-not-allowed opacity-50' : 'hover:bg-white/[0.08] hover:border-indigo-500/30 cursor-pointer'
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5">
+                      {isAbsent ? <FiSlash className="text-red-400 opacity-60" /> : <FiCheckCircle className="text-secondary group-hover:text-indigo-400 text-xl" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-base font-black text-primary truncate uppercase tracking-tight">{h.test_title}</h3>
+                        {isAbsent && <span className="text-[8px] font-black bg-red-500/20 text-red-400 px-2 py-0.5 rounded tracking-widest uppercase shrink-0">Absent</span>}
+                      </div>
+                      <p className="text-[9px] text-secondary font-black uppercase tracking-widest opacity-40 mt-1">
+                        {isAbsent ? 'No record' : fmtDate(h.submitted_at)}
+                      </p>
+                    </div>
+                    <div className="text-right mr-3 shrink-0">
+                      <p className="text-xl font-black tabular-nums" style={{ color: isAbsent ? '#f87171' : pctColor(h.percentage ?? 0) }}>
+                        {isAbsent ? '—' : `${Math.round(h.percentage ?? 0)}%`}
+                      </p>
+                      <p className="text-[9px] font-black text-secondary opacity-30 uppercase">
+                        {isAbsent ? 'Absent' : `${h.total_score}/${h.total_marks}`}
+                      </p>
+                    </div>
+                    {!isAbsent && <FiChevronRight className="text-secondary opacity-20 group-hover:translate-x-1 group-hover:opacity-100 transition-all" />}
+                  </div>
+                );
+              }} />
+            )}
+          </div>
+        )}
+
+        {/* BOTH: Result Detail */}
+        {view === 'detail' && selectedAttemptId && (
+          <ResultDetailView attemptId={selectedAttemptId} monacoTheme={monacoTheme} onBack={handleBack} />
+        )}
+
       </div>
     </div>
   );
