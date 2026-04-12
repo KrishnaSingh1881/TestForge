@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { motion, useTransform, MotionValue } from 'framer-motion';
+import { motion, MotionValue } from 'framer-motion';
 import type { AppDefinition } from '../apps/registry';
 import { registerDockIconRef } from '../AppWindow';
 import { APP_ICONS } from './AppIcons';
@@ -22,15 +22,6 @@ export default function DockIcon({ app, isOpen, isActive, isMinimized, isLight, 
     registerDockIconRef(app.id, ref.current);
     return () => registerDockIconRef(app.id, null);
   }, [app.id]);
-
-  const distance = useTransform(mouseX, (x: number) => {
-    const bounds = ref.current?.getBoundingClientRect();
-    if (!bounds) return Infinity;
-    return Math.abs(x - (bounds.left + bounds.width / 2));
-  });
-
-  const scale = useTransform(distance, [0, 70, 140], [1.4, 1.18, 1.0]);
-  const y     = useTransform(distance, [0, 70, 140], [-10, -5, 0]);
 
   const IconComponent = APP_ICONS[app.id];
 
@@ -58,7 +49,7 @@ export default function DockIcon({ app, isOpen, isActive, isMinimized, isLight, 
 
   return (
     <div
-      className="flex flex-col items-center relative group"
+      className="flex flex-col items-center relative"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -94,9 +85,10 @@ export default function DockIcon({ app, isOpen, isActive, isMinimized, isLight, 
       {/* Icon tile */}
       <motion.div
         ref={ref}
-        style={{ scale, y }}
         onClick={onClick}
+        whileHover={{ scale: 1.25, y: -10 }}
         whileTap={{ scale: 0.9 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         className="relative"
       >
         <div style={{
@@ -115,11 +107,11 @@ export default function DockIcon({ app, isOpen, isActive, isMinimized, isLight, 
           WebkitBackdropFilter: 'blur(24px) saturate(200%)',
           border: tileBorder,
           boxShadow: tileShadow,
-          transition: 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)',
+          transition: 'background 0.6s ease, border 0.6s ease, box-shadow 0.6s ease',
         }}
-        className="hover:border-white/20 transition-all duration-300"
+        className="hover:border-white/20"
         >
-          <div className="transform scale-[0.85] group-hover:scale-100 transition-transform duration-500 flex items-center justify-center w-full h-full">
+          <div className="transform scale-[0.85] transition-transform duration-500 flex items-center justify-center w-full h-full">
             {IconComponent
                 ? <IconComponent />
                 : <span style={{ fontSize: 24 }}>{app.icon}</span>
@@ -128,7 +120,10 @@ export default function DockIcon({ app, isOpen, isActive, isMinimized, isLight, 
         </div>
         
         {/* Shine effect on hover */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-2xl" />
+        <motion.div 
+            animate={{ opacity: hovered ? 1 : 0 }}
+            className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 pointer-events-none rounded-2xl" 
+        />
       </motion.div>
 
       {/* Dot indicator */}
