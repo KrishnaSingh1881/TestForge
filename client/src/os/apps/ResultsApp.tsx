@@ -79,47 +79,34 @@ function QuestionRow({ q, idx, monacoTheme }: { q: any; idx: number; monacoTheme
     <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--glass-border)' }}>
       <button
         onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5"
+        className="w-full flex items-center gap-4 px-5 py-4 text-left transition-all hover:bg-black/10 group"
       >
-        <span
-          className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-          style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: 'rgb(var(--accent))' }}
-        >
+        <span className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-[10px] font-black shrink-0 border border-indigo-500/20 group-hover:scale-110 transition-transform">
           {idx + 1}
         </span>
 
-        <span
-          className="text-xs px-2 py-0.5 rounded-full shrink-0 font-medium"
-          style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'rgb(var(--text-secondary))' }}
-        >
+        <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 bg-black/5 text-secondary opacity-60 rounded-full shrink-0 border border-white/5">
           {isMCQ ? (q.type === 'mcq_multi' ? 'MCQ Multi' : 'MCQ') : 'Debug'}
         </span>
 
-        <span className="flex-1 text-sm truncate" style={{ color: 'rgb(var(--text-primary))' }}>
+        <span className="flex-1 text-sm font-bold text-primary truncate uppercase tracking-tight opacity-80 group-hover:opacity-100 transition-opacity">
           {q.statement}
         </span>
 
         {isMCQ && (
-          <span
-            className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0"
-            style={{ backgroundColor: `${mc}20`, color: mc, border: `1px solid ${mc}40` }}
-          >
+          <span className="text-[10px] font-black px-3 py-1 rounded-full shrink-0 border"
+            style={{ backgroundColor: `${mc}15`, color: mc, borderColor: `${mc}30` }}>
             {q.marks_awarded}/{q.marks_total}
           </span>
         )}
 
         {isDebug && (
-          <span
-            className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0"
-            style={{ backgroundColor: 'rgba(99,102,241,0.12)', color: 'rgb(var(--accent))' }}
-          >
-            {q.visible_cases_passed}/{q.visible_cases_total} vis
+          <span className="text-[10px] font-black px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 shrink-0">
+            {q.visible_cases_passed}/{q.visible_cases_total} VISIBLE
           </span>
         )}
 
-        <span className="text-xs shrink-0" style={{ color: 'rgb(var(--text-secondary))' }}>
-          {open ? '▲' : '▼'}
-        </span>
+        <FiChevronRight className={`text-secondary text-base transition-transform duration-300 ${open ? 'rotate-90' : ''}`} />
       </button>
 
       {open && (

@@ -8,7 +8,7 @@ import MCQQuestion from '../../components/test/MCQQuestion';
 import SubmitConfirmModal from '../../components/test/SubmitConfirmModal';
 import VSCodeLayout from '../components/VSCodeLayout';
 
-type SessionPhase = 'start-screen' | 'active' | 'evaluating' | 'done';
+type SessionPhase = 'start-screen' | 'active' | 'evaluating' | 'done' | 'integrity-failed';
 
 const RULES = [
   'Close all other browser tabs before starting.',
@@ -257,10 +257,11 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
         unlockWindow(windowId);
       }
 
-      // Open results and close this window
-      openWindow('results', { attemptId });
-      if (windowId) {
-        closeWindow(windowId);
+      if (reason === 'integrity_violation') {
+        setPhase('integrity-failed');
+      } else {
+        openWindow('results', { attemptId });
+        if (windowId) closeWindow(windowId);
       }
     } catch (e: any) {
       setSubmitError(e.response?.data?.error ?? 'Submission failed. Please try again.');
@@ -311,14 +312,16 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
   if (error) {
     return (
       <div className="h-full flex items-center justify-center p-8">
-        <div className="glass p-10 text-center max-w-md">
-          <p className="text-red-400 mb-4">{error}</p>
+        <div className="glass shadow-2xl p-10 text-center max-w-md border-red-500/20">
+          <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6 border border-red-500/20">
+            <FiAlertTriangle className="text-3xl text-red-400" />
+          </div>
+          <p className="text-red-400 font-black uppercase tracking-widest mb-4">{error}</p>
           <button
             onClick={() => windowId && closeWindow(windowId)}
-            className="text-sm underline"
-            style={{ color: 'rgb(var(--accent))' }}
+            className="px-6 py-2 rounded-xl bg-black/5 text-secondary font-bold hover:bg-black/10 transition-all"
           >
-            Close
+            Return to Dashboard
           </button>
         </div>
       </div>
@@ -328,108 +331,103 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
   // Start screen
   if (phase === 'start-screen' && test) {
     return (
-      <div className="h-full overflow-auto flex items-center justify-center p-8">
-        <div className="w-full max-w-lg space-y-6">
+      <div className="h-full overflow-auto flex items-center justify-center p-8 custom-scrollbar">
+        <div className="w-full max-w-xl space-y-8 animate-in fade-in zoom-in duration-700">
           {/* Test info */}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
+          <div className="text-center">
+            <div className="inline-flex items-center gap-2 mb-4 p-1.5 px-3 bg-black/5 rounded-full border border-white/5">
               {test.subject && (
-                <span
-                  className="text-xs px-2 py-0.5 rounded-full font-medium"
-                  style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: 'rgb(var(--accent))' }}
-                >
+                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">
                   {test.subject}
                 </span>
               )}
-              <span
-                className="text-xs px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'rgb(var(--text-secondary))' }}
-              >
+              <span className="w-1 h-1 rounded-full bg-white/20" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-secondary opacity-60">
                 {test.year} · Div {test.division}
               </span>
             </div>
-            <h1 className="text-2xl font-bold mt-2" style={{ color: 'rgb(var(--text-primary))' }}>
+            <h1 className="text-4xl font-black text-primary tracking-tight leading-none uppercase">
               {test.title}
             </h1>
+            <p className="text-xs text-secondary font-bold uppercase tracking-[0.3em] mt-3 opacity-40">Verification Phase 🛡️</p>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-3 gap-4">
             {[
-              { label: 'Duration', value: `${test.duration_mins} min` },
-              { label: 'Questions', value: test.questions_per_attempt ?? '—' },
-              { label: 'Total Marks', value: test.total_marks ?? '—' },
+              { label: 'Time Limit', value: `${test.duration_mins}m`, icon: FiClock },
+              { label: 'Questions', value: test.questions_per_attempt ?? '—', icon: FiBox },
+              { label: 'Total Marks', value: test.total_marks ?? '—', icon: FiPlus },
             ].map(s => (
-              <div
-                key={s.label}
-                className="rounded-xl p-3 text-center"
-                style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)' }}
-              >
-                <p className="text-lg font-bold" style={{ color: 'rgb(var(--accent))' }}>
+              <div key={s.label} className="glass no-shadow rounded-2xl p-4 text-center border-white/5 group hover:border-indigo-500/30 transition-all duration-500">
+                <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center mx-auto mb-2 text-indigo-400 group-hover:scale-110 transition-transform">
+                  <s.icon />
+                </div>
+                <p className="text-lg font-black text-primary">
                   {s.value}
                 </p>
-                <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>
+                <p className="text-[9px] font-black uppercase tracking-widest text-secondary opacity-40 mt-0.5">
                   {s.label}
                 </p>
               </div>
             ))}
           </div>
 
-          {/* Rules */}
-          <div
-            className="rounded-xl p-4 space-y-2"
-            style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)' }}
-          >
-            <p
-              className="text-xs font-semibold uppercase tracking-wide mb-3"
-              style={{ color: 'rgb(var(--text-secondary))' }}
-            >
-              Rules & Guidelines
+          {/* Rules Section */}
+          <div className="glass no-shadow rounded-3xl p-8 space-y-4 border-white/5">
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-secondary opacity-40 mb-6 flex items-center gap-3">
+              <span className="h-px flex-1 bg-white/5" />
+              Guidelines for Conduct
+              <span className="h-px flex-1 bg-white/5" />
             </p>
-            {RULES.map((rule, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <span className="text-xs mt-0.5 shrink-0" style={{ color: '#4ade80' }}>
-                  ✓
-                </span>
-                <p className="text-sm" style={{ color: 'rgb(var(--text-primary))' }}>
-                  {rule}
-                </p>
-              </div>
-            ))}
+            <div className="grid gap-3">
+              {RULES.map((rule, i) => (
+                <div key={i} className="flex items-start gap-4 p-3 rounded-2xl bg-black/5 border border-white/5">
+                  <span className="text-xs mt-0.5 shrink-0 text-indigo-400 font-bold">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <p className="text-xs font-bold text-primary opacity-80 leading-relaxed uppercase tracking-tight">
+                    {rule}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Agreement */}
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={agreed}
-              onChange={e => setAgreed(e.target.checked)}
-              className="mt-0.5 accent-indigo-500 shrink-0"
-            />
-            <span className="text-sm" style={{ color: 'rgb(var(--text-primary))' }}>
-              I understand and agree to the integrity policy. I will not switch tabs, share answers, or use
-              external help.
-            </span>
-          </label>
+          {/* Bottom Controls */}
+          <div className="space-y-6">
+              <label className="group flex items-start gap-4 cursor-pointer p-5 rounded-3xl bg-black/5 border border-white/5 hover:bg-black/10 transition-all">
+                <input
+                  type="checkbox"
+                  checked={agreed}
+                  onChange={e => setAgreed(e.target.checked)}
+                  className="mt-1 w-5 h-5 accent-indigo-500 shrink-0 rounded-lg"
+                />
+                <span className="text-xs font-bold text-primary leading-relaxed uppercase tracking-tight opacity-60 group-hover:opacity-100 transition-opacity">
+                  I solemnly affirm that I will maintain absolute academic integrity. 
+                  I understand that tab switching or any unauthorized act will result in <span className="text-red-400 font-black">IMMEDIATE TERMINATION</span> of this session.
+                </span>
+              </label>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+              {error && <p className="text-xs font-black uppercase tracking-widest text-red-400 bg-red-400/10 p-4 rounded-xl border border-red-400/20 text-center">{error}</p>}
 
-          {/* Begin button */}
-          <button
-            onClick={handleStart}
-            disabled={!agreed || starting}
-            className="w-full py-3 rounded-xl font-semibold text-white text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            style={{ backgroundColor: 'rgb(var(--accent))' }}
-          >
-            {starting ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Starting...
-              </>
-            ) : (
-              'Begin Test'
-            )}
-          </button>
+              <button
+                onClick={handleStart}
+                disabled={!agreed || starting}
+                className="w-full py-5 rounded-web font-black text-white text-xs uppercase tracking-[0.3em] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-3 bg-indigo-600 shadow-xl shadow-indigo-600/20 hover:bg-indigo-50 hover:text-indigo-900 group"
+              >
+                {starting ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Initializing...
+                  </>
+                ) : (
+                  <>
+                    Begin Secure Session <FiPlay className="group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </button>
+          </div>
         </div>
       </div>
     );
@@ -440,36 +438,32 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
     return (
       <div className="h-full flex flex-col">
         {/* Top bar with timer and submit */}
-        <div
-          className="flex items-center justify-between px-6 py-3 border-b"
-          style={{ borderColor: 'var(--glass-border)' }}
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/5 backdrop-blur-md">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-widest text-secondary opacity-40">Active Evaluation</span>
+            <span className="text-sm font-black text-primary truncate max-w-[200px] uppercase tracking-tight">
               {attempt?.test_title || test?.title}
             </span>
           </div>
 
           {/* Timer */}
-          <div
-            className="flex items-center gap-2 px-4 py-1.5 rounded-xl"
-            style={{ backgroundColor: `${timerColor}15`, border: `1px solid ${timerColor}40` }}
-          >
-            <span className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
-              Time Left
-            </span>
-            <span className="font-mono font-bold text-base tabular-nums" style={{ color: timerColor }}>
-              {formatTime(timeLeft)}
-            </span>
+          <div className="flex items-center gap-3 px-6 py-2 rounded-2xl glass no-shadow border-white/10">
+            <div className="flex flex-col items-end">
+              <span className="text-[9px] font-black uppercase tracking-widest text-secondary opacity-40">Time Left</span>
+              <span className="font-mono font-black text-xl tabular-nums leading-none mt-1" style={{ color: timerColor }}>
+                {formatTime(timeLeft)}
+              </span>
+            </div>
+            <div className="w-1 h-8 rounded-full bg-white/5" />
+            <FiClock className="text-xl opacity-20" style={{ color: timerColor }} />
           </div>
 
           <button
             disabled={submitting || phase === 'evaluating'}
             onClick={() => setShowConfirm(true)}
-            className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-            style={{ backgroundColor: 'rgb(var(--accent))' }}
+            className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest text-white transition-all bg-indigo-600 shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1 active:translate-y-0 disabled:opacity-50"
           >
-            {submitting ? 'Submitting...' : 'Submit Test'}
+            {submitting ? 'Submitting...' : 'End Test Session'}
           </button>
         </div>
 
@@ -518,18 +512,17 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
                   onAnswered={onAnswered}
                 />
                 {/* Nav buttons for debug questions */}
-                <div className="flex items-center justify-between px-6 py-3 border-t shrink-0"
-                  style={{ borderColor: 'var(--glass-border)', backgroundColor: 'rgba(0,0,0,0.3)' }}>
+                <div className="flex items-center justify-between px-8 py-4 border-t border-white/10 bg-black/20 backdrop-blur-md">
                   <button disabled={currentIdx === 0} onClick={() => setCurrentIdx(i => i - 1)}
-                    className="px-4 py-1.5 rounded-lg text-sm disabled:opacity-30"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
-                    ← Previous
+                    className="flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-black/5 text-secondary border border-white/5 hover:bg-black/10 hover:text-primary transition-all disabled:opacity-20">
+                    <FiArrowLeft /> Previous
                   </button>
-                  <span className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>{currentIdx + 1} / {questions.length}</span>
+                  <div className="px-4 py-1 bg-black/5 rounded-full border border-white/5">
+                    <span className="text-[10px] font-black text-secondary tracking-widest opacity-60">{currentIdx + 1} <span className="opacity-20 mx-1">/</span> {questions.length}</span>
+                  </div>
                   <button disabled={currentIdx === questions.length - 1} onClick={() => setCurrentIdx(i => i + 1)}
-                    className="px-4 py-1.5 rounded-lg text-sm disabled:opacity-30"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
-                    Next →
+                    className="flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all disabled:opacity-20">
+                    Next Question →
                   </button>
                 </div>
               </div>
@@ -548,17 +541,17 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
                       onToggleReview={onToggleReview}
                     />
                   )}
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between pt-8 border-t border-white/5">
                     <button disabled={currentIdx === 0} onClick={() => setCurrentIdx(i => i - 1)}
-                      className="px-5 py-2 rounded-lg text-sm disabled:opacity-30"
-                      style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
-                      ← Previous
+                      className="flex items-center gap-2 px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-black/5 text-secondary border border-white/5 hover:bg-black/10 hover:text-primary transition-all disabled:opacity-20">
+                      <FiArrowLeft /> Previous
                     </button>
-                    <span className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>{currentIdx + 1} / {questions.length}</span>
+                    <div className="px-4 py-1.5 bg-black/5 rounded-full border border-white/5">
+                        <span className="text-[10px] font-black text-secondary tracking-widest opacity-60">{currentIdx + 1} <span className="opacity-20 mx-1">/</span> {questions.length}</span>
+                    </div>
                     <button disabled={currentIdx === questions.length - 1} onClick={() => setCurrentIdx(i => i + 1)}
-                      className="px-5 py-2 rounded-lg text-sm disabled:opacity-30"
-                      style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
-                      Next →
+                      className="flex items-center gap-2 px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all disabled:opacity-20">
+                      Next Question →
                     </button>
                   </div>
                 </div>
@@ -579,19 +572,43 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
 
         {/* Evaluating screen */}
         {phase === 'evaluating' && (
-          <div
-            className="absolute inset-0 flex items-center justify-center"
-            style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
-          >
-            <div className="text-center">
-              <span className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin inline-block mb-4" />
-              <p className="text-lg font-semibold" style={{ color: 'rgb(var(--text-primary))' }}>
-                Evaluating your test...
+          <div className="absolute inset-0 z-[90] flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-500">
+            <div className="text-center glass p-12 rounded-[2.5rem] border-white/5">
+              <span className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin inline-block mb-6" />
+              <p className="text-xl font-black text-primary uppercase tracking-tighter">
+                Synchronizing Telemetry...
               </p>
+              <p className="text-[10px] text-secondary font-bold uppercase tracking-[0.2em] mt-2 opacity-60">Finalizing Evaluation</p>
               {submitError && (
-                <p className="text-sm text-red-400 mt-2">{submitError}</p>
+                <p className="text-sm text-red-400 mt-4 bg-red-400/10 p-4 rounded-xl border border-red-400/20">{submitError}</p>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Integrity Failed screen */}
+        {phase === 'integrity-failed' && (
+          <div className="absolute inset-0 z-[100] flex items-center justify-center bg-[#0a0a0f]/90 backdrop-blur-xl animate-in fade-in duration-500">
+             <div className="max-w-md w-full glass shadow-2xl p-12 text-center border-red-500/20 rounded-[3rem]">
+                <div className="w-24 h-24 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-8 border border-red-500/20 animate-pulse">
+                    <FiShield className="text-5xl text-red-500" />
+                </div>
+                <h2 className="text-3xl font-black text-red-500 uppercase tracking-tighter mb-4">Integrity Breach</h2>
+                <div className="space-y-4 mb-8">
+                    <p className="text-sm font-bold text-primary opacity-80 uppercase tracking-tight leading-relaxed">
+                        Your test session has been <span className="text-red-400">IMMEDIATELY TERMINATED</span>.
+                    </p>
+                    <p className="text-xs font-bold text-secondary opacity-60 uppercase tracking-widest leading-relaxed">
+                        Reason: You have exceeded the maximum allowed tab switches. This incident has been logged and reported to the administrator.
+                    </p>
+                </div>
+                <button
+                    onClick={() => windowId && closeWindow(windowId)}
+                    className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-primary font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+                >
+                    Dismiss Session
+                </button>
+             </div>
           </div>
         )}
       </div>

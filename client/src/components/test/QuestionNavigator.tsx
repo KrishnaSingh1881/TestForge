@@ -55,32 +55,32 @@ export default function QuestionNavigator({
       </div>
 
       {/* Grid of question buttons */}
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-4 gap-2">
         {questions.map((q, idx) => {
           const locked   = elapsedMinutes < q.unlock_at_minutes;
           const isCurrent  = idx === currentIdx;
           const isAnswered = answeredIds.has(q.id);
           const isReview   = reviewIds.has(q.id);
 
-          let bg = 'rgba(255,255,255,0.07)';
-          let color = 'rgb(var(--text-secondary))';
-          let border = 'var(--glass-border)';
+          let bg = 'bg-black/5';
+          let color = 'text-secondary opacity-60';
+          let border = 'border-white/10';
 
           if (locked) {
-            bg = 'rgba(255,255,255,0.03)';
-            color = 'rgba(148,163,184,0.4)';
+            bg = 'bg-black/10';
+            color = 'text-secondary opacity-20';
           } else if (isCurrent) {
-            bg = 'rgba(99,102,241,0.3)';
-            color = 'rgb(var(--accent))';
-            border = 'rgba(99,102,241,0.6)';
+            bg = 'bg-indigo-500/30';
+            color = 'text-indigo-400';
+            border = 'border-indigo-500/50';
           } else if (isReview) {
-            bg = 'rgba(234,179,8,0.15)';
-            color = '#facc15';
-            border = 'rgba(234,179,8,0.4)';
+            bg = 'bg-yellow-500/20';
+            color = 'text-yellow-400';
+            border = 'border-yellow-500/40';
           } else if (isAnswered) {
-            bg = 'rgba(74,222,128,0.15)';
-            color = '#4ade80';
-            border = 'rgba(74,222,128,0.4)';
+            bg = 'bg-green-500/20';
+            color = 'text-green-400';
+            border = 'border-green-500/40';
           }
 
           return (
@@ -88,9 +88,8 @@ export default function QuestionNavigator({
               key={q.id}
               disabled={locked}
               onClick={() => !locked && onSelect(idx)}
-              title={locked ? `Unlocks at ${q.unlock_at_minutes} min` : `Question ${idx + 1}`}
-              className="relative w-full aspect-square rounded-lg text-xs font-semibold flex items-center justify-center transition-all"
-              style={{ backgroundColor: bg, color, border: `1px solid ${border}`, cursor: locked ? 'not-allowed' : 'pointer' }}>
+              className={`relative w-full aspect-square rounded-xl text-[10px] font-black flex items-center justify-center transition-all border ${bg} ${color} ${border}`}
+              style={{ cursor: locked ? 'not-allowed' : 'pointer' }}>
               {locked ? '🔒' : idx + 1}
             </button>
           );
@@ -99,13 +98,12 @@ export default function QuestionNavigator({
 
       {/* Locked question countdown */}
       {questions.some(q => elapsedMinutes < q.unlock_at_minutes) && (
-        <div className="space-y-1 mt-1">
+        <div className="space-y-1.5 mt-2">
           {questions
             .filter(q => elapsedMinutes < q.unlock_at_minutes)
             .map((q, i) => (
-              <div key={q.id} className="flex items-center justify-between text-xs px-2 py-1 rounded-lg"
-                style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'rgb(var(--text-secondary))' }}>
-                <span>Q{questions.indexOf(q) + 1} unlocks in</span>
+              <div key={q.id} className="flex items-center justify-between text-[10px] font-black uppercase tracking-tight px-3 py-2 rounded-xl bg-black/5 text-secondary border border-white/5">
+                <span className="opacity-40">Q{questions.indexOf(q) + 1} unlocks in</span>
                 <UnlockCountdown unlockAt={q.unlock_at_minutes} elapsed={elapsedMinutes} />
               </div>
             ))}
@@ -113,8 +111,7 @@ export default function QuestionNavigator({
       )}
 
       {/* Summary */}
-      <div className="mt-auto pt-3 border-t text-xs space-y-1"
-        style={{ borderColor: 'var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
+      <div className="mt-auto pt-4 border-t border-white/5 text-[10px] font-black uppercase tracking-widest space-y-2 text-secondary">
         <div className="flex justify-between">
           <span>Answered</span>
           <span style={{ color: '#4ade80' }}>{answeredIds.size}/{questions.length}</span>

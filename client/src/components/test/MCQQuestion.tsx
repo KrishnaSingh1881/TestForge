@@ -82,59 +82,54 @@ export default function MCQQuestion({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Question header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-6">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-              style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: 'rgb(var(--accent))' }}>
-              Q{questionNumber} · {isMulti ? 'Multi Correct' : 'Single Correct'}
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-indigo-500/10 text-indigo-400 rounded-full border border-indigo-500/20">
+              Q{questionNumber} · {isMulti ? 'Multi-Choice' : 'Single-Choice'}
             </span>
-            <span className="text-xs px-2 py-0.5 rounded-full"
-              style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'rgb(var(--text-secondary))' }}>
+            <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-black/5 text-secondary opacity-60 rounded-full border border-white/5">
               {question.marks} mark{question.marks !== 1 ? 's' : ''}
             </span>
             {saving && (
-              <span className="text-xs flex items-center gap-1" style={{ color: 'rgb(var(--text-secondary))' }}>
-                <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin inline-block" />
-                Saving...
+              <span className="text-[10px] font-black uppercase tracking-widest text-secondary opacity-40 flex items-center gap-2">
+                <span className="w-3 h-3 border border-indigo-400/40 border-t-indigo-400 rounded-full animate-spin inline-block" />
+                Auto-Saving...
               </span>
             )}
-            {saveError && <span className="text-xs text-red-400">{saveError}</span>}
+            {saveError && <span className="text-[10px] font-black uppercase tracking-widest text-red-400">{saveError}</span>}
           </div>
 
-          <p className="text-base leading-relaxed" style={{ color: 'rgb(var(--text-primary))' }}>
+          <p className="text-lg font-bold text-primary leading-relaxed uppercase tracking-tight">
             {question.statement}
           </p>
 
           {question.statement_image_url && (
-            <img src={question.statement_image_url} alt="question"
-              className="mt-3 max-h-48 rounded-xl object-contain" />
+            <div className="mt-6 glass no-shadow p-2 rounded-3xl border-white/5 inline-block">
+                <img src={question.statement_image_url} alt="question" className="max-h-64 rounded-2xl object-contain shadow-2xl" />
+            </div>
           )}
         </div>
 
         {/* Mark for review */}
         <button
           onClick={() => onToggleReview(question.id)}
-          className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-          style={{
-            backgroundColor: isMarkedForReview ? 'rgba(234,179,8,0.15)' : 'rgba(255,255,255,0.07)',
-            color: isMarkedForReview ? '#facc15' : 'rgb(var(--text-secondary))',
-            border: `1px solid ${isMarkedForReview ? 'rgba(234,179,8,0.4)' : 'var(--glass-border)'}`,
-          }}>
-          {isMarkedForReview ? '★ Marked' : '☆ Mark'}
+          className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${isMarkedForReview ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40 shadow-lg shadow-yellow-500/20' : 'bg-black/5 text-secondary border-white/5 hover:bg-black/10'}`}
+        >
+          {isMarkedForReview ? '★ Marked' : '☆ Mark Review'}
         </button>
       </div>
 
       {isMulti && (
-        <p className="text-xs" style={{ color: 'rgb(var(--text-secondary))' }}>
-          Select all that apply
+        <p className="text-[10px] font-black uppercase tracking-widest text-secondary opacity-40 ml-1">
+          Select all applicable options
         </p>
       )}
 
       {/* Options */}
-      <div className="space-y-2.5">
+      <div className="grid gap-3">
         {question.options.map((opt, i) => {
           const isSelected = selected.includes(opt.id);
 
@@ -142,42 +137,33 @@ export default function MCQQuestion({
             <button
               key={opt.id}
               onClick={() => handleSelect(opt.id)}
-              className="w-full flex items-start gap-3 p-4 rounded-xl text-left transition-all"
-              style={{
-                backgroundColor: isSelected ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${isSelected ? 'rgba(99,102,241,0.5)' : 'var(--glass-border)'}`,
-                transform: isSelected ? 'scale(1.005)' : 'scale(1)',
-              }}>
+              className={`group w-full flex items-start gap-4 p-5 rounded-3xl text-left transition-all border ${isSelected ? 'bg-indigo-500/10 border-indigo-500/40 shadow-xl shadow-indigo-500/10 translate-x-1' : 'bg-black/5 border-white/5 hover:bg-black/10 hover:border-white/20'}`}
+            >
               {/* Radio / Checkbox indicator */}
-              <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full flex items-center justify-center border-2 transition-all"
-                style={{
-                  borderColor: isSelected ? 'rgb(var(--accent))' : 'rgba(148,163,184,0.5)',
-                  backgroundColor: isSelected ? 'rgb(var(--accent))' : 'transparent',
-                  borderRadius: isMulti ? '4px' : '50%',
-                }}>
+              <div className={`shrink-0 mt-0.5 w-6 h-6 rounded-xl flex items-center justify-center border-2 transition-all ${isSelected ? 'bg-indigo-500 border-indigo-500 scale-110 shadow-lg shadow-indigo-500/30' : 'bg-black/10 border-white/10 group-hover:border-indigo-500/30'}`}>
                 {isSelected && (
-                  <span className="text-white text-xs font-bold leading-none">
+                  <span className="text-white text-[10px] font-black leading-none animate-in zoom-in duration-300">
                     {isMulti ? '✓' : '●'}
                   </span>
                 )}
-              </span>
+              </div>
 
               {/* Option label */}
-              <span className="text-xs font-bold shrink-0 mt-0.5 w-4"
-                style={{ color: isSelected ? 'rgb(var(--accent))' : 'rgb(var(--text-secondary))' }}>
+              <span className={`text-xs font-black shrink-0 mt-1 w-6 opacity-40 ${isSelected ? 'text-indigo-400 opacity-100' : 'text-secondary'}`}>
                 {String.fromCharCode(65 + i)}
               </span>
 
               {/* Option content */}
               <div className="flex-1 min-w-0">
                 {opt.option_text && (
-                  <p className="text-sm leading-relaxed" style={{ color: 'rgb(var(--text-primary))' }}>
+                  <p className={`text-sm font-bold leading-relaxed uppercase tracking-tight ${isSelected ? 'text-primary' : 'text-primary opacity-80'}`}>
                     {opt.option_text}
                   </p>
                 )}
                 {opt.option_image_url && (
-                  <img src={opt.option_image_url} alt={`option ${i}`}
-                    className="mt-2 max-h-28 rounded-lg object-contain" />
+                  <div className="mt-4 glass no-shadow p-1.5 rounded-2xl border-white/5 inline-block">
+                    <img src={opt.option_image_url} alt={`option ${i}`} className="max-h-40 rounded-xl object-contain" />
+                  </div>
                 )}
               </div>
             </button>
@@ -189,9 +175,9 @@ export default function MCQQuestion({
       {selected.length > 0 && (
         <button
           onClick={() => { setSelected([]); saveResponse([]); }}
-          className="text-xs transition-opacity hover:opacity-70"
-          style={{ color: 'rgb(var(--text-secondary))' }}>
-          Clear selection
+          className="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-secondary opacity-40 hover:opacity-100 hover:text-red-400 transition-all"
+        >
+          Clear Current Selection
         </button>
       )}
     </div>
