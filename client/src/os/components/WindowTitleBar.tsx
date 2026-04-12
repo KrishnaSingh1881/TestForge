@@ -20,7 +20,7 @@ export default function WindowTitleBar({ windowId, title, isLocked, timerSlot }:
 
       {/* Title — center */}
       <div className="flex-1 text-center">
-        <span className="text-sm font-medium truncate" style={{ color: 'rgba(255,255,255,0.75)' }}>
+        <span className="text-sm font-medium truncate text-primary opacity-60">
           {title}
         </span>
       </div>

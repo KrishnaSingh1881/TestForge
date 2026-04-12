@@ -23,7 +23,7 @@ export default function TrafficLights({ windowId, isLocked }: TrafficLightsProps
 
   return (
     <div
-      className="flex items-center gap-2"
+      className="flex items-center gap-3"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >

@@ -3,6 +3,7 @@ import { motion, MotionValue } from 'framer-motion';
 import type { AppDefinition } from '../apps/registry';
 import { registerDockIconRef } from '../AppWindow';
 import { APP_ICONS } from './AppIcons';
+import BorderGlow from '../../components/BorderGlow';
 
 interface DockIconProps {
   app: AppDefinition;
@@ -91,39 +92,39 @@ export default function DockIcon({ app, isOpen, isActive, isMinimized, isLight, 
         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         className="relative"
       >
-        <div style={{
-          width: 54,
-          height: 54,
-          borderRadius: 14,
-          overflow: 'hidden',
-          cursor: 'pointer',
-          userSelect: 'none',
-          opacity: isMinimized ? 0.5 : 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: tileBg,
-          backdropFilter: 'blur(24px) saturate(200%)',
-          WebkitBackdropFilter: 'blur(24px) saturate(200%)',
-          border: tileBorder,
-          boxShadow: tileShadow,
-          transition: 'background 0.6s ease, border 0.6s ease, box-shadow 0.6s ease',
-        }}
-        className="hover:border-white/20"
+        <BorderGlow
+            glowColor={isLight ? '40 50 80' : '230 80 60'}
+            glowRadius={15}
+            glowIntensity={isLight ? 0.25 : 0.4}
+            borderRadius={14}
+            backgroundColor={tileBg}
+            className="no-shadow"
         >
-          <div className="transform scale-[0.85] transition-transform duration-500 flex items-center justify-center w-full h-full">
-            {IconComponent
-                ? <IconComponent />
-                : <span style={{ fontSize: 24 }}>{app.icon}</span>
-            }
-          </div>
-        </div>
-        
-        {/* Shine effect on hover */}
-        <motion.div 
-            animate={{ opacity: hovered ? 1 : 0 }}
-            className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 pointer-events-none rounded-2xl" 
-        />
+            <div style={{
+            width: 54,
+            height: 54,
+            borderRadius: 14,
+            overflow: 'hidden',
+            cursor: 'pointer',
+            userSelect: 'none',
+            opacity: isMinimized ? 0.5 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(24px) saturate(200%)',
+            WebkitBackdropFilter: 'blur(24px) saturate(200%)',
+            border: tileBorder,
+            transition: 'background 0.6s ease, border 0.6s ease',
+            }}
+            >
+            <div className="transform scale-[0.85] transition-transform duration-500 flex items-center justify-center w-full h-full">
+                {IconComponent
+                    ? <IconComponent />
+                    : <span style={{ fontSize: 24 }}>{app.icon}</span>
+                }
+            </div>
+            </div>
+        </BorderGlow>
       </motion.div>
 
       {/* Dot indicator */}

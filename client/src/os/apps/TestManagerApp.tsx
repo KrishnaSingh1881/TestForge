@@ -24,8 +24,8 @@ interface Test {
 
 type View = 'list' | 'create' | 'edit';
 
-const inputCls = 'w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-white/[0.05] border border-white/10 text-white focus:ring-2 focus:ring-indigo-500/50 transition-all';
-const labelCls = 'block text-[10px] font-black uppercase tracking-widest text-white/30 mb-1.5 ml-1';
+const inputCls = 'w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-black/5 border border-white/10 text-primary focus:ring-2 focus:ring-indigo-500/50 transition-all';
+const labelCls = 'block text-[10px] font-black uppercase tracking-widest text-secondary opacity-60 mb-1.5 ml-1';
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, { bg: string; color: string; icon: any }> = {
@@ -164,15 +164,15 @@ export default function TestManagerApp() {
   }, [tests, search]);
 
   return (
-    <div className="h-full flex flex-col bg-[#0c0c16]/60 backdrop-blur-2xl">
+    <div className="h-full flex flex-col bg-transparent">
       {/* Header */}
       <div className="flex items-center justify-between gap-6 p-6 border-b border-white/5">
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+          <h1 className="text-xl font-bold text-primary tracking-tight flex items-center gap-2">
             <FiFolder className="text-indigo-400" />
             Test Manager
           </h1>
-          <p className="text-[10px] font-black uppercase text-white/30 tracking-widest mt-0.5">
+          <p className="text-[10px] font-black uppercase text-secondary tracking-widest mt-0.5">
             {view === 'list' ? `Managing ${tests.length} academic evaluations` : editing ? `Editing: ${editing.title}` : 'Creating new evaluation'}
           </p>
         </div>
@@ -180,19 +180,19 @@ export default function TestManagerApp() {
         {view === 'list' ? (
           <div className="flex items-center gap-3">
              <div className="relative w-64 mr-2">
-                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                <input 
+                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary" />
+                 <input 
                     type="text" 
-                    placeholder="Quick search..."
+                    placeholder="Search..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                    className="w-full pl-10 pr-4 py-2 bg-black/5 border border-white/10 rounded-xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
                 />
             </div>
             <button onClick={handleCreate} className="px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-400 transition-all">+ New Test</button>
           </div>
         ) : (
-          <button onClick={() => setView('list')} className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-white/5 text-white/60 hover:bg-white/10 transition-all flex items-center gap-2">
+          <button onClick={() => setView('list')} className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-white/5 text-secondary hover:bg-white/10 transition-all flex items-center gap-2">
             <FiArrowLeft /> Cancel
           </button>
         )}
@@ -206,8 +206,8 @@ export default function TestManagerApp() {
         ) : view === 'list' ? (
           <div className="p-6">
             {filteredTests.length === 0 ? (
-                <div className="glass p-16 text-center border-dashed border-white/10">
-                    <p className="text-sm font-black text-white/30 uppercase tracking-[0.4em]">No matching tests found</p>
+                <div className="glass no-shadow p-16 text-center border-dashed border-white/10">
+                    <p className="text-sm font-black text-secondary uppercase tracking-[0.4em]">No matching tests found</p>
                 </div>
             ) : (
                 <AnimatedList 
@@ -216,23 +216,22 @@ export default function TestManagerApp() {
                   className="max-h-none"
                   gap={16}
                   renderItem={(t) => (
-                    <div className="group relative glass p-5 flex flex-col md:flex-row items-start md:items-center gap-6 transition-all hover:bg-white/[0.08] hover:border-indigo-500/30 overflow-hidden shadow-xl hover:shadow-indigo-500/5">
-                        <div className="absolute inset-0 bg-linear-to-r from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="group relative glass no-shadow p-5 flex flex-col md:flex-row items-start md:items-center gap-6 transition-all hover:bg-white/[0.08] hover:border-white/20 overflow-hidden">
                         
-                        <div className="relative p-4 bg-indigo-500/10 rounded-2xl group-hover:scale-105 transition-all duration-500">
+                        <div className="relative p-4 bg-white/[0.04] rounded-2xl group-hover:bg-white/[0.08] transition-all duration-500">
                             <GlassIcon id="folder" size="md" />
                         </div>
 
                         <div className="flex-1 min-w-0 relative">
                             <div className="flex items-center gap-3 mb-1.5">
-                                <h3 className="text-lg font-black text-white truncate tracking-tight uppercase group-hover:text-indigo-400 transition-colors">{t.title}</h3>
+                                <h3 className="text-lg font-black text-primary truncate tracking-tight uppercase group-hover:text-indigo-500 transition-colors">{t.title}</h3>
                                 <StatusBadge status={t.status} />
                             </div>
-                            <div className="flex flex-wrap items-center gap-4 text-[10px] font-black uppercase tracking-widest text-white/30">
-                                <span className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded"><FiBox className="text-indigo-400" /> {t.subject}</span>
-                                <span className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded"><FiUsers className="text-indigo-400" /> {t.year} • {t.division}</span>
-                                <span className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded"><FiClock className="text-indigo-400" /> {t.duration_minutes}m</span>
-                                <span className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded"><FiCalendar className="text-indigo-400" /> {new Date(t.start_time).toLocaleDateString()}</span>
+                            <div className="flex flex-wrap items-center gap-4 text-[10px] font-black uppercase tracking-widest text-secondary">
+                                <span className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded"><FiBox className="text-indigo-400" /> {t.subject}</span>
+                                <span className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded"><FiUsers className="text-indigo-400" /> {t.year} • {t.division}</span>
+                                <span className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded"><FiClock className="text-indigo-400" /> {t.duration_minutes}m</span>
+                                <span className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded"><FiCalendar className="text-indigo-400" /> {new Date(t.start_time).toLocaleDateString()}</span>
                             </div>
                         </div>
 
@@ -252,8 +251,8 @@ export default function TestManagerApp() {
                                     <button onClick={(e) => { e.stopPropagation(); openWindow('integrity', { testId: t.id, testTitle: t.title }); }} className="p-2.5 rounded-xl bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500 hover:text-white transition-all"><FiShield /></button>
                                 </>
                             )}
-                            <button onClick={(e) => { e.stopPropagation(); openWindow('question-bank', { testId: t.id, testTitle: t.title }); }} className="p-2.5 rounded-xl bg-white/10 text-white/40 hover:bg-white/20 hover:text-white transition-all transition-all"><FiSettings /></button>
-                            <button onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }} className="p-2.5 rounded-xl bg-white/10 text-white/40 hover:bg-red-500 hover:text-white transition-all"><FiTrash2 /></button>
+                            <button onClick={(e) => { e.stopPropagation(); openWindow('question-bank', { testId: t.id, testTitle: t.title }); }} className="p-2.5 rounded-xl bg-black/5 text-secondary hover:bg-white/20 hover:text-primary transition-all"><FiSettings /></button>
+                            <button onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }} className="p-2.5 rounded-xl bg-black/5 text-secondary hover:bg-red-500 hover:text-white transition-all"><FiTrash2 /></button>
                         </div>
                     </div>
                   )}
@@ -263,7 +262,7 @@ export default function TestManagerApp() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-8 max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
-            <h2 className="text-2xl font-black text-white tracking-widest uppercase border-b border-white/5 pb-4">{editing ? 'Edit Configuration' : 'Test Creation'}</h2>
+            <h2 className="text-2xl font-black text-primary tracking-widest uppercase border-b border-white/5 pb-4">{editing ? 'Edit Configuration' : 'Test Creation'}</h2>
             
             <div className="space-y-6">
                 <div>
@@ -287,15 +286,15 @@ export default function TestManagerApp() {
                         <label className={labelCls}>Target Year *</label>
                         <select value={year} onChange={e => setYear(e.target.value)} className={inputCls}>
                              <option value="">Select Target Year</option>
-                             {['FE', 'SE', 'TE', 'BE'].map(y => <option key={y} value={y} className="bg-[#0c0c16]">{y}</option>)}
+                             {['FE', 'SE', 'TE', 'BE'].map(y => <option key={y} value={y} className="bg-secondary">{y}</option>)}
                         </select>
                     </div>
                     <div>
                         <label className={labelCls}>Departmental Division *</label>
                         <select value={division} onChange={e => setDivision(e.target.value)} className={inputCls}>
                              <option value="">Select Division</option>
-                             <option value="ALL" className="bg-[#0c0c16]">All Divisions</option>
-                             {['A', 'B', 'C', 'D'].map(d => <option key={d} value={d} className="bg-[#0c0c16]">{d}</option>)}
+                             <option value="ALL" className="bg-secondary">All Divisions</option>
+                             {['A', 'B', 'C', 'D'].map(d => <option key={d} value={d} className="bg-secondary">{d}</option>)}
                         </select>
                     </div>
                 </div>
@@ -317,9 +316,9 @@ export default function TestManagerApp() {
                         <input type="number" min={1} value={questionsPerAttempt} onChange={e => setQuestionsPerAttempt(Number(e.target.value))} className={inputCls} />
                     </div>
                     <div className="flex items-center h-full pt-6">
-                         <label className="group flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-all flex-1">
+                     <label className="group flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-black/5 border border-white/5 hover:bg-black/10 transition-all flex-1">
                             <input type="checkbox" checked={randomize} onChange={e => setRandomize(e.target.checked)} className="w-5 h-5 accent-indigo-500 rounded-lg" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-white/50 group-hover:text-white transition-colors">Randomize question sequence</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-secondary opacity-60 group-hover:text-primary transition-colors">Randomize question sequence</span>
                         </label>
                     </div>
                 </div>

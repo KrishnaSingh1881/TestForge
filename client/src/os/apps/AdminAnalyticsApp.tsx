@@ -4,8 +4,8 @@ import {
   ResponsiveContainer, CartesianGrid, Legend,
 } from 'recharts';
 import api from '../../lib/axios';
-import { useLenis } from '../../hooks/useLenis';
 import { useOSStore } from '../store/useOSStore';
+import BorderGlow from '../../components/BorderGlow';
 
 interface TestRow {
   id: string; title: string; subject: string; year: string; division: string;
@@ -36,29 +36,36 @@ const inputStyle = {
   color: 'rgb(var(--text-primary))',
 };
 
-function StatCard({ label, value, color }: { label: string; value: string | number; color?: string }) {
+function StatCard({ label, value, color }: { label, value, color?: string }) {
   return (
-    <div className="glass p-5 text-center">
-      <p className="text-2xl font-bold" style={{ color: color ?? 'rgb(var(--accent))' }}>{value}</p>
-      <p className="text-xs mt-1" style={{ color: 'rgb(var(--text-secondary))' }}>{label}</p>
-    </div>
+    <BorderGlow 
+        glowColor={color?.replace('#', '') || '99 102 241'}
+        backgroundColor="transparent"
+        borderRadius={24}
+        glowIntensity={0.6}
+        className="no-shadow"
+    >
+      <div className="p-5 text-center">
+        <p className="text-2xl font-bold" style={{ color: color ?? 'rgb(var(--accent))' }}>{value}</p>
+        <p className="text-xs mt-1 text-secondary">{label}</p>
+      </div>
+    </BorderGlow>
   );
 }
 
 function DivTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="glass px-3 py-2 text-xs space-y-1">
-      <p className="font-semibold" style={{ color: 'rgb(var(--text-primary))' }}>{label}</p>
+    <div className="glass no-shadow px-3 py-2 text-xs space-y-1 bg-black/40 border-white/10 backdrop-blur-xl">
+      <p className="font-semibold text-primary">{label}</p>
       {payload.map((p: any) => (
-        <p key={p.name} style={{ color: p.fill }}>{p.name}: {p.value}%</p>
+        <p key={p.name} style={{ color: p.fill }} className="font-bold">{p.name}: {p.value}%</p>
       ))}
     </div>
   );
 }
 
 export default function AdminAnalyticsApp() {
-  const lenisRef = useLenis();
   const { openWindow } = useOSStore();
 
   // Filter state
@@ -141,55 +148,54 @@ export default function AdminAnalyticsApp() {
   const testOptions = useMemo(() => data?.tests ?? [], [data]);
 
   return (
-    <div ref={lenisRef} className="h-full overflow-auto p-6 space-y-6">
-
-      <h1 className="text-2xl font-bold" style={{ color: 'rgb(var(--text-primary))' }}>Analytics</h1>
+    <div className="h-full overflow-auto p-6 space-y-6 bg-transparent custom-scrollbar">
+      <h1 className="text-2xl font-bold text-primary">Analytics</h1>
 
       {/* Filter bar */}
-      <div className="glass p-4 flex flex-wrap gap-3 items-end">
+      <div className="glass no-shadow p-4 flex flex-wrap gap-3 items-end bg-black/5">
         <div>
-          <p className="text-xs mb-1" style={{ color: 'rgb(var(--text-secondary))' }}>Year</p>
+          <p className="text-xs mb-1 text-secondary opacity-60">Year</p>
           <select value={filters.year} onChange={e => setFilters(f => ({ ...f, year: e.target.value }))}
-            className={inputCls} style={inputStyle}>
+            className={`${inputCls} bg-black/5 border-white/10 text-primary`}>
             <option value="">All Years</option>
             {['FE','SE','TE','BE'].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
         <div>
-          <p className="text-xs mb-1" style={{ color: 'rgb(var(--text-secondary))' }}>Division</p>
+          <p className="text-xs mb-1 text-secondary opacity-60">Division</p>
           <select value={filters.division} onChange={e => setFilters(f => ({ ...f, division: e.target.value }))}
-            className={inputCls} style={inputStyle}>
+            className={`${inputCls} bg-black/5 border-white/10 text-primary`}>
             <option value="">All Divisions</option>
             {['A','B','C','D'].map(d => <option key={d} value={d}>Div {d}</option>)}
           </select>
         </div>
         <div>
-          <p className="text-xs mb-1" style={{ color: 'rgb(var(--text-secondary))' }}>Subject</p>
+          <p className="text-xs mb-1 text-secondary opacity-60">Subject</p>
           <select value={filters.subject} onChange={e => setFilters(f => ({ ...f, subject: e.target.value }))}
-            className={inputCls} style={inputStyle}>
+            className={`${inputCls} bg-black/5 border-white/10 text-primary`}>
             <option value="">All Subjects</option>
             {subjects.map((s: string) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div>
-          <p className="text-xs mb-1" style={{ color: 'rgb(var(--text-secondary))' }}>Test</p>
+          <p className="text-xs mb-1 text-secondary opacity-60">Test</p>
           <select value={filters.test_id} onChange={e => setFilters(f => ({ ...f, test_id: e.target.value }))}
-            className={inputCls} style={inputStyle}>
+            className={`${inputCls} bg-black/5 border-white/10 text-primary`}>
             <option value="">All Tests</option>
             {testOptions.map((t: TestRow) => <option key={t.id} value={t.id}>{t.title}</option>)}
           </select>
         </div>
         <div>
-          <p className="text-xs mb-1" style={{ color: 'rgb(var(--text-secondary))' }}>From</p>
+          <p className="text-xs mb-1 text-secondary opacity-60">From</p>
           <input type="date" value={filters.date_from}
             onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
-            className={inputCls} style={inputStyle} />
+            className={`${inputCls} bg-black/5 border-white/10 text-primary`} />
         </div>
         <div>
-          <p className="text-xs mb-1" style={{ color: 'rgb(var(--text-secondary))' }}>To</p>
+          <p className="text-xs mb-1 text-secondary opacity-60">To</p>
           <input type="date" value={filters.date_to}
             onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
-            className={inputCls} style={inputStyle} />
+            className={`${inputCls} bg-black/5 border-white/10 text-primary`} />
         </div>
         <button onClick={applyFilters} disabled={loading}
           className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
@@ -198,8 +204,7 @@ export default function AdminAnalyticsApp() {
         </button>
         {(Object.values(applied).some(Boolean)) && (
           <button onClick={() => { setFilters({ year:'',division:'',subject:'',test_id:'',date_from:'',date_to:'' }); setApplied({ year:'',division:'',subject:'',test_id:'',date_from:'',date_to:'' }); load({ year:'',division:'',subject:'',test_id:'',date_from:'',date_to:'' }); }}
-            className="text-xs px-3 py-1.5 rounded-lg transition-opacity hover:opacity-70"
-            style={{ color: 'rgb(var(--text-secondary))' }}>
+            className="text-xs px-3 py-1.5 rounded-lg text-secondary hover:opacity-100 transition-opacity">
             Clear
           </button>
         )}

@@ -148,18 +148,7 @@ const AnimatedList: React.FC<AnimatedListProps> = ({
                     </AnimatedItem>
                 ))}
             </div>
-            {showGradients && (
-                <>
-                    <div
-                        className="absolute top-0 left-0 right-0 h-12 bg-gradient-to-b from-[#0c0c16] to-transparent pointer-events-none transition-opacity duration-300 z-10"
-                        style={{ opacity: topGradientOpacity }}
-                    />
-                    <div
-                        className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-[#0c0c16] to-transparent pointer-events-none transition-opacity duration-300 z-10"
-                        style={{ opacity: bottomGradientOpacity }}
-                    />
-                </>
-            )}
+            {/* Gradients removed for plain look */}
         </div>
     );
 };

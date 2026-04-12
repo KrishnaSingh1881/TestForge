@@ -7,8 +7,8 @@
   --text-primary: 248 250 252;   /* slate-50  */
   --text-secondary: 148 163 184; /* slate-400 */
   --accent: 99 102 241;          /* indigo-500 */
-  --glass-bg: rgba(255 255 255 / 0.06);
-  --glass-border: rgba(255 255 255 / 0.12);
+  --glass-bg: rgba(255 255 255 / 0.08); /* slightly more opaque dark glass */
+  --glass-border: rgba(255 255 255 / 0.15);
 
   /* ── OS Shell tokens ── */
   --menubar-bg: rgba(15, 23, 42, 0.75);
@@ -18,6 +18,8 @@
   --traffic-red: #ff5f57;
   --traffic-yellow: #febc2e;
   --traffic-green: #28c840;
+
+  color-scheme: dark;
 }
 
 [data-theme="light"] {
@@ -26,24 +28,26 @@
   --text-primary: 40 25 8;       /* dark brown */
   --text-secondary: 120 85 45;   /* medium brown */
   --accent: 99 102 241;
-  --glass-bg: rgba(200 160 90 / 0.18);
-  --glass-border: rgba(180 130 60 / 0.28);
+  --glass-bg: rgba(255 235 210 / 0.55); /* noticeably more opaque warm glass */
+  --glass-border: rgba(120 70 30 / 0.35); /* stronger warm border */
 
-  /* ── OS Shell tokens (light — warm) ── */
-  --menubar-bg: rgba(225, 195, 145, 0.65);
-  --dock-bg: rgba(210, 175, 120, 0.4);
-  --window-chrome-bg: rgba(235, 215, 180, 0.6);
-  --window-titlebar-bg: rgba(225, 200, 160, 0.8);
+  /* ── OS Shell tokens (light — warm glass) ── */
+  --menubar-bg: rgba(245, 220, 180, 0.65);
+  --dock-bg: rgba(245, 220, 180, 0.4);
+  --window-chrome-bg: rgba(245, 230, 200, 0.5);
+  --window-titlebar-bg: rgba(255, 255, 255, 0.4);
+
+  color-scheme: light;
 }
 
 /* Smooth theme transition */
 *, *::before, *::after {
-  transition: background-color 0.4s ease, border-color 0.4s ease, color 0.3s ease;
+  transition: background-color 0.4s ease, border-color 0.4s ease, color 0.3s ease, box-shadow 0.4s ease;
 }
 
 html {
-  scroll-behavior: auto; /* Lenis handles this */
-  font-size: 14px; /* base — overridden by JS for font scale */
+  scroll-behavior: auto;
+  font-size: 14px;
 }
 
 /* Font scale classes applied to <html> */
@@ -62,31 +66,54 @@ body {
 /* Glassmorphism utility */
 .glass {
   background: var(--glass-bg);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
   border: 1px solid var(--glass-border);
   border-radius: 1rem;
 }
 
-/* Parallax layer helpers */
-.parallax-slow  { will-change: transform; }
-.parallax-fast  { will-change: transform; }
-
-/* ── VSCode layout tokens (always dark — never theme-dependent) ── */
-.vscode-layout {
-  --vscode-editor-bg: #1e1e1e;
-  --vscode-sidebar-bg: #252526;
-  --vscode-titlebar-bg: #3c3c3c;
-  --vscode-tab-active-bg: #1e1e1e;
-  --vscode-tab-inactive-bg: #2d2d2d;
-  --vscode-statusbar-bg: #007acc;
-  --vscode-statusbar-test-bg: #6c2fbb;
-  --vscode-terminal-bg: #1e1e1e;
-  --vscode-terminal-green: #4ec9b0;
-  --vscode-terminal-prompt: #569cd6;
-  --vscode-selection: rgba(0, 120, 212, 0.3);
-  --vscode-line-highlight: rgba(255, 255, 255, 0.04);
+[data-theme="light"] .glass {
+  /* Subtle dark tint to differentiate cards from main window background */
+  background-image: linear-gradient(rgba(40, 25, 8, 0.03), rgba(40, 25, 8, 0.03));
 }
+
+.no-shadow {
+  box-shadow: none !important;
+}
+
+/* Enhanced Glassmorphism Scrollbar — Global */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(var(--text-primary), 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 20px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--text-primary), 0.3);
+}
+
+.traffic-light {
+    width: 14px !important;
+    height: 14px !important;
+    min-width: 14px !important;
+    min-height: 14px !important;
+    border-radius: 50%;
+    border: 0.5px solid rgba(0,0,0,0.15);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    display: block !important;
+}
+.traffic-light:hover { filter: contrast(1.2) brightness(1.1); scale: 1.1; }
+.traffic-light-red { background: var(--traffic-red) !important; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
+.traffic-light-yellow { background: var(--traffic-yellow) !important; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
+.traffic-light-green { background: var(--traffic-green) !important; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
 
 /* ── OS Shell layout ── */
 .os-shell {
@@ -96,168 +123,50 @@ body {
   user-select: none;
 }
 
-/* Allow text selection inside app windows */
+/* App Window specific style */
+.app-window {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  border: 1.5px solid var(--glass-border);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(40px) saturate(210%);
+  -webkit-backdrop-filter: blur(40px) saturate(210%);
+  z-index: 50;
+  background-color: transparent;
+}
+
+[data-theme="dark"] .app-window {
+  background-color: rgba(15, 12, 35, 0.45);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"] .app-window {
+  background-color: rgba(255, 252, 245, 0.6);
+  background-image: linear-gradient(rgba(40, 25, 8, 0.05), rgba(40, 25, 8, 0.05)); /* Slightly darker brown tint for separation */
+  border-color: rgba(120, 85, 45, 0.3);
+  box-shadow: 0 20px 40px -12px rgba(120, 80, 20, 0.2);
+}
+
+.app-window-titlebar {
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="light"] .app-window-titlebar {
+  background: rgba(255, 255, 255, 0.25);
+  border-bottom: 1px solid rgba(120, 85, 45, 0.15);
+}
+
 .app-window-content {
+  flex: 1;
   user-select: text;
   overflow-y: auto;
   overflow-x: hidden;
   height: 100%;
-  /* Dark mode tokens inside windows */
-  --bg-primary: 15 23 42;
-  --bg-secondary: 22 30 50;
-  --text-primary: 248 250 252;
-  --text-secondary: 148 163 184;
-  --glass-bg: rgba(255 255 255 / 0.06);
-  --glass-border: rgba(255 255 255 / 0.1);
-  color: rgb(248 250 252);
 }
 
-/* App content divs that use h-full overflow-auto should just be min-height containers */
-.app-window-content > div {
-  min-height: 100%;
-}
-
-/* Light mode — warm sand tones inside windows */
-[data-theme="light"] .app-window-content {
-  --bg-primary: 60 40 15;
-  --bg-secondary: 80 55 25;
-  --text-primary: 40 25 8;
-  --text-secondary: 120 85 45;
-  --glass-bg: rgba(200 150 80 / 0.12);
-  --glass-border: rgba(180 130 60 / 0.25);
-  color: rgb(40 25 8);
-}
-
-/* Desktop wallpaper — handled by Desktop.tsx inline styles */
-
-/* Dock — no pill container, icons are individual tiles (see DockIcon.tsx) */
-
-/* Menu bar */
-.menu-bar {
-  background: var(--menubar-bg);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-bottom: 1px solid var(--glass-border);
-  transition: background 0.8s ease, border-color 0.8s ease;
-}
-
-/* App window chrome — high-fidelity liquid glass */
-.app-window {
-  background: rgba(15, 12, 35, 0.45);  /* More translucent */
-  backdrop-filter: blur(32px) saturate(210%); /* Higher blur and saturation */
-  -webkit-backdrop-filter: blur(32px) saturate(210%);
-  border: 1px solid rgba(255, 255, 255, 0.08); /* Finer border */
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: 
-    0 24px 60px -12px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(255, 255, 255, 0.03); /* Subtle inner edge */
-  transition: background 0.8s ease, border-color 0.8s ease;
-}
-
-.app-window-titlebar {
-  background: rgba(255, 255, 255, 0.03); /* Extremely light titlebar */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  transition: background 0.8s ease, border-color 0.8s ease;
-}
-
-[data-theme="light"] .app-window {
-  background: rgba(255, 255, 255, 0.35);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 24px 60px -12px rgba(120, 80, 20, 0.15);
-}
-
-[data-theme="light"] .app-window-titlebar {
-  background: rgba(235, 215, 180, 0.75);
-  border-bottom: 1px solid rgba(180, 130, 60, 0.2);
-}
-
-/* Traffic light buttons */
-.traffic-light {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
-  transition: filter 0.15s ease, transform 0.1s ease;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.traffic-light:hover { filter: brightness(1.15); transform: scale(1.1); }
-.traffic-light:active { transform: scale(0.92); }
-.traffic-light-red    { background: var(--traffic-red); }
-.traffic-light-yellow { background: var(--traffic-yellow); }
-.traffic-light-green  { background: var(--traffic-green); }
-
-/* Dock indicator dot */
-.dock-indicator {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.7);
-  margin: 0 auto;
-}
-
-
-/* ── Custom Glass Scrollbar ── */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15); /* More visible by default */
-  border-radius: 10px;
-  border: 1.5px solid rgba(255, 255, 255, 0.05); /* Slight separation from track */
-  backdrop-filter: blur(8px);
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25); /* Subtle highlight on hover */
-}
-
-/* For Firefox */
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
-}
-
-/* Hide horizontal scroll for containers that should only scroll vertically */
-.overflow-y-auto {
-    overflow-x: hidden;
-}
-
-/* Force dark interpretation of scrollbars for better contrast */
-:root {
-    color-scheme: dark;
-}
-
-/* ── Responsive overrides ── */
-/* ... existing content ... */
-
-/* Tablet mode (768px - 1023px) */
-@media (min-width: 768px) and (max-width: 1023px) {
-  .menu-bar {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-}
-
-/* Mobile mode (< 768px) */
-@media (max-width: 767px) {
-  /* App window bottom sheet */
-  .app-window {
-    border-radius: 1.5rem 1.5rem 0 0;
-  }
-}
-
-/* Desktop mode (>= 1024px) */
-@media (min-width: 1024px) {
-  .menu-bar {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-}
+/* Utility for theme mapping */
+.text-primary { color: rgb(var(--text-primary)); }
+.text-secondary { color: rgb(var(--text-secondary)); }

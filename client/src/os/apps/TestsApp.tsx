@@ -59,10 +59,10 @@ function TestCard({ test }: { test: Test }) {
       <div className="flex-1">
         <div className="flex items-start justify-between gap-3 mb-4">
              <div className="flex flex-col">
-                <h3 className="text-lg font-black text-white leading-tight uppercase tracking-tight group-hover:text-indigo-400 transition-colors">
+                <h3 className="text-lg font-black text-primary leading-tight uppercase tracking-tight group-hover:text-indigo-400 transition-colors">
                 {test.title}
                 </h3>
-                <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mt-1">{test.subject}</p>
+                <p className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] mt-1">{test.subject}</p>
              </div>
         </div>
 
@@ -140,14 +140,14 @@ export default function TestsApp() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col bg-[#0c0c16]/40 backdrop-blur-xl">
+    <div className="h-full flex flex-col bg-transparent">
       <div className="p-8 border-b border-white/5 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-            <h1 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3">
+            <h1 className="text-3xl font-black text-primary tracking-tighter flex items-center gap-3">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]" />
                 DASHBOARD
             </h1>
-            <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.5em] mt-1.5">Your Academic Evaluations</p>
+            <p className="text-[10px] font-black text-secondary uppercase tracking-[0.5em] mt-1.5">Your Academic Evaluations</p>
         </div>
 
         {user && (

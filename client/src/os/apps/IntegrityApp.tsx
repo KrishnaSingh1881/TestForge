@@ -4,6 +4,7 @@ import api from '../../lib/axios';
 import AnimatedList from '../../components/AnimatedList';
 import { FiArrowLeft, FiSearch, FiChevronRight, FiUser, FiCalendar, FiShield, FiAlertTriangle, FiCheckCircle } from 'react-icons/fi';
 import { GlassIcon } from '../components/AppIcons';
+import BorderGlow from '../../components/BorderGlow';
 
 interface BehavioralFlag { type: string; label: string; question_id: string; }
 interface BehavioralDetail {
@@ -59,11 +60,19 @@ function scoreColor(score: number | null) {
 
 function StatBox({ label, value, color, icon: Icon }: { label: string; value: string | number; color?: string; icon?: any }) {
   return (
-    <div className="glass p-5 flex flex-col items-center justify-center text-center group hover:bg-white/[0.05] transition-all">
-      {Icon && <Icon className="text-xl mb-3 opacity-40 group-hover:scale-110 transition-transform" style={{ color }} />}
-      <p className="text-2xl font-black tabular-nums tracking-tighter" style={{ color: color ?? 'rgb(var(--accent))' }}>{value}</p>
-      <p className="text-[10px] uppercase font-black tracking-widest mt-1.5 text-white/30">{label}</p>
-    </div>
+    <BorderGlow 
+        glowColor={color === '#4ade80' ? '142 50 65' : color === '#f87171' ? '0 50 60' : '230 60 70'}
+        backgroundColor="transparent"
+        borderRadius={24}
+        glowIntensity={0.4}
+        className="flex flex-col items-center justify-center text-center group hover:bg-black/5 transition-all"
+    >
+      <div className="p-5">
+        {Icon && <Icon className="text-xl mb-3 opacity-60 group-hover:scale-110 transition-transform" style={{ color }} />}
+        <p className="text-2xl font-black tabular-nums tracking-tighter" style={{ color: color ?? 'rgb(var(--accent))' }}>{value}</p>
+        <p className="text-[10px] uppercase font-black tracking-widest mt-1.5 text-secondary">{label}</p>
+      </div>
+    </BorderGlow>
   );
 }
 
@@ -98,8 +107,8 @@ function BehavioralPanel({ detail, flags }: { detail: BehavioralDetail[]; flags:
               { label: 'Unit Tests', value: d.test_runs_before_submit },
             ].map((s, idx) => (
               <div key={idx} className="flex flex-col">
-                <p className="text-sm font-black text-white" style={{ color: (s as any).warn ? '#f87171' : 'white' }}>{s.value}</p>
-                <p className="text-[9px] font-bold text-white/20 uppercase tracking-tighter mt-0.5">{s.label}</p>
+                <p className="text-sm font-black text-primary" style={{ color: (s as any).warn ? '#f87171' : undefined }}>{s.value}</p>
+                <p className="text-[9px] font-bold text-secondary uppercase tracking-tighter mt-0.5 opacity-60">{s.label}</p>
               </div>
             ))}
           </div>
@@ -200,27 +209,27 @@ export default function IntegrityApp({ testId, testTitle }: { testId?: string; t
       <div className="flex items-center gap-4 p-6 border-b border-white/5">
         {(view !== 'tests' || (view === 'tests' && testId)) && (
           <button onClick={handleBack} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
-            <FiArrowLeft className="text-white" />
+            <FiArrowLeft className="text-secondary" />
           </button>
         )}
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+          <h1 className="text-xl font-bold text-primary tracking-tight flex items-center gap-2">
             <FiShield className="text-indigo-500" />
             {view === 'tests' ? "Integrity Hub" : (selectedTest?.title || "Test Monitoring")}
           </h1>
-          <p className="text-[10px] font-black uppercase text-white/30 tracking-widest mt-0.5">
+          <p className="text-[10px] font-black uppercase text-secondary tracking-widest mt-0.5">
             {view === 'tests' ? "Select a test to analyze behavioral patterns" : `Analyzing ${rows.length} active sessions`}
           </p>
         </div>
         
         <div className="relative w-64">
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary opacity-40" />
             <input 
                 type="text" 
                 placeholder="Search..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                className="w-full pl-10 pr-4 py-2 bg-black/5 border border-white/10 rounded-xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
             />
         </div>
       </div>
@@ -241,18 +250,18 @@ export default function IntegrityApp({ testId, testTitle }: { testId?: string; t
                 containerClassName="w-full"
                 className="flex flex-col gap-4"
                 renderItem={(t) => (
-                  <div className="group relative glass p-5 flex items-center gap-5 transition-all hover:bg-white/[0.08] hover:border-indigo-500/30">
-                    <div className="p-3 bg-indigo-500/10 rounded-2xl group-hover:bg-indigo-500/20 transition-all duration-500">
+                  <div className="group relative glass no-shadow p-5 flex items-center gap-5 transition-all hover:bg-white/[0.08] hover:border-white/20">
+                    <div className="p-3 bg-white/5 rounded-2xl group-hover:bg-white/10 transition-all duration-500">
                         <GlassIcon id="shield" size="sm" />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-bold text-base truncate tracking-tight">{t.title}</h3>
+                        <h3 className="text-primary font-bold text-base truncate tracking-tight">{t.title}</h3>
                         <div className="flex items-center gap-3 mt-1.5">
-                            <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-white/5 rounded text-white/40">{t.subject}</span>
-                            <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-white/5 rounded text-white/40">{t.year} • {t.division}</span>
+                            <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-white/5 rounded text-secondary">{t.subject}</span>
+                            <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-white/5 rounded text-secondary">{t.year} • {t.division}</span>
                         </div>
                     </div>
-                    <FiChevronRight className="text-white/10 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                    <FiChevronRight className="text-secondary opacity-20 group-hover:text-primary group-hover:translate-x-1 transition-all" />
                   </div>
                 )}
                 onItemSelect={(t) => {
@@ -275,11 +284,21 @@ export default function IntegrityApp({ testId, testTitle }: { testId?: string; t
                     </div>
                 )}
 
-                <div className="flex items-center gap-3 bg-white/5 p-2 rounded-2xl border border-white/5 overflow-x-auto whitespace-nowrap scrollbar-hide">
-                    <p className="text-[10px] font-black text-white/20 uppercase tracking-widest px-4 mr-2 border-r border-white/10">Quick Filters:</p>
-                    <button onClick={() => setScoreFilter('all')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${scoreFilter === 'all' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'text-white/40 hover:bg-white/5'}`}>All</button>
-                    <button onClick={() => setScoreFilter('low')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${scoreFilter === 'low' ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' : 'text-white/40 hover:bg-white/5'}`}>High Risk</button>
-                    <button onClick={() => setScoreFilter('medium')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${scoreFilter === 'medium' ? 'bg-yellow-500 text-white shadow-lg shadow-yellow-500/30' : 'text-white/40 hover:bg-white/5'}`}>Review Required</button>
+                <div className="flex items-center gap-3 bg-black/5 p-2 rounded-2xl border border-white/5 overflow-x-auto whitespace-nowrap scrollbar-hide">
+                    <p className="text-[10px] font-black text-secondary uppercase tracking-widest px-4 mr-2 border-r border-white/10 opacity-60">Quick Filters:</p>
+                    <button onClick={() => setScoreFilter('all')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${scoreFilter === 'all' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'text-secondary opacity-60 hover:bg-black/5 hover:opacity-100'}`}>All</button>
+                    <button onClick={() => setScoreFilter('low')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${scoreFilter === 'low' ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' : 'text-secondary opacity-60 hover:bg-black/5 hover:opacity-100'}`}>High Risk</button>
+                    <button onClick={() => setScoreFilter('medium')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${scoreFilter === 'medium' ? 'bg-yellow-500 text-white shadow-lg shadow-yellow-500/30' : 'text-secondary opacity-60 hover:bg-black/5 hover:opacity-100'}`}>Review Required</button>
+                </div>
+
+                {/* Listing Header */}
+                <div className="flex items-center px-10 py-3 mt-4 opacity-40">
+                    <div className="flex-1 flex items-center gap-4">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Student Info</span>
+                    </div>
+                    <div className="hidden sm:block w-32 text-center text-[10px] font-black uppercase tracking-[0.2em]">Tab Switches</div>
+                    <div className="w-24 text-center text-[10px] font-black uppercase tracking-[0.2em]">Integrity</div>
+                    <div className="w-8" />
                 </div>
 
                 <AnimatedList 
@@ -292,34 +311,32 @@ export default function IntegrityApp({ testId, testTitle }: { testId?: string; t
                     const color = scoreColor(sc);
 
                     return (
-                        <div className={`overflow-hidden rounded-2xl border transition-all duration-300 ${isExpanded ? 'bg-white/[0.08] border-indigo-500/40 shadow-2xl' : 'bg-white/[0.03] border-white/5 hover:border-white/20'}`}>
-                            <div className="p-4 flex items-center gap-4 cursor-pointer" onClick={() => setExpanded(isExpanded ? null : row.attempt_id)}>
-                                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:rotate-6 transition-all">
-                                    <FiUser className="text-white/40 text-lg" />
+                        <div className={`overflow-hidden glass no-shadow rounded-2xl border transition-all duration-300 ${isExpanded ? 'bg-black/10 border-indigo-500/30' : 'border-white/10 hover:border-indigo-500/20 hover:bg-black/5'}`}>
+                            <div className="px-6 py-4 flex items-center gap-4 cursor-pointer" onClick={() => setExpanded(isExpanded ? null : row.attempt_id)}>
+                                <div className="w-10 h-10 rounded-full bg-black/5 flex items-center justify-center border border-white/10 shrink-0">
+                                    <FiUser className="text-secondary opacity-40" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="text-sm font-black text-white truncate uppercase tracking-tight">{row.student_name}</h3>
-                                    <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">{row.division} • {row.year}</p>
+                                    <h3 className="text-sm font-black text-primary truncate uppercase tracking-tight">{row.student_name}</h3>
+                                    <p className="text-[10px] text-secondary font-bold uppercase tracking-widest opacity-60">{row.division} • {row.year}</p>
                                 </div>
-                                <div className="hidden sm:flex flex-col items-center px-4 border-l border-r border-white/5">
-                                    <p className="text-[10px] font-black text-white/20 uppercase tracking-tighter mb-0.5">Tab Sw.</p>
-                                    <p className={`text-sm font-black ${row.tab_switches > 0 ? 'text-red-400' : 'text-white/40'}`}>{row.tab_switches}</p>
+                                <div className="hidden sm:flex flex-col items-center w-32 shrink-0">
+                                    <p className={`text-sm font-black ${row.tab_switches > 0 ? 'text-red-400' : 'text-secondary opacity-40'}`}>{row.tab_switches}</p>
                                 </div>
-                                <div className="text-right px-2 min-w-[70px]">
-                                    <p className="text-[10px] font-black text-white/20 uppercase tracking-tighter mb-0.5">Integrity</p>
+                                <div className="w-24 shrink-0 text-center">
                                     <p className="text-sm font-black" style={{ color }}>{sc ?? '--'}%</p>
                                 </div>
-                                <div className={`w-8 h-8 flex items-center justify-center transition-transform duration-500 ${isExpanded ? 'rotate-180' : ''}`}>
-                                    <FiChevronRight className="text-white/20" />
+                                <div className={`w-8 h-8 flex items-center justify-center transition-transform duration-500 shrink-0 ${isExpanded ? 'rotate-180' : ''}`}>
+                                    <FiChevronRight className="text-secondary opacity-20" />
                                 </div>
                             </div>
 
                             {isExpanded && (
                                 <div className="px-6 pb-6 pt-2 border-t border-white/5 animate-in slide-in-from-top-2 duration-300">
                                     <div className="mb-4 flex items-center gap-2">
-                                        <div className="h-px flex-1 bg-white/5" />
-                                        <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em]">Behavioral Telemetry</p>
-                                        <div className="h-px flex-1 bg-white/5" />
+                                        <div className="h-px flex-1 bg-black/5" />
+                                        <p className="text-[9px] font-black text-secondary tracking-[0.4em] opacity-40">Behavioral Telemetry</p>
+                                        <div className="h-px flex-1 bg-black/5" />
                                     </div>
                                     <BehavioralPanel
                                         detail={row.behavioral_detail}

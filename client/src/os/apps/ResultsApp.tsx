@@ -7,6 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 import AnimatedList from '../../components/AnimatedList';
 import { FiArrowLeft, FiSearch, FiChevronRight, FiUser, FiCalendar, FiClock, FiFileText } from 'react-icons/fi';
 import { GlassIcon } from '../components/AppIcons';
+import BorderGlow from '../../components/BorderGlow';
 
 interface ResultsAppProps {
   testId?: string;
@@ -40,7 +41,7 @@ function ScoreCircle({ score, total, pct }: { score: number; total: number; pct:
   return (
     <div className="relative w-40 h-40 mx-auto">
       <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
-        <circle cx="60" cy="60" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="10" />
+        <circle cx="60" cy="60" r={r} fill="none" stroke="var(--glass-border)" strokeWidth="10" />
         <circle
           cx="60"
           cy="60"
@@ -329,16 +330,16 @@ export default function ResultsApp({ testId, testTitle, attemptId }: ResultsAppP
       <div className="flex items-center gap-4 p-6 border-b border-white/5">
         {(view !== 'tests' || (view === 'tests' && testId)) && (
           <button onClick={handleBack} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
-            <FiArrowLeft className="text-white" />
+            <FiArrowLeft className="text-secondary" />
           </button>
         )}
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-white">
+          <h1 className="text-xl font-bold text-primary">
             {view === 'tests' && "Results Explorer"}
             {view === 'students' && (selectedTest?.title || "Student Results")}
             {view === 'details' && detailData?.attempt?.student_name}
           </h1>
-          <p className="text-xs text-white/50">
+          <p className="text-xs text-secondary">
             {view === 'tests' && "Select a test to view performance analytics"}
             {view === 'students' && "Select a student to view detailed results"}
             {view === 'details' && detailData?.attempt?.test_title}
@@ -352,7 +353,7 @@ export default function ResultsApp({ testId, testTitle, attemptId }: ResultsAppP
                     placeholder="Search..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                    className="w-full pl-10 pr-4 py-2 bg-black/5 border border-white/10 rounded-xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
                 />
             </div>
         )}
@@ -374,13 +375,13 @@ export default function ResultsApp({ testId, testTitle, attemptId }: ResultsAppP
                 containerClassName="w-full"
                 className="flex flex-col gap-4"
                 renderItem={(t) => (
-                  <div className="group relative glass p-5 flex items-center gap-5 transition-all hover:bg-white/[0.08] hover:border-white/20">
+                  <div className="group relative glass no-shadow p-5 flex items-center gap-5 transition-all hover:bg-white/[0.08] hover:border-white/20">
                     <div className="p-3 bg-indigo-500/20 rounded-2xl group-hover:scale-110 transition-transform duration-500">
                         <GlassIcon id="prism" size="sm" />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-bold text-base truncate">{t.title}</h3>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-white/50">
+                        <h3 className="text-primary font-bold text-base truncate">{t.title}</h3>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-secondary">
                             <span className="flex items-center gap-1"><FiCalendar className="text-indigo-400" /> {t.year}</span>
                             <span className="w-1 h-1 rounded-full bg-white/20" />
                             <span className="flex items-center gap-1"><FiFileText className="text-indigo-400" /> {t.subject}</span>
@@ -406,19 +407,19 @@ export default function ResultsApp({ testId, testTitle, attemptId }: ResultsAppP
                   const sc = a.percentage;
                   const color = gradeBand(sc ?? 0).color;
                   return (
-                    <div className="group relative glass p-4 flex items-center gap-4 transition-all hover:bg-white/[0.08] hover:border-white/20">
+                    <div className="group relative glass no-shadow p-4 flex items-center gap-4 transition-all hover:bg-white/[0.08] hover:border-white/20">
                         <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
-                            <FiUser className="text-white/40" />
+                            <FiUser className="text-secondary" />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <h3 className="text-white font-bold text-sm truncate">{a.student_name}</h3>
-                            <p className="text-[10px] text-white/40 mt-0.5 uppercase tracking-wider">{a.division} • {a.year}</p>
+                            <h3 className="text-primary font-bold text-sm truncate">{a.student_name}</h3>
+                            <p className="text-[10px] text-secondary mt-0.5 uppercase tracking-wider">{a.division} • {a.year}</p>
                         </div>
                         <div className="text-right">
                             <p className="text-sm font-black tabular-nums" style={{ color }}>{a.total_score}/{a.total_marks}</p>
-                            <p className="text-[10px] text-white/30 font-bold">{Math.round(sc ?? 0)}%</p>
+                            <p className="text-[10px] text-secondary font-bold">{Math.round(sc ?? 0)}%</p>
                         </div>
-                        <FiChevronRight className="text-white/20 group-hover:text-white transition-all" />
+                        <FiChevronRight className="text-secondary group-hover:text-primary transition-all" />
                     </div>
                   );
                 }}
@@ -432,52 +433,60 @@ export default function ResultsApp({ testId, testTitle, attemptId }: ResultsAppP
             {view === 'details' && detailData && (
               <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
                 {/* Score Hero */}
-                <div className="glass p-8 flex flex-col md:flex-row items-center gap-8 border-indigo-500/20 shadow-2xl shadow-indigo-500/10">
-                    <div className="shrink-0">
-                        <ScoreCircle 
-                            score={detailData.result?.total_score ?? 0} 
-                            total={detailData.result?.total_marks ?? 0} 
-                            pct={Math.round(detailData.result?.percentage ?? 0)} 
-                        />
-                        <p className="text-center text-3xl font-black mt-4 tracking-tighter" style={{ color: gradeBand(detailData.result?.percentage ?? 0).color }}>
-                            {Math.round(detailData.result?.percentage ?? 0)}%
-                        </p>
-                    </div>
-
-                    <div className="flex-1 w-full space-y-6">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
-                                <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">Rank</p>
-                                <p className="text-2xl font-black text-indigo-400">#{detailData.result?.rank || '--'}</p>
-                            </div>
-                            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
-                                <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">Status</p>
-                                <p className="text-2xl font-black" style={{ color: detailData.result?.pass_fail_overall ? '#4ade80' : '#f87171' }}>
-                                    {detailData.result?.pass_fail_overall ? 'PASSED' : 'FAILED'}
-                                </p>
-                            </div>
+                <BorderGlow 
+                    glowColor={gradeBand(detailData.result?.percentage ?? 0).color || '#6366f1'}
+                    backgroundColor="transparent"
+                    borderRadius={24}
+                    glowIntensity={0.6}
+                    className="no-shadow"
+                >
+                    <div className="p-8 flex flex-col md:flex-row items-center gap-8">
+                        <div className="shrink-0 text-center">
+                            <ScoreCircle 
+                                score={detailData.result?.total_score ?? 0} 
+                                total={detailData.result?.total_marks ?? 0} 
+                                pct={Math.round(detailData.result?.percentage ?? 0)} 
+                            />
+                            <p className="text-3xl font-black mt-4 tracking-tighter" style={{ color: gradeBand(detailData.result?.percentage ?? 0).color }}>
+                                {Math.round(detailData.result?.percentage ?? 0)}%
+                            </p>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-3">
-                            <div className="text-center p-3 rounded-xl bg-white/[0.02]">
-                                <p className="text-[9px] font-bold text-white/30 uppercase mb-1">MCQ</p>
-                                <p className="text-sm font-black text-white">{detailData.section_scores?.mcqScore ?? 0}/{detailData.section_scores?.mcqTotal ?? 0}</p>
+                        <div className="flex-1 w-full space-y-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="p-4 rounded-2xl bg-black/5 border border-white/5">
+                                    <p className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] mb-1">Rank</p>
+                                    <p className="text-2xl font-black text-indigo-400">#{detailData.result?.rank || '--'}</p>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-black/5 border border-white/5">
+                                    <p className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] mb-1">Status</p>
+                                    <p className="text-2xl font-black" style={{ color: detailData.result?.pass_fail_overall ? '#4ade80' : '#f87171' }}>
+                                        {detailData.result?.pass_fail_overall ? 'PASSED' : 'FAILED'}
+                                    </p>
+                                </div>
                             </div>
-                            <div className="text-center p-3 rounded-xl bg-white/[0.02]">
-                                <p className="text-[9px] font-bold text-white/30 uppercase mb-1">Coding</p>
-                                <p className="text-sm font-black text-white">{detailData.section_scores?.debugScore ?? 0}/{detailData.section_scores?.debugTotal ?? 0}</p>
-                            </div>
-                            <div className="text-center p-3 rounded-xl bg-white/[0.02]">
-                                <p className="text-[9px] font-bold text-white/30 uppercase mb-1">Time</p>
-                                <p className="text-sm font-black text-white">{detailData.attempt?.time_taken_mins || '--'}m</p>
+
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="text-center p-3 rounded-xl bg-black/5">
+                                    <p className="text-[9px] font-bold text-secondary uppercase mb-1">MCQ</p>
+                                    <p className="text-sm font-black text-primary">{detailData.section_scores?.mcqScore ?? 0}/{detailData.section_scores?.mcqTotal ?? 0}</p>
+                                </div>
+                                <div className="text-center p-3 rounded-xl bg-black/5">
+                                    <p className="text-[9px] font-bold text-secondary uppercase mb-1">Coding</p>
+                                    <p className="text-sm font-black text-primary">{detailData.section_scores?.debugScore ?? 0}/{detailData.section_scores?.debugTotal ?? 0}</p>
+                                </div>
+                                <div className="text-center p-3 rounded-xl bg-black/5">
+                                    <p className="text-[9px] font-bold text-secondary uppercase mb-1">Time</p>
+                                    <p className="text-sm font-black text-primary">{detailData.attempt?.time_taken_mins || '--'}m</p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </BorderGlow>
 
                 {/* Breakdown */}
                 <div className="space-y-4">
-                    <h2 className="text-xs font-black text-white/40 uppercase tracking-[0.3em] ml-2">Question Breakdown</h2>
+                    <h2 className="text-xs font-black text-secondary opacity-60 uppercase tracking-[0.3em] ml-2">Question Breakdown</h2>
                     <div className="grid gap-3">
                         {detailData.breakdown.map((q: any, i: number) => (
                             <QuestionRow key={q.question_id} q={q} idx={i} monacoTheme={monacoTheme} />

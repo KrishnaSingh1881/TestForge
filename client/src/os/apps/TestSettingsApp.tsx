@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import api from '../../lib/axios';
-import { useLenis } from '../../hooks/useLenis';
 
 interface Test {
   id: string;
@@ -61,7 +60,6 @@ function Toggle({ label, description, value, onChange }: {
 }
 
 export default function TestSettingsApp() {
-  const lenisRef = useLenis();
   const [tests, setTests] = useState<Test[]>([]);
   const [selectedTestId, setSelectedTestId] = useState('');
   const [settings, setSettings] = useState<TestSettings>(DEFAULT_SETTINGS);
@@ -104,9 +102,9 @@ export default function TestSettingsApp() {
   }
 
   return (
-    <div ref={lenisRef} className="h-full overflow-auto p-6 space-y-6">
+    <div className="h-full overflow-auto p-6 space-y-6 bg-transparent custom-scrollbar">
       <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'rgb(var(--text-primary))' }}>Test Settings</h1>
+        <h1 className="text-2xl font-bold text-primary">Test Settings</h1>
         <p className="text-sm mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>
           Configure the test environment for each test
         </p>
