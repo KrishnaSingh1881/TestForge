@@ -22,8 +22,9 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
-# Kiro specs (optional — remove if you want to track these)
-# .kiro/
+# Kiro IDE specs (local only)
+.kiro/
+.kiro
 
 # Local files
 test.md
