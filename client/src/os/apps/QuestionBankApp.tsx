@@ -188,6 +188,13 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
   }
 
   const filtered = allQuestions.filter(q => {
+    // 1. Auto-filter by subject if we are inside a test context
+    if (activeTest && screen === 'add-question') {
+      const qSub = q.topic_tag?.toLowerCase() || q.language?.toLowerCase() || '';
+      const tSub = activeTest.subject?.toLowerCase() || '';
+      if (tSub && !qSub.includes(tSub) && !tSub.includes(qSub)) return false;
+    }
+
     if (typeFilter && q.type !== typeFilter) return false;
     if (search.trim() && !q.statement.toLowerCase().includes(search.toLowerCase())) return false;
     return true;

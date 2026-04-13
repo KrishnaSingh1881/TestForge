@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { supabase } from '../supabase.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { tokenise, jaccardSimilarity } from '../lib/similarity.js';
+import { auditAttempt } from '../lib/auditor.js';
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -426,6 +427,81 @@ router.patch('/flags/:id/verdict', async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
   return res.json({ flag: data });
+});
+
+// ── GET /admin/tests/:id/questions-meta ───────────────────────
+router.get('/tests/:id/questions-meta', async (req, res) => {
+  const { id: testId } = req.params;
+  
+  // 1. Get correct question IDs for this test
+  const { data: tq, error: tqErr } = await supabase
+    .from('test_questions')
+    .select('question_id')
+    .eq('test_id', testId);
+
+  if (tqErr) {
+    console.error('[ADMIN_API] Test Questions Join Error:', tqErr);
+    return res.status(500).json({ error: tqErr.message });
+  }
+
+  const qIds = (tq ?? []).map(t => t.question_id);
+  if (!qIds.length) return res.json({ questions: [] });
+
+  // 2. Fetch the metadata for those IDs
+  const { data: questions, error: qErr } = await supabase
+    .from('question_bank')
+    .select('id, statement, type, difficulty')
+    .in('id', qIds);
+
+  if (qErr) {
+    console.error('[ADMIN_API] Question Bank Fetch Error:', qErr);
+    return res.status(500).json({ error: qErr.message });
+  }
+
+  res.json({ questions });
+});
+
+// ── POST /admin/attempts/:id/audit ───────────────────────────
+router.post('/attempts/:id/audit', async (req, res) => {
+  const { id: attemptId } = req.params;
+
+  try {
+    // 1. Fetch attempt and summary metrics
+    const { data: attempt, error: aErr } = await supabase
+      .from('attempts')
+      .select('*, results(percentage)')
+      .eq('id', attemptId)
+      .single();
+
+    if (aErr || !attempt) return res.status(404).json({ error: 'Attempt not found' });
+
+    // 2. Fetch all responses for this attempt
+    const { data: responses } = await supabase
+      .from('responses')
+      .select('submitted_code, time_spent_seconds, question_bank(statement)')
+      .eq('attempt_id', attemptId);
+
+    const questions = responses.map(r => ({ statement: r.question_bank.statement }));
+    const aggregateCode = responses.map(r => r.submitted_code).join('\n\n');
+    const totalTime = responses.reduce((acc, curr) => acc + (curr.time_spent_seconds || 0), 0);
+    const pastedChars = responses.reduce((acc, curr) => {
+        // Assume behavioral_meta has paste count if we tracked it, otherwise 0
+        return acc + 0; 
+    }, 0);
+
+  const auditData = {
+      total_time_seconds: totalTime,
+      violation_count: attempt.tab_switches + attempt.focus_lost_count,
+      pasted_chars_total: pastedChars,
+      code_final: aggregateCode
+    };
+
+    const result = await auditAttempt(auditData, questions, []);
+    res.json(result);
+
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 export default router;

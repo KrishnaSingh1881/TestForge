@@ -103,6 +103,15 @@ export const APP_REGISTRY: AppDefinition[] = [
     allowedRoles: ['admin', 'super_admin', 'master_admin'],
     singleton: true,
   },
+  {
+    id: 'ghost',
+    name: 'Ghost student',
+    icon: '👻',
+    defaultSize: { width: 1100, height: 720 },
+    defaultPosition: { x: 60, y: 40 },
+    allowedRoles: ['admin', 'super_admin', 'master_admin'],
+    singleton: true,
+  },
 ];
 
 /** Returns apps visible in the Dock for a given role */

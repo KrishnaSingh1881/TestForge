@@ -1,73 +1,64 @@
-import { Router } from 'express';
-import OpenAI from 'openai';
-import { supabase } from '../supabase.js';
-import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import express from 'express';
+import axios from 'axios';
 
-const router = Router();
-router.use(requireAuth, requireAdmin);
+const router = express.Router();
 
-// Clients
-const localClient = new OpenAI({
-  apiKey: 'ollama',
-  baseURL: 'http://localhost:11434/v1',
-});
+const OLLAMA_BASE_URL = 'http://localhost:11434';
+const OLLAMA_MODEL = 'deepseek-coder-v2:16b';
 
-const nvidiaClient = new OpenAI({
-  apiKey: process.env.NVIDIA_API_KEY,
-  baseURL: 'https://integrate.api.nvidia.com/v1',
-});
-
-// Model Chain
-const LOCAL_MODEL = 'deepseek-coder-v2:16b';
-const FALLBACK_MODELS = [
-  'meta/llama-3.3-70b-instruct',
-  'nvidia/llama-3.1-405b-instruct',
-  'meta/llama-3.1-8b-instruct'
-];
-
-async function callAI(prompt, type = 'Generation') {
-  const start = Date.now();
-  console.log(`\n[AI ENGINE] 🚀 Starting ${type}...`);
-
-  // 1. Try Local First
+// Central AI caller with fallback logic
+async function callAI(prompt, taskName) {
+  console.log(`\n[AI ENGINE] 🚀 Starting ${taskName}...`);
+  
+  // 1. Try Local Ollama
   try {
-    console.log(`[AI ENGINE] 🤖 Attempting Local: ${LOCAL_MODEL}`);
-    const completion = await localClient.chat.completions.create({
-      model: LOCAL_MODEL,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-      max_tokens: 4096,
+    console.log(`[AI ENGINE] 🤖 Attempting Local: ${OLLAMA_MODEL}`);
+    const resp = await axios.post(`${OLLAMA_BASE_URL}/api/generate`, {
+      model: OLLAMA_MODEL,
+      prompt: prompt,
+      stream: false,
+      options: { temperature: 0.1 }
     });
-    return processResponse(completion, start, LOCAL_MODEL);
-  } catch (localErr) {
-    console.warn(`[AI ENGINE] ⚠️ Local failed: ${localErr.message}`);
+
+    const text = resp.data.response;
+    return processJsonResponse(text);
+  } catch (localError) {
+    console.log(`[AI ENGINE] ⚠️ Local failed: ${localError.message}`);
     
-    // 2. Cascade through NVIDIA Fallbacks
-    for (const model of FALLBACK_MODELS) {
+    // 2. Fallback Chain (NVIDIA NIM)
+    const models = [
+      'meta/llama-3.3-70b-instruct',
+      'nvidia/llama-3.1-405b-instruct',
+      'meta/llama-3.1-8b-instruct'
+    ];
+
+    for (const model of models) {
       try {
         console.log(`[AI ENGINE] ☁️ Attempting NVIDIA Fallback: ${model}`);
-        const completion = await nvidiaClient.chat.completions.create({
-          model: model,
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.3,
-          max_tokens: 4096,
-        });
-        return processResponse(completion, start, model);
-      } catch (nimErr) {
-        console.warn(`[AI ENGINE] ⚠️ Fallback ${model} failed: ${nimErr.message}`);
-        continue; // Try next model
+        const response = await axios.post(
+          'https://integrate.api.nvidia.com/v1/chat/completions',
+          {
+            model: model,
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.1,
+            max_tokens: 2048,
+          },
+          { headers: { Authorization: `Bearer ${process.env.NVIDIA_API_KEY}` } }
+        );
+
+        const text = response.data.choices[0].message.content;
+        console.log(`[AI ENGINE] ✅ Success! [${model}]`);
+        return processJsonResponse(text);
+      } catch (fallbackError) {
+        console.log(`[AI ENGINE] ❌ Fallback failed [${model}]: ${fallbackError.message}`);
       }
     }
-  }
 
-  throw new Error('All AI models (Local & Cloud) failed to respond.');
+    throw new Error('All AI models failed to fulfill the request.');
+  }
 }
 
-function processResponse(completion, startTime, modelName) {
-    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-    const raw = completion.choices[0]?.message?.content?.trim() ?? '';
-    const text = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-    
+function processJsonResponse(text) {
     const sArr = text.indexOf('[');
     const sObj = text.indexOf('{');
     let s = -1, e = -1;
@@ -77,39 +68,25 @@ function processResponse(completion, startTime, modelName) {
     
     if (s === -1 || e === -1) throw new Error('AI output was not in valid JSON format.');
 
-    const result = JSON.parse(text.slice(s, e + 1));
-    const finalData = result.variants || result.test_cases || result;
-    
-    const count = Array.isArray(finalData) ? finalData.length : 1;
-    console.log(`[AI ENGINE] ✅ Success! [${modelName}] generated ${count} item(s) in ${duration}s\n`);
-    return finalData;
+    let jsonStr = text.slice(s, e + 1);
+
+    // Sanitize raw newlines within string values
+    jsonStr = jsonStr.replace(/"([^"]*)"/g, (match) => {
+      return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+    });
+
+    const result = JSON.parse(jsonStr);
+    return result.variants || result.test_cases || result;
 }
 
 // ── GENERATE VARIANTS ─────────────────────────────────────────
 router.post('/generate-variants', async (req, res) => {
-  const { question_id, count = 3 } = req.body;
-  const { data: q } = await supabase.from('question_bank').select('*').eq('id', question_id).single();
-  if (!q) return res.status(404).json({ error: 'Question not found' });
-
-  const prompt = `Act as an Unrelenting Code Saboteur and Competitive Programming Architect.
-Your goal is to SABOTAGE this CORRECT ${q.language} code to create a debugging challenge.
-
-Correct Code:
-${q.correct_code}
-
-CURRENT MISSION:
-1. Generate ${count} unique buggy variants.
-2. For each variant, introduce EXACTLY ${q.bug_count || 1} bugs of ${q.difficulty || 'medium'} difficulty.
-- The "diff" and "buggy_code" MUST be perfectly synced.
-- The "buggy_code" MUST preserve the original multi-line structure and indentation. Do NOT squash it onto one line.
-
-DIFFICULTY GUIDELINES:
-- EASY: Syntax errors (semicolons, brackets), obvious typos, beginner mistakes.
-- MEDIUM: Logical errors, off-by-one, wrong math operators, incorrect return values.
-- HARD: Subtle logic traps, edge case failures, complex boolean errors, memory/pointer confusion (if C++).
-
-Rule: ANYTHING goes, but keep the code multi-line and readable.
-Return ONLY JSON: [{"buggy_code": "string with \\n lines", "diff": [...]}]`;
+  const { correct_code, statement, count, difficulty, language } = req.body;
+  const prompt = `Act as an UNRELENTING and BRUTAL Code Saboteur.
+Task: Create ${count} ${difficulty} level buggy variants in ${language}.
+Problem: ${statement}
+Correct Code: ${correct_code}
+Return JSON array with "buggy_code" and "explanation".`;
 
   try {
     const variants = await callAI(prompt, 'Variant Generation');
@@ -121,12 +98,9 @@ Return ONLY JSON: [{"buggy_code": "string with \\n lines", "diff": [...]}]`;
 
 // ── GENERATE TEST CASES ───────────────────────────────────────
 router.post('/generate-test-cases', async (req, res) => {
-  const { statement, solution_code, language } = req.body;
-  const prompt = `Act as a Quality Assurance Engineer. Generate 5 software test cases for:
-Task: "${statement}"
-Solution: ${solution_code}
-Language: ${language}
-Return ONLY a JSON array: [{"input": "...", "expected_output": "...", "is_hidden": false}]`;
+  const { correct_code, statement, count } = req.body;
+  const prompt = `Generate ${count} test cases. Problem: ${statement}. Solution: ${correct_code}. 
+Return JSON array: [{"input": "...", "expected_output": "..."}]`;
 
   try {
     const tcs = await callAI(prompt, 'Test Case Generation');

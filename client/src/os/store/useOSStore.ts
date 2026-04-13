@@ -10,7 +10,8 @@ export type AppType =
   | 'integrity'
   | 'admin-analytics'
   | 'code-editor'
-  | 'test-settings';
+  | 'test-settings'
+  | 'ghost';
 
 export type ResponsiveMode = 'desktop' | 'tablet' | 'mobile';
 
@@ -63,6 +64,7 @@ const APP_DEFAULTS: Record<AppType, { size: { width: number; height: number }; p
   'admin-analytics': { size: { width: 960,  height: 660 }, position: { x: 110, y: 65 } },
   'code-editor':     { size: { width: 1100, height: 720 }, position: { x: 70,  y: 45 } },
   'test-settings':   { size: { width: 720,  height: 580 }, position: { x: 130, y: 70 } },
+  'ghost':           { size: { width: 1100, height: 720 }, position: { x: 60,  y: 40 } },
 };
 
 const APP_TITLES: Record<AppType, string> = {
@@ -76,11 +78,12 @@ const APP_TITLES: Record<AppType, string> = {
   'admin-analytics': 'Analytics',
   'code-editor':     'Code Editor',
   'test-settings':   'Test Settings',
+  'ghost':           'Ghost Test',
 };
 
 // Singleton app types — only one instance allowed
 const SINGLETON_APPS: Set<AppType> = new Set([
-  'tests', 'analytics', 'question-bank', 'test-manager', 'admin-analytics', 'results', 'integrity', 'code-editor', 'test-settings',
+  'tests', 'analytics', 'question-bank', 'test-manager', 'admin-analytics', 'results', 'integrity', 'code-editor', 'test-settings', 'ghost',
 ]);
 
 export const useOSStore = create<OSStore>((set, get) => ({

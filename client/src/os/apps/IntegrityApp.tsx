@@ -32,17 +32,25 @@ function riskLabel(score: number | null) {
 function AdminAttemptAudit({ attemptId, testId, studentName }: {
   attemptId: string; testId: string; studentName: string;
 }) {
+  // ── AI Audit Logic ──────────────────────────────────────────
   const [data, setData] = useState<any>(null);
   const [questions, setQuestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditResult, setAuditResult] = useState<{
+    suspicion_score: number;
+    narrative: string;
+    primary_flag: string;
+  } | null>(null);
 
   useEffect(() => {
     Promise.all([
       api.get(`/admin/tests/${testId}/integrity`),
       api.get(`/admin/tests/${testId}/questions-meta`).catch(() => ({ data: { questions: [] } })),
     ]).then(([intRes, qRes]) => {
-      const studentData = (intRes.data.attempts ?? []).find((a: any) => a.attempt_id === attemptId);
+      const studentData = (intRes.data.attempts ?? []).find((a: any) => a.id === attemptId || a.attempt_id === attemptId);
       if (!studentData) { setError('Student audit not found'); return; }
       setData(studentData);
       setQuestions(qRes.data.questions ?? []);
@@ -68,10 +76,6 @@ function AdminAttemptAudit({ attemptId, testId, studentName }: {
   const medFlags    = (data.behavioral_flags ?? []).filter((f: any) => f.severity === 'medium');
   const allFlags    = [...highFlags, ...medFlags];
   const details     = data.behavioral_detail ?? [];
-
-  // Map details by question_id for quick lookup
-  const detailByQ: Record<string, any> = {};
-  details.forEach((d: any) => { if (d.question_id) detailByQ[d.question_id] = d; });
 
   const severityStyle = (sev: string) =>
     sev === 'high'
@@ -101,8 +105,60 @@ function AdminAttemptAudit({ attemptId, testId, studentName }: {
   const codingDetails = details.filter((d: any) => d.question_type === 'debugging' || d.question_type === 'coding' || (!d.question_type && d.test_runs_before_submit !== undefined));
   const mcqDetails = details.filter((d: any) => d.question_type === 'mcq_single' || d.question_type === 'mcq_multi');
 
+  const runAiAudit = async () => {
+    setAuditLoading(true);
+    try {
+      const res = await api.post(`/admin/attempts/${attemptId}/audit`);
+      setAuditResult(res.data);
+    } catch (e) {
+      alert('AI Audit failed. Ensure local Ollama is running.');
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
   return (
     <div className="p-8 space-y-6 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-6 pb-16">
+
+      <div className={`p-6 rounded-[2rem] border transition-all duration-500 ${auditResult ? 'border-red-500/20 bg-red-500/[0.02]' : 'border-white/5 bg-white/[0.01]'}`}>
+         <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-1">
+               <h3 className="text-xs font-black text-primary uppercase tracking-widest flex items-center gap-2">
+                  Forensic Audit
+                  {auditResult && <span className="text-[9px] text-red-400 font-bold opacity-60">ANALYSIS COMPLETE</span>}
+               </h3>
+               <p className="text-[9px] font-bold text-secondary uppercase tracking-widest opacity-30">Local Infrastructure Mode</p>
+            </div>
+            {!auditResult && (
+               <button onClick={runAiAudit} disabled={auditLoading}
+                       className="px-5 py-2 hover:bg-white/5 text-white/40 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all">
+                  {auditLoading ? 'Auditing...' : 'Run Audit'}
+               </button>
+            )}
+         </div>
+
+         {auditResult && (
+            <div className="mt-6 pt-6 border-t border-white/5 space-y-4 animate-in fade-in">
+               <div className="flex items-baseline gap-4">
+                  <span className="text-[10px] font-black text-secondary uppercase tracking-widest opacity-30">Risk Score:</span>
+                  <span className={`text-xl font-black tabular-nums ${auditResult.suspicion_score > 60 ? 'text-red-500' : 'text-amber-500'}`}>
+                    {auditResult.suspicion_score}%
+                  </span>
+               </div>
+               <div>
+                  <span className="text-[10px] font-black text-secondary uppercase tracking-widest opacity-30 block mb-1">Observation:</span>
+                  <p className="text-sm text-white/80 font-medium leading-relaxed max-w-2xl">
+                     {auditResult.narrative}
+                  </p>
+               </div>
+               <div className="pt-2">
+                  <span className="text-[9px] font-black text-red-500/60 uppercase tracking-widest py-1 px-3 bg-red-500/10 rounded-full border border-red-500/10">
+                    Flag: {auditResult.primary_flag}
+                  </span>
+               </div>
+            </div>
+         )}
+      </div>
 
       {/* Hero integrity score */}
       <div className="glass no-shadow p-10 rounded-[3rem] border-white/5 flex items-center gap-10">
