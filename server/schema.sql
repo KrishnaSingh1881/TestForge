@@ -30,7 +30,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
-  CREATE TYPE variant_source AS ENUM ('gemini', 'manual');
+  CREATE TYPE variant_source AS ENUM ('gemini', 'manual', 'local-ollama', 'ai');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN

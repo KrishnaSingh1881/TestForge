@@ -119,8 +119,15 @@ export default function VariantReviewPanel({ correctCode, language, variants, qu
   async function approve(v: Variant) {
     setLoadingId(v.id);
     try {
-      const { data } = await api.patch(`/questions/variants/${v.id}/approve`);
+      // POSTing the data because it's unsaved in the DB
+      const { data } = await api.post(`/questions/debug/${questionId}/approve-variant`, {
+        buggy_code: v.buggy_code,
+        diff_json: v.diff_json,
+        generated_by: v.generated_by
+      });
       onApprove(data.variant);
+    } catch (e: any) {
+      alert(e.response?.data?.error ?? 'Approval failed');
     } finally {
       setLoadingId(null);
     }

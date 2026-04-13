@@ -247,37 +247,41 @@ router.get('/debug/:id/variants', async (req, res) => {
   return res.json({ variants });
 });
 
-// ── PATCH /variants/:id/approve ──────────────────────────────
-router.patch('/variants/:id/approve', async (req, res) => {
+// ── POST /questions/debug/:id/approve-variant ────────────────
+router.post('/debug/:id/approve-variant', async (req, res) => {
   const { id } = req.params;
+  const { buggy_code, diff_json, generated_by } = req.body;
 
-  const { data: v } = await supabase
-    .from('debug_variants')
-    .select('id, question_id')
+  const { data: q } = await supabase
+    .from('question_bank')
+    .select('id, created_by, bug_count, difficulty, language')
     .eq('id', id)
     .single();
 
-  if (!v) return res.status(404).json({ error: 'Variant not found' });
-
-  // Verify admin owns the parent question
-  const { data: q } = await supabase
-    .from('question_bank')
-    .select('created_by')
-    .eq('id', v.question_id)
-    .single();
-
-  if (!q || q.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+  if (!q) return res.status(404).json({ error: 'Question not found' });
+  if (q.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
 
   const { data, error } = await supabase
     .from('debug_variants')
-    .update({ is_approved: true, approved_at: new Date().toISOString() })
-    .eq('id', id)
+    .insert({
+      question_id: id,
+      generated_by: 'local-ollama',
+      buggy_code,
+      diff_json,
+      bug_count: q.bug_count,
+      difficulty: q.difficulty,
+      language: q.language,
+      is_approved: true,
+      approved_at: new Date().toISOString()
+    })
     .select()
     .single();
 
   if (error) return res.status(500).json({ error: error.message });
-  return res.json({ variant: data });
+  return res.status(201).json({ variant: data });
 });
+
+// ── PATCH /variants/:id/approve ──────────────────────────────
 
 // ── PATCH /variants/:id/reject ───────────────────────────────
 router.patch('/variants/:id/reject', async (req, res) => {
@@ -436,9 +440,7 @@ router.post('/import', upload.single('file'), async (req, res) => {
   });
 });
 
-export default router;
 
-// ── GET /questions/test/:testId — list questions attached to a test ──
 router.get('/test/:testId', async (req, res) => {
   const { testId } = req.params;
 
@@ -488,3 +490,6 @@ router.delete('/test-question/:id', async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   return res.json({ message: 'Detached' });
 });
+
+export default router;
+

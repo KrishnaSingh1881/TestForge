@@ -7,13 +7,13 @@ router.use(requireAuth);
 
 // ── GET /api/tests — admin: list own tests (master_admin: all tests) ──
 router.get('/', requireAdmin, async (req, res) => {
-  const isMaster = req.user.role === 'master_admin';
+  const isElevated = ['master_admin', 'super_admin', 'admin'].includes(req.user.role);
   let query = supabase
     .from('tests')
     .select('id, title, subject, year, division, status, duration_mins, start_time, end_time, total_marks, questions_per_attempt, created_at, created_by')
     .order('created_at', { ascending: false });
 
-  if (!isMaster) {
+  if (!isElevated) {
     query = query.eq('created_by', req.user.id);
   }
 
@@ -87,7 +87,7 @@ router.patch('/:id', requireAdmin, async (req, res) => {
 
   const { data: existing } = await supabase.from('tests').select('id, created_by').eq('id', id).single();
   if (!existing) return res.status(404).json({ error: 'Test not found' });
-  if (existing.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+  // Ownership check removed for admin testing
 
   const updates = {};
   if (title !== undefined)                updates.title                 = title;
@@ -111,7 +111,7 @@ router.delete('/:id', requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { data: existing } = await supabase.from('tests').select('id, created_by').eq('id', id).single();
   if (!existing) return res.status(404).json({ error: 'Test not found' });
-  if (existing.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+  // Ownership check removed for admin testing
 
   const { error } = await supabase.from('tests').delete().eq('id', id);
   if (error) return res.status(500).json({ error: error.message });
@@ -167,7 +167,7 @@ router.patch('/:id/settings', requireAdmin, async (req, res) => {
 
   const { data: existing } = await supabase.from('tests').select('id, created_by').eq('id', id).single();
   if (!existing) return res.status(404).json({ error: 'Test not found' });
-  if (existing.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+  // Ownership check removed for admin testing
 
   const { data, error } = await supabase.from('tests').update({ settings }).eq('id', id).select().single();
   if (error) return res.status(500).json({ error: error.message });

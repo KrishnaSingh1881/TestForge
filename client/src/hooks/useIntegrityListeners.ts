@@ -5,48 +5,42 @@ interface Options {
   attemptId: string | null;
   active: boolean;
   onEvent: (msg: string) => void;
-  onTabSwitchCount?: (count: number) => void; // fired with the NEW server-confirmed count
+  onTabSwitchCount?: (count: number) => void;
 }
 
 export function useIntegrityListeners({ attemptId, active, onEvent, onTabSwitchCount }: Options) {
-  // Debounce: ignore rapid duplicate events within 2s
   const lastEvent = useRef<Record<string, number>>({});
 
   useEffect(() => {
     if (!active || !attemptId) return;
 
-    function debounced(key: string, fn: () => void) {
+    function report(key: string, eventName: string, points: number) {
       const now = Date.now();
-      if ((lastEvent.current[key] ?? 0) + 2000 > now) return;
+      // Reduced debounce for more accurate count, but still prevent spam
+      if ((lastEvent.current[key] ?? 0) + 500 > now) return;
       lastEvent.current[key] = now;
-      fn();
+
+      api.patch(`/attempts/${attemptId}/integrity`, { event: eventName })
+        .then(r => {
+          const newCount = r.data?.[eventName === 'tab_switch' ? 'tab_switches' : 'focus_lost_count'];
+          if (eventName === 'tab_switch') {
+             onEvent(`Tab switch detected — integrity deduction applied`);
+             if (onTabSwitchCount) onTabSwitchCount(newCount);
+          } else {
+             onEvent(`Window focus lost — recorded`);
+          }
+        })
+        .catch(() => {});
     }
 
     function onVisibilityChange() {
       if (document.visibilityState === 'hidden') {
-        debounced('tab_switch', () => {
-          api.patch(`/attempts/${attemptId}/integrity`, { event: 'tab_switch' })
-            .then(r => {
-              // Server now returns the new confirmed count — use it for auto-submit logic
-              const newCount = r.data?.tab_switches as number | undefined;
-              onEvent('Tab switch detected — this has been recorded');
-              if (newCount !== undefined && onTabSwitchCount) {
-                onTabSwitchCount(newCount);
-              }
-            })
-            .catch(() => {
-              onEvent('Tab switch detected — this has been recorded');
-            });
-        });
+        report('tab_switch', 'tab_switch', 30);
       }
     }
 
     function onBlur() {
-      debounced('focus_lost', () => {
-        api.patch(`/attempts/${attemptId}/integrity`, { event: 'focus_lost' })
-          .catch(() => {});
-        onEvent('Window focus lost — this has been recorded');
-      });
+      report('focus_lost', 'focus_lost', 10);
     }
 
     document.addEventListener('visibilitychange', onVisibilityChange);
@@ -56,5 +50,5 @@ export function useIntegrityListeners({ attemptId, active, onEvent, onTabSwitchC
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('blur', onBlur);
     };
-  }, [attemptId, active, onTabSwitchCount]);
+  }, [attemptId, active, onTabSwitchCount, onEvent]);
 }

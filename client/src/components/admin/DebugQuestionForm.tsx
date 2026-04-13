@@ -78,7 +78,20 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
     setGenerating(true);
     try {
       const { data } = await api.post('/ai/generate-variants', { question_id: savedQuestionId });
-      setVariants(data.variants ?? []);
+      // Map AI response to frontend format with temp IDs
+      const raw = data.variants ?? [];
+      const formatted = raw.map((v: any, i: number) => ({
+        id: `temp-${Date.now()}-${i}`,
+        buggy_code: v.buggy_code,
+        diff_json: v.diff.map((d: any) => ({
+          line_number: d.line,
+          original_line: d.original,
+          buggy_line: d.buggy
+        })),
+        is_approved: false,
+        generated_by: 'local-ollama'
+      }));
+      setVariants(formatted);
     } catch (e: any) {
       setError(e.response?.data?.error ?? 'Generation failed');
     } finally {
@@ -92,12 +105,38 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
   function handleVariantRemove(id: string) {
     setVariants(prev => prev.filter(v => v.id !== id));
   }
-  async function handleRegenerate(questionId: string) {
+  const [generatingTC, setGeneratingTC]       = useState(false);
+
+  async function handleGenerateTestCases() {
+    if (!statement.trim() || !correctCode.trim()) {
+      setError('Please provide a statement and correct code first');
+      return;
+    }
+    setError('');
+    setGeneratingTC(true);
     try {
-      const { data } = await api.post(`/ai/regenerate-variant/${questionId}`);
-      setVariants(prev => [...prev, data.variant]);
+      const { data } = await api.post('/ai/generate-test-cases', {
+        question_id: savedQuestionId,
+        statement,
+        solution_code: correctCode,
+        language
+      });
+      // If we got new test cases, APPEND or REPLACE? 
+      // User likely wants to replace the placeholders or append
+      const newCases = data.test_cases.map((tc: any) => ({
+        input: tc.input,
+        expected_output: tc.expected_output,
+        is_hidden: !!tc.is_hidden
+      }));
+      setTestCases(prev => {
+         // Filter out empty placeholders
+         const existing = prev.filter(p => p.expected_output.trim() !== '');
+         return [...existing, ...newCases];
+      });
     } catch (e: any) {
-      setError(e.response?.data?.error ?? 'Regeneration failed');
+      setError(e.response?.data?.error ?? 'Test case generation failed');
+    } finally {
+      setGeneratingTC(false);
     }
   }
 
@@ -213,11 +252,23 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
           <h3 className="text-base font-semibold" style={{ color: 'rgb(var(--text-primary))' }}>
             Test Cases
           </h3>
-          <button type="button" onClick={addTestCase}
-            className="text-xs px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80"
-            style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: 'rgb(var(--accent))' }}>
-            + Add Test Case
-          </button>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={handleGenerateTestCases} disabled={generatingTC}
+              className="text-xs px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80 flex items-center gap-2"
+              style={{ backgroundColor: 'rgba(74,222,128,0.15)', color: '#4ade80' }}>
+              {generatingTC ? (
+                <>
+                  <span className="inline-block w-3 h-3 border-2 border-[#4ade80] border-t-transparent rounded-full animate-spin" />
+                  Generating...
+                </>
+              ) : '✨ AI Test Cases'}
+            </button>
+            <button type="button" onClick={addTestCase}
+              className="text-xs px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80"
+              style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: 'rgb(var(--accent))' }}>
+              + Add Test Case
+            </button>
+          </div>
         </div>
 
         {testCases.map((tc, i) => (

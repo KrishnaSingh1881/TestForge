@@ -232,7 +232,7 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
     // Always block copy during test (no exceptions)
     const copyHandler = (e: Event) => {
       e.preventDefault();
-      deductIntegrity(5, 'Copy attempt blocked (−5)');
+      deductIntegrity(10, 'Copy attempt blocked (−10)');
     };
     document.addEventListener('copy', copyHandler);
     handlers.push(['copy', copyHandler]);
@@ -240,7 +240,7 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
     // Always block paste during test
     const pasteHandler = (e: Event) => {
       e.preventDefault();
-      deductIntegrity(5, 'Paste attempt blocked (−5)');
+      deductIntegrity(10, 'Paste attempt blocked (−10)');
     };
     document.addEventListener('paste', pasteHandler);
     handlers.push(['paste', pasteHandler]);
@@ -251,9 +251,18 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
       handlers.push(['contextmenu', h]);
     }
 
-    // Block keyboard shortcuts
+    // Block keyboard shortcuts + Global Telemetry
     const keyHandler = (e: KeyboardEvent) => {
       const ctrl = e.ctrlKey || e.metaKey;
+      
+      // Global Backspace/Key Statistics for Analytics
+      if (e.key === 'Backspace') {
+          // Send to server periodically or on heartbeat
+          api.patch(`/attempts/${attemptId}/integrity`, { event: 'telemetry', data: { backspace: 1 } }).catch(() => {});
+      } else if (e.key.length === 1) {
+          api.patch(`/attempts/${attemptId}/integrity`, { event: 'telemetry', data: { keystroke: 1 } }).catch(() => {});
+      }
+
       if (ctrl && (e.key === 'c' || e.key === 'C')) {
         e.preventDefault();
         e.stopPropagation();
@@ -261,7 +270,7 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
       if (ctrl && (e.key === 'v' || e.key === 'V')) {
         e.preventDefault();
         e.stopPropagation();
-        deductIntegrity(5, 'Paste attempt blocked (−5)');
+        deductIntegrity(10, 'Paste attempt blocked (−10)');
       }
       if (ctrl && (e.key === 'x' || e.key === 'X')) {
         e.preventDefault();

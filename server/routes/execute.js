@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import OpenAI from 'openai';
 import { supabase } from '../supabase.js';
 import { requireAuth } from '../middleware/auth.js';
 import { runLocally } from '../lib/localRunner.js';
@@ -7,10 +6,10 @@ import { runLocally } from '../lib/localRunner.js';
 const router = Router();
 router.use(requireAuth);
 
-const JUDGE0_URL  = process.env.JUDGE0_URL  ?? 'https://judge0-ce.p.rapidapi.com';
-const JUDGE0_KEY  = process.env.JUDGE0_KEY  ?? '';
-const USE_JUDGE0  = Boolean(JUDGE0_KEY);
-const CUSTOM_PISTON = process.env.PISTON_URL ?? '';
+const JUDGE0_URL    = process.env.JUDGE0_URL  ?? 'https://judge0-ce.p.rapidapi.com';
+const JUDGE0_KEY    = process.env.JUDGE0_KEY  ?? '';
+const USE_JUDGE0    = Boolean(JUDGE0_KEY);
+const CUSTOM_PISTON = process.env.PISTON_URL  ?? '';
 
 const JUDGE0_LANG = { python: 71, cpp: 54, c: 50, java: 62 };
 
@@ -61,61 +60,27 @@ async function pistonRun(language, code, stdin) {
   throw lastError ?? new Error('Piston unavailable');
 }
 
-async function gemmaSimulate(language, code, stdin) {
-  const client = new OpenAI({
-    apiKey:  process.env.NVIDIA_API_KEY,
-    baseURL: 'https://integrate.api.nvidia.com/v1',
-  });
-
-  const prompt = `You are a code execution simulator. Execute the following ${language} code and return the exact output.
-
-Code:
-\`\`\`${language}
-${code}
-\`\`\`
-
-${stdin ? `Stdin:\n${stdin}` : 'No stdin.'}
-
-Rules:
-- Simulate exactly as a real interpreter would
-- stdout = only what gets printed
-- stderr = compile/runtime errors
-- exitCode = 0 for success, 1 for error
-
-Return ONLY valid JSON: {"stdout": "...", "stderr": "...", "exitCode": 0}`;
-
-  const completion = await client.chat.completions.create({
-    model: 'google/gemma-4-31b-it',
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.1,
-    max_tokens: 1024,
-  });
-
-  const text = completion.choices[0]?.message?.content?.trim() ?? '';
-  const clean = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
-  const data = JSON.parse(clean);
-  return {
-    stdout:   String(data.stdout   ?? ''),
-    stderr:   String(data.stderr   ?? ''),
-    exitCode: Number(data.exitCode ?? data.exit_code ?? 0),
-  };
-}
-
+// Execution chain: Judge0 → Local Runner → Piston → hard error
 async function runCode(language, code, stdin) {
   if (USE_JUDGE0 && JUDGE0_LANG[language]) return judge0Submit(JUDGE0_LANG[language], code, stdin);
 
-  // Try local execution first (real compiler, handles stdin properly)
   if (!process.env.SKIP_LOCAL) {
-    try { return await runLocally(language, code, stdin); } catch { /* fall through */ }
+    try {
+      return await runLocally(language, code, stdin);
+    } catch (e) {
+      console.error('Local runner failed:', e.message);
+    }
   }
 
-  // Piston fallback
   if (!process.env.SKIP_PISTON) {
-    try { return await pistonRun(language, code, stdin); } catch { /* fall through */ }
+    try {
+      return await pistonRun(language, code, stdin);
+    } catch (e) {
+      console.error('Piston failed:', e.message);
+    }
   }
 
-  // Gemma simulation as last resort
-  return gemmaSimulate(language, code, stdin);
+  throw new Error('All execution backends unavailable. Please try again later.');
 }
 
 // ── POST /api/execute/scratch ─────────────────────────────────

@@ -89,8 +89,8 @@ export function useBehavioralTracking(questionOpenTime: number) {
       metaRef.current.time_to_first_keystroke = now - questionOpenTime;
     }
 
-    // Backspace
-    if (e.keyCode === 1 /* Backspace in Monaco KeyCode */) {
+    // Backspace (Monaco KeyCode.Backspace is 1, Standard is 8)
+    if (e.keyCode === 1 || e.keyCode === 8) {
       metaRef.current.backspace_count++;
     }
 

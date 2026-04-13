@@ -214,35 +214,50 @@ router.post('/:id/heartbeat', async (req, res) => {
 // ── PATCH /api/attempts/:id/integrity ────────────────────────
 router.patch('/:id/integrity', async (req, res) => {
   const { id } = req.params;
-  const { event } = req.body;
+  const { event, data } = req.body;
 
-  if (!['tab_switch', 'focus_lost'].includes(event)) {
-    return res.status(400).json({ error: 'event must be tab_switch or focus_lost' });
+  if (!['tab_switch', 'focus_lost', 'telemetry'].includes(event)) {
+    return res.status(400).json({ error: 'invalid event' });
   }
 
-  const field = event === 'tab_switch' ? 'tab_switches' : 'focus_lost_count';
+  // Helper to update a single attempt row with increments
+  const updateAttempt = async (updates) => {
+    // Since Supabase JS has no .increment(), we perform a raw patch or fetch-then-update
+    const { data: current } = await supabase
+      .from('attempts')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', req.user.id)
+      .single();
 
-  // Fetch current value then increment (Supabase JS v2 has no native increment)
-  const { data: current } = await supabase
-    .from('attempts')
-    .select(field)
-    .eq('id', id)
-    .eq('user_id', req.user.id)
-    .eq('status', 'in_progress')
-    .single();
+    if (!current) throw new Error('Attempt not found');
 
-  if (!current) return res.status(404).json({ error: 'Active attempt not found' });
+    const finalUpdates = {};
+    for (const [k, v] of Object.entries(updates)) {
+      finalUpdates[k] = (current[k] ?? 0) + v;
+    }
 
-  const newCount = (current[field] ?? 0) + 1;
+    return supabase.from('attempts').update(finalUpdates).eq('id', id).select().single();
+  };
 
-  const { error } = await supabase
-    .from('attempts')
-    .update({ [field]: newCount })
-    .eq('id', id);
+  try {
+    if (event === 'tab_switch' || event === 'focus_lost') {
+      const field = event === 'tab_switch' ? 'tab_switches' : 'focus_lost_count';
+      const { data: updated, error } = await updateAttempt({ [field]: 1 });
+      if (error) throw error;
+      return res.json({ ok: true, [field]: updated[field] });
+    }
 
-  if (error) return res.status(500).json({ error: error.message });
-  // Return the new count so the client can decide auto-submit without a second fetch
-  return res.json({ ok: true, [field]: newCount });
+    if (event === 'telemetry') {
+      // Global telemetry tracking (experimental)
+      // We store this in the attempts table if columns exist, otherwise we just return ok
+      // For now, let's just make sure it doesn't crash.
+      // If we want to store it, we'd need attempt columns for backspace_count, etc.
+      return res.json({ ok: true });
+    }
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 

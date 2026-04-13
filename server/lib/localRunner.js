@@ -49,7 +49,12 @@ export async function runLocally(language, code, stdin) {
     if (language === 'python') {
       const file = join(dir, 'main.py');
       await writeFile(file, code);
-      return await runProcess('python', [file], stdin, dir);
+      // Try python3 first (Linux/Mac), then python (Windows/some envs)
+      let result = await runProcess('python3', [file], stdin, dir);
+      if (result.exitCode !== 0 && (result.stderr.includes('ENOENT') || result.stderr.includes('No such file') || result.stderr.includes('cannot find'))) {
+        result = await runProcess('python', [file], stdin, dir);
+      }
+      return result;
     }
 
     if (language === 'cpp' || language === 'c') {

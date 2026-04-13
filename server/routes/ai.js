@@ -6,155 +6,114 @@ import { requireAuth, requireAdmin } from '../middleware/auth.js';
 const router = Router();
 router.use(requireAuth, requireAdmin);
 
-function getClient(keyIndex = 0) {
-  const keys = [process.env.NVIDIA_API_KEY, process.env.NVIDIA_API_KEY_2].filter(Boolean);
+function getClient() {
   return new OpenAI({
-    apiKey:  keys[keyIndex % keys.length] ?? keys[0],
-    baseURL: 'https://integrate.api.nvidia.com/v1',
+    apiKey: 'ollama',
+    baseURL: 'http://localhost:11434/v1',
   });
 }
 
-// Two models — race them, first valid response wins
-// Using smaller/faster models optimized for instruction following
-const MODELS = [
-  { id: 'meta/llama-3.1-8b-instruct',  temperature: 0.7, top_p: 0.9,  keyIndex: 1 }, // very fast, 8B
-  { id: 'mistralai/mistral-7b-instruct-v0.3', temperature: 0.7, top_p: 0.9, keyIndex: 0 }, // fast, 7B
-];
+const MODEL_ID = 'deepseek-coder-v2:16b';
 
-async function callModel(prompt, model) {
-  const client = getClient(model.keyIndex);
-  const completion = await client.chat.completions.create({
-    model: model.id,
-    messages: [{ role: 'user', content: prompt }],
-    temperature: model.temperature,
-    top_p: model.top_p,
-    max_tokens: 8192,
-  });
-  const raw = completion.choices[0]?.message?.content?.trim() ?? '';
-  let text = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-  const start = text.indexOf('[');
-  const end   = text.lastIndexOf(']');
-  if (start === -1 || end === -1) throw new Error(`No JSON array from ${model.id}`);
-  return JSON.parse(text.slice(start, end + 1));
-}
-
-async function callAI(prompt) {
-  return Promise.any(MODELS.map(m => callModel(prompt, m)));
-}
-
-function buildPrompt(correct_code, bug_count, difficulty, count = 5) {
-  return `You are a programming question generator for an academic test platform.
-
-Given the following correct code, generate ${count} buggy variant${count > 1 ? 's' : ''}.
-
-Rules:
-- Each variant must have exactly ${bug_count} bug${bug_count > 1 ? 's' : ''} introduced.
-- Difficulty level: ${difficulty}.
-- Use different variable names, function names, and minor structural differences across variants.
-- Bugs must be subtle and realistic (off-by-one errors, wrong operators, swapped conditions, wrong return values).
-- Do NOT add syntax errors that prevent compilation/parsing.
-
-Correct code:
-\`\`\`
-${correct_code}
-\`\`\`
-
-Return ONLY a valid JSON array with no markdown, no explanation, no code fences.
-Each element must have exactly these fields:
-- "buggy_code": string (the full modified code)
-- "diff": array of objects, each with { "line_number": number, "original_line": string, "buggy_line": string }`;
-}
-
-// ── POST /api/ai/generate-variants ───────────────────────────
-router.post('/generate-variants', async (req, res) => {
-  const { question_id } = req.body;
-  if (!question_id) return res.status(400).json({ error: 'question_id is required' });
-
-  const { data: q, error: qErr } = await supabase
-    .from('question_bank')
-    .select('id, created_by, correct_code, bug_count, difficulty, language')
-    .eq('id', question_id)
-    .single();
-
-  if (qErr || !q) return res.status(404).json({ error: 'Question not found' });
-  if (q.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
-  if (!q.correct_code) return res.status(400).json({ error: 'Question has no correct_code' });
-
-  let variants;
+async function callAI(prompt, type = 'Generation') {
+  const start = Date.now();
+  console.log(`\n[AI ENGINE] 🚀 Starting ${type}...`);
+  console.log(`[AI ENGINE] 🤖 Model: ${MODEL_ID}`);
+  
   try {
-    variants = await callAI(buildPrompt(q.correct_code, q.bug_count ?? 1, q.difficulty ?? 'medium', 5));
+    const client = getClient();
+    const completion = await client.chat.completions.create({
+      model: MODEL_ID,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.4,
+      max_tokens: 4096,
+    });
+
+    const duration = ((Date.now() - start) / 1000).toFixed(1);
+    const raw = completion.choices[0]?.message?.content?.trim() ?? '';
+    
+    // Safety check for empty responses
+    if (!raw) throw new Error('AI returned an empty response.');
+
+    const text = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    const sArr = text.indexOf('[');
+    const sObj = text.indexOf('{');
+    let s = -1, e = -1;
+
+    if (sArr !== -1 && (sObj === -1 || sArr < sObj)) { s = sArr; e = text.lastIndexOf(']'); }
+    else { s = sObj; e = text.lastIndexOf('}'); }
+    
+    if (s === -1 || e === -1) {
+       console.error("[AI ENGINE] ❌ Failed to find JSON in response:", text);
+       throw new Error('AI output was not in valid JSON format.');
+    }
+
+    const result = JSON.parse(text.slice(s, e + 1));
+    const finalData = result.variants || result.test_cases || result;
+    
+    const count = Array.isArray(finalData) ? finalData.length : 1;
+    console.log(`[AI ENGINE] ✅ Success! Generated ${count} item(s) in ${duration}s\n`);
+    
+    return finalData;
+  } catch (err) {
+    console.error(`[AI ENGINE] ❌ ERROR: ${err.message}`);
+    if (err.message.includes('ECONNREFUSED')) {
+        throw new Error('Local AI (Ollama) is not running! Please start it for the demo.');
+    }
+    throw err;
+  }
+}
+
+// ── GENERATE VARIANTS ─────────────────────────────────────────
+router.post('/generate-variants', async (req, res) => {
+  const { question_id, count = 3 } = req.body;
+  const { data: q } = await supabase.from('question_bank').select('*').eq('id', question_id).single();
+  if (!q) return res.status(404).json({ error: 'Question not found' });
+
+  const prompt = `Act as an Unrelenting Code Saboteur and Competitive Programming Architect.
+Your goal is to SABOTAGE this CORRECT ${q.language} code to create a debugging challenge.
+
+Correct Code:
+${q.correct_code}
+
+CURRENT MISSION:
+1. Generate ${count} unique buggy variants.
+2. For each variant, introduce EXACTLY ${q.bug_count || 1} bugs of ${q.difficulty || 'medium'} difficulty.
+3. INCONSISTENCY IS A FAILURE: The "diff" and "buggy_code" MUST be perfectly synced.
+
+DIFFICULTY GUIDELINES:
+- EASY: Syntax errors (semicolons, brackets), obvious typos, beginner mistakes.
+- MEDIUM: Logical errors, off-by-one, wrong math operators, incorrect return values.
+- HARD: Subtle logic traps, edge case failures, complex boolean errors, memory/pointer confusion (if C++).
+
+Rule: ANYTHING goes. You can break syntax, logic, or names.
+Return ONLY JSON: [{"buggy_code": "...", "diff": [{"line": 1, "original": "...", "buggy": "..."}]}]`;
+
+  try {
+    const variants = await callAI(prompt, 'Variant Generation');
+    res.json({ variants });
   } catch (e) {
-    const msg = e instanceof AggregateError
-      ? e.errors.map(err => err.message).join(' | ')
-      : e.message;
-    console.error('AI generation error:', msg);
-    return res.status(502).json({ error: 'AI generation failed: ' + msg });
+    res.status(502).json({ error: e.message });
   }
-
-  if (!Array.isArray(variants) || variants.length === 0) {
-    return res.status(502).json({ error: 'AI returned no variants' });
-  }
-
-  const rows = variants.map(v => ({
-    question_id,
-    generated_by: 'nvidia-gemma',   // matches DB enum value added via ALTER TYPE
-    buggy_code:   v.buggy_code,
-    diff_json:    v.diff ?? [],
-    bug_count:    q.bug_count ?? 1,
-    difficulty:   q.difficulty ?? null,
-    language:     q.language ?? null,
-    is_approved:  false,
-  }));
-
-  const { data: saved, error: insertErr } = await supabase
-    .from('debug_variants')
-    .insert(rows)
-    .select();
-
-  if (insertErr) return res.status(500).json({ error: insertErr.message });
-  return res.json({ variants: saved });
 });
 
-// ── POST /api/ai/regenerate-variant/:question_id ─────────────
-router.post('/regenerate-variant/:question_id', async (req, res) => {
-  const { question_id } = req.params;
+// ── GENERATE TEST CASES ───────────────────────────────────────
+router.post('/generate-test-cases', async (req, res) => {
+  const { statement, solution_code, language } = req.body;
+  
+  const prompt = `Act as a Quality Assurance Engineer. Generate 5 software test cases for:
+Task: "${statement}"
+Solution: ${solution_code}
+Language: ${language}
 
-  const { data: q, error: qErr } = await supabase
-    .from('question_bank')
-    .select('id, created_by, correct_code, bug_count, difficulty, language')
-    .eq('id', question_id)
-    .single();
+Return ONLY a JSON array: [{"input": "...", "expected_output": "...", "is_hidden": false}]`;
 
-  if (qErr || !q) return res.status(404).json({ error: 'Question not found' });
-  if (q.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
-
-  let variants;
   try {
-    variants = await callAI(buildPrompt(q.correct_code, q.bug_count ?? 1, q.difficulty ?? 'medium', 1));
+    const tcs = await callAI(prompt, 'Test Case Generation');
+    res.json({ test_cases: tcs });
   } catch (e) {
-    return res.status(502).json({ error: 'AI generation failed: ' + e.message });
+    res.status(502).json({ error: e.message });
   }
-
-  const v = Array.isArray(variants) ? variants[0] : variants;
-  if (!v?.buggy_code) return res.status(502).json({ error: 'AI returned invalid variant' });
-
-  const { data: saved, error: insertErr } = await supabase
-    .from('debug_variants')
-    .insert({
-      question_id,
-      generated_by: 'nvidia-gemma',
-      buggy_code:   v.buggy_code,
-      diff_json:    v.diff ?? [],
-      bug_count:    q.bug_count ?? 1,
-      difficulty:   q.difficulty ?? null,
-      language:     q.language ?? null,
-      is_approved:  false,
-    })
-    .select()
-    .single();
-
-  if (insertErr) return res.status(500).json({ error: insertErr.message });
-  return res.json({ variant: saved });
 });
 
 export default router;
