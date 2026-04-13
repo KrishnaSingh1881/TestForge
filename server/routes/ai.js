@@ -6,34 +6,39 @@ import { requireAuth, requireAdmin } from '../middleware/auth.js';
 const router = Router();
 router.use(requireAuth, requireAdmin);
 
-function getClient() {
+function getClient(keyIndex = 0) {
+  const keys = [process.env.NVIDIA_API_KEY, process.env.NVIDIA_API_KEY_2].filter(Boolean);
   return new OpenAI({
-    apiKey:  process.env.NVIDIA_API_KEY,
+    apiKey:  keys[keyIndex % keys.length] ?? keys[0],
     baseURL: 'https://integrate.api.nvidia.com/v1',
   });
 }
 
-const MODEL = 'google/gemma-4-31b-it';
+// Two models — race them, first valid response wins
+const MODELS = [
+  { id: 'minimaxai/minimax-m2.7', temperature: 1,   top_p: 0.95, keyIndex: 1 }, // fast, second key
+  { id: 'google/gemma-4-31b-it',  temperature: 0.5, top_p: 1,    keyIndex: 0 }, // fallback, first key
+];
 
-async function callAI(prompt) {
-  const client = getClient();
+async function callModel(prompt, model) {
+  const client = getClient(model.keyIndex);
   const completion = await client.chat.completions.create({
-    model: MODEL,
+    model: model.id,
     messages: [{ role: 'user', content: prompt }],
-    temperature: 0.5,
+    temperature: model.temperature,
+    top_p: model.top_p,
     max_tokens: 8192,
   });
   const raw = completion.choices[0]?.message?.content?.trim() ?? '';
-
-  // Strip thinking tags (Gemma 4 uses <think>...</think>)
   let text = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-
-  // Extract JSON array — find first [ to last ]
   const start = text.indexOf('[');
   const end   = text.lastIndexOf(']');
-  if (start === -1 || end === -1) throw new Error('No JSON array found in response');
-
+  if (start === -1 || end === -1) throw new Error(`No JSON array from ${model.id}`);
   return JSON.parse(text.slice(start, end + 1));
+}
+
+async function callAI(prompt) {
+  return Promise.any(MODELS.map(m => callModel(prompt, m)));
 }
 
 function buildPrompt(correct_code, bug_count, difficulty, count = 5) {
