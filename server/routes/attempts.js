@@ -165,6 +165,64 @@ router.post('/start', async (req, res) => {
   });
 });
 
+// ── GET /api/attempts/my ─── MUST be before /:id wildcard ────
+router.get('/my', async (req, res) => {
+  const { id: userId, year, division } = req.user;
+
+  const { data: attempts, error: aErr } = await supabase
+    .from('attempts')
+    .select(`
+      id, test_id, status, started_at, submitted_at,
+      tests ( id, title, subject, end_time, total_marks ),
+      results ( total_score, total_marks, percentage, rank )
+    `)
+    .eq('user_id', userId)
+    .in('status', ['submitted', 'auto_submitted'])
+    .order('submitted_at', { ascending: false });
+
+  if (aErr) return res.status(500).json({ error: aErr.message });
+
+  const attemptedTestIds = (attempts ?? []).map(a => a.test_id);
+
+  let missedQuery = supabase
+    .from('tests')
+    .select('id, title, subject, end_time, total_marks')
+    .eq('year', year)
+    .in('division', [division, 'ALL'])
+    .eq('status', 'ended');
+
+  if (attemptedTestIds.length > 0) {
+    missedQuery = missedQuery.not('id', 'in', `(${attemptedTestIds.map(id => `'${id}'`).join(',')})`);
+  }
+
+  const { data: missedTests, error: mErr } = await missedQuery;
+  if (mErr) return res.status(500).json({ error: mErr.message });
+
+  const submittedHistory = (attempts ?? []).map(a => {
+    const result = Array.isArray(a.results) ? a.results[0] : a.results;
+    const test   = Array.isArray(a.tests)   ? a.tests[0]   : a.tests;
+    return {
+      id: a.id, test_id: a.test_id, test_title: test?.title ?? 'Unknown',
+      test_subject: test?.subject ?? null, status: a.status,
+      submitted_at: a.submitted_at,
+      total_score: result?.total_score ?? 0,
+      total_marks: result?.total_marks ?? test?.total_marks ?? 0,
+      percentage: result?.percentage ?? 0,
+    };
+  });
+
+  const absentHistory = (missedTests ?? []).map(t => ({
+    id: null, test_id: t.id, test_title: t.title, test_subject: t.subject,
+    status: 'absent', submitted_at: t.end_time, total_score: 0,
+    total_marks: t.total_marks ?? 0, percentage: 0,
+  }));
+
+  const history = [...submittedHistory, ...absentHistory]
+    .sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
+
+  return res.json({ attempts: history });
+});
+
 // ── GET /api/attempts/:id — fetch attempt state ───────────────
 router.get('/:id', async (req, res) => {
   const { id } = req.params;

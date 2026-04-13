@@ -100,15 +100,16 @@ ${q.correct_code}
 CURRENT MISSION:
 1. Generate ${count} unique buggy variants.
 2. For each variant, introduce EXACTLY ${q.bug_count || 1} bugs of ${q.difficulty || 'medium'} difficulty.
-3. INCONSISTENCY IS A FAILURE: The "diff" and "buggy_code" MUST be perfectly synced.
+- The "diff" and "buggy_code" MUST be perfectly synced.
+- The "buggy_code" MUST preserve the original multi-line structure and indentation. Do NOT squash it onto one line.
 
 DIFFICULTY GUIDELINES:
 - EASY: Syntax errors (semicolons, brackets), obvious typos, beginner mistakes.
 - MEDIUM: Logical errors, off-by-one, wrong math operators, incorrect return values.
 - HARD: Subtle logic traps, edge case failures, complex boolean errors, memory/pointer confusion (if C++).
 
-Rule: ANYTHING goes. You can break syntax, logic, or names.
-Return ONLY JSON: [{"buggy_code": "...", "diff": [{"line": 1, "original": "...", "buggy": "..."}]}]`;
+Rule: ANYTHING goes, but keep the code multi-line and readable.
+Return ONLY JSON: [{"buggy_code": "string with \\n lines", "diff": [...]}]`;
 
   try {
     const variants = await callAI(prompt, 'Variant Generation');
