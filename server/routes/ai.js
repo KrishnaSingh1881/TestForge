@@ -15,9 +15,10 @@ function getClient(keyIndex = 0) {
 }
 
 // Two models — race them, first valid response wins
+// Using smaller/faster models optimized for instruction following
 const MODELS = [
-  { id: 'minimaxai/minimax-m2.7', temperature: 1,   top_p: 0.95, keyIndex: 1 }, // fast, second key
-  { id: 'google/gemma-4-31b-it',  temperature: 0.5, top_p: 1,    keyIndex: 0 }, // fallback, first key
+  { id: 'meta/llama-3.1-8b-instruct',  temperature: 0.7, top_p: 0.9,  keyIndex: 1 }, // very fast, 8B
+  { id: 'mistralai/mistral-7b-instruct-v0.3', temperature: 0.7, top_p: 0.9, keyIndex: 0 }, // fast, 7B
 ];
 
 async function callModel(prompt, model) {
