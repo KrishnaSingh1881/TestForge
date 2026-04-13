@@ -83,8 +83,11 @@ router.post('/generate-variants', async (req, res) => {
   try {
     variants = await callAI(buildPrompt(q.correct_code, q.bug_count ?? 1, q.difficulty ?? 'medium', 5));
   } catch (e) {
-    console.error('AI generation error:', e.message);
-    return res.status(502).json({ error: 'AI generation failed: ' + e.message });
+    const msg = e instanceof AggregateError
+      ? e.errors.map(err => err.message).join(' | ')
+      : e.message;
+    console.error('AI generation error:', msg);
+    return res.status(502).json({ error: 'AI generation failed: ' + msg });
   }
 
   if (!Array.isArray(variants) || variants.length === 0) {
