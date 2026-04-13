@@ -6,36 +6,68 @@ import { requireAuth, requireAdmin } from '../middleware/auth.js';
 const router = Router();
 router.use(requireAuth, requireAdmin);
 
-function getClient() {
-  return new OpenAI({
-    apiKey: 'ollama',
-    baseURL: 'http://localhost:11434/v1',
-  });
-}
+// Clients
+const localClient = new OpenAI({
+  apiKey: 'ollama',
+  baseURL: 'http://localhost:11434/v1',
+});
 
-const MODEL_ID = 'deepseek-coder-v2:16b';
+const nvidiaClient = new OpenAI({
+  apiKey: process.env.NVIDIA_API_KEY,
+  baseURL: 'https://integrate.api.nvidia.com/v1',
+});
+
+// Model Chain
+const LOCAL_MODEL = 'deepseek-coder-v2:16b';
+const FALLBACK_MODELS = [
+  'meta/llama-3.3-70b-instruct',
+  'nvidia/llama-3.1-405b-instruct',
+  'meta/llama-3.1-8b-instruct'
+];
 
 async function callAI(prompt, type = 'Generation') {
   const start = Date.now();
   console.log(`\n[AI ENGINE] 🚀 Starting ${type}...`);
-  console.log(`[AI ENGINE] 🤖 Model: ${MODEL_ID}`);
-  
+
+  // 1. Try Local First
   try {
-    const client = getClient();
-    const completion = await client.chat.completions.create({
-      model: MODEL_ID,
+    console.log(`[AI ENGINE] 🤖 Attempting Local: ${LOCAL_MODEL}`);
+    const completion = await localClient.chat.completions.create({
+      model: LOCAL_MODEL,
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.4,
+      temperature: 0.3,
       max_tokens: 4096,
     });
-
-    const duration = ((Date.now() - start) / 1000).toFixed(1);
-    const raw = completion.choices[0]?.message?.content?.trim() ?? '';
+    return processResponse(completion, start, LOCAL_MODEL);
+  } catch (localErr) {
+    console.warn(`[AI ENGINE] ⚠️ Local failed: ${localErr.message}`);
     
-    // Safety check for empty responses
-    if (!raw) throw new Error('AI returned an empty response.');
+    // 2. Cascade through NVIDIA Fallbacks
+    for (const model of FALLBACK_MODELS) {
+      try {
+        console.log(`[AI ENGINE] ☁️ Attempting NVIDIA Fallback: ${model}`);
+        const completion = await nvidiaClient.chat.completions.create({
+          model: model,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.3,
+          max_tokens: 4096,
+        });
+        return processResponse(completion, start, model);
+      } catch (nimErr) {
+        console.warn(`[AI ENGINE] ⚠️ Fallback ${model} failed: ${nimErr.message}`);
+        continue; // Try next model
+      }
+    }
+  }
 
+  throw new Error('All AI models (Local & Cloud) failed to respond.');
+}
+
+function processResponse(completion, startTime, modelName) {
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    const raw = completion.choices[0]?.message?.content?.trim() ?? '';
     const text = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    
     const sArr = text.indexOf('[');
     const sObj = text.indexOf('{');
     let s = -1, e = -1;
@@ -43,25 +75,14 @@ async function callAI(prompt, type = 'Generation') {
     if (sArr !== -1 && (sObj === -1 || sArr < sObj)) { s = sArr; e = text.lastIndexOf(']'); }
     else { s = sObj; e = text.lastIndexOf('}'); }
     
-    if (s === -1 || e === -1) {
-       console.error("[AI ENGINE] ❌ Failed to find JSON in response:", text);
-       throw new Error('AI output was not in valid JSON format.');
-    }
+    if (s === -1 || e === -1) throw new Error('AI output was not in valid JSON format.');
 
     const result = JSON.parse(text.slice(s, e + 1));
     const finalData = result.variants || result.test_cases || result;
     
     const count = Array.isArray(finalData) ? finalData.length : 1;
-    console.log(`[AI ENGINE] ✅ Success! Generated ${count} item(s) in ${duration}s\n`);
-    
+    console.log(`[AI ENGINE] ✅ Success! [${modelName}] generated ${count} item(s) in ${duration}s\n`);
     return finalData;
-  } catch (err) {
-    console.error(`[AI ENGINE] ❌ ERROR: ${err.message}`);
-    if (err.message.includes('ECONNREFUSED')) {
-        throw new Error('Local AI (Ollama) is not running! Please start it for the demo.');
-    }
-    throw err;
-  }
 }
 
 // ── GENERATE VARIANTS ─────────────────────────────────────────
@@ -100,12 +121,10 @@ Return ONLY JSON: [{"buggy_code": "...", "diff": [{"line": 1, "original": "...",
 // ── GENERATE TEST CASES ───────────────────────────────────────
 router.post('/generate-test-cases', async (req, res) => {
   const { statement, solution_code, language } = req.body;
-  
   const prompt = `Act as a Quality Assurance Engineer. Generate 5 software test cases for:
 Task: "${statement}"
 Solution: ${solution_code}
 Language: ${language}
-
 Return ONLY a JSON array: [{"input": "...", "expected_output": "...", "is_hidden": false}]`;
 
   try {
