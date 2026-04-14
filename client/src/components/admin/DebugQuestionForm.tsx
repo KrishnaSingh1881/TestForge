@@ -77,19 +77,26 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
     setError('');
     setGenerating(true);
     try {
-      const { data } = await api.post('/ai/generate-variants', { question_id: savedQuestionId });
-      // Map AI response to frontend format with temp IDs
+      const { data } = await api.post('/ai/generate-variants', {
+        question_id: savedQuestionId,
+        correct_code: correctCode,
+        language,
+        bug_count: bugCount,
+        count: 5,
+      });
       const raw = data.variants ?? [];
       const formatted = raw.map((v: any, i: number) => ({
-        id: `temp-${Date.now()}-${i}`,
-        buggy_code: v.buggy_code,
-        diff_json: v.diff.map((d: any) => ({
-          line_number: d.line,
-          original_line: d.original,
-          buggy_line: d.buggy
-        })),
-        is_approved: false,
-        generated_by: 'local-ollama'
+        id: v.id ?? `temp-${Date.now()}-${i}`,
+        buggy_code: v.buggy_code ?? v.code ?? '',
+        diff_json: Array.isArray(v.diff_json) ? v.diff_json
+          : Array.isArray(v.diff) ? v.diff.map((d: any) => ({
+              line_number: d.line ?? d.line_number ?? 0,
+              original_line: d.original ?? d.original_line ?? '',
+              buggy_line: d.buggy ?? d.buggy_line ?? '',
+            }))
+          : [{ explanation: v.explanation ?? '' }],
+        is_approved: v.is_approved ?? false,
+        generated_by: v.generated_by ?? 'ai',
       }));
       setVariants(formatted);
     } catch (e: any) {
@@ -105,6 +112,24 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
   function handleVariantRemove(id: string) {
     setVariants(prev => prev.filter(v => v.id !== id));
   }
+  async function handleRegenerate(questionId: string) {
+    try {
+      const { data } = await api.post(`/ai/regenerate-variant/${questionId}`);
+      const v = data.variant;
+      if (v) {
+        const formatted = {
+          id: v.id ?? `temp-${Date.now()}`,
+          buggy_code: v.buggy_code ?? '',
+          diff_json: Array.isArray(v.diff_json) ? v.diff_json : [{ explanation: '' }],
+          is_approved: false,
+          generated_by: v.generated_by ?? 'ai',
+        };
+        setVariants(prev => [...prev, formatted]);
+      }
+    } catch (e: any) {
+      setError(e.response?.data?.error ?? 'Regeneration failed');
+    }
+  }
   const [generatingTC, setGeneratingTC]       = useState(false);
 
   async function handleGenerateTestCases() {
@@ -117,9 +142,10 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
     try {
       const { data } = await api.post('/ai/generate-test-cases', {
         question_id: savedQuestionId,
+        correct_code: correctCode,
         statement,
-        solution_code: correctCode,
-        language
+        language,
+        count: 5,
       });
       // If we got new test cases, APPEND or REPLACE? 
       // User likely wants to replace the placeholders or append

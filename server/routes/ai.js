@@ -76,7 +76,8 @@ async function callAI(prompt, taskName) {
     console.log(`[AI ENGINE] ⚠️ Local failed: ${localErr.message}`);
   }
 
-  // 2. NVIDIA NIM fallback chain — only working models
+  // 2. NVIDIA NIM fallback chain — comment out for local-only testing
+  /*
   const nvidiaModels = [
     'meta/llama-3.3-70b-instruct',
     'meta/llama-3.1-8b-instruct',
@@ -101,7 +102,6 @@ async function callAI(prompt, taskName) {
       );
 
       const text = response.data.choices[0]?.message?.content ?? '';
-      // Strip <think> tags (some models include reasoning)
       const cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
       const result = extractJSON(cleaned);
       console.log(`[AI ENGINE] ✅ NVIDIA success! [${model}]`);
@@ -110,8 +110,9 @@ async function callAI(prompt, taskName) {
       console.log(`[AI ENGINE] ❌ NVIDIA failed [${model}]: ${err.message}`);
     }
   }
+  */
 
-  throw new Error('All AI models failed. Check NVIDIA_API_KEY and model availability.');
+  throw new Error('Local AI model failed. Enable NVIDIA fallback or check Ollama is running.');
 }
 
 // ── Build variant generation prompt ──────────────────────────
