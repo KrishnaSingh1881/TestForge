@@ -7,7 +7,7 @@ const router = express.Router();
 router.use(requireAuth, requireAdmin);
 
 const OLLAMA_BASE_URL = 'http://localhost:11434';
-const OLLAMA_MODEL    = 'deepseek-coder-v2:16b';
+const OLLAMA_MODEL = 'deepseek-coder-v2:16b';
 
 // ── Robust JSON extractor ─────────────────────────────────────
 function extractJSON(text) {
@@ -25,11 +25,11 @@ function extractJSON(text) {
 
   if (arrStart !== -1 && (objStart === -1 || arrStart < objStart)) {
     start = arrStart;
-    end   = clean.lastIndexOf(']');
+    end = clean.lastIndexOf(']');
     isArray = true;
   } else if (objStart !== -1) {
     start = objStart;
-    end   = clean.lastIndexOf('}');
+    end = clean.lastIndexOf('}');
   }
 
   if (start === -1 || end === -1 || end < start) {
@@ -67,7 +67,7 @@ async function callAI(prompt, taskName) {
       prompt,
       stream: false,
       options: { temperature: 0.1 },
-    }, { timeout: 30000 });
+    }, { timeout: 30000000 });
 
     const result = extractJSON(resp.data.response);
     console.log(`[AI ENGINE] ✅ Local success!`);
@@ -211,11 +211,11 @@ router.post('/generate-variants', async (req, res) => {
       const rows = variants.map(v => ({
         question_id,
         generated_by: 'nvidia-gemma',
-        buggy_code:   v.buggy_code ?? v.code ?? '',
-        diff_json:    [{ explanation: v.explanation ?? '' }],
-        bug_count:    bugs,
-        language:     lang,
-        is_approved:  false,
+        buggy_code: v.buggy_code ?? v.code ?? '',
+        diff_json: [{ explanation: v.explanation ?? '' }],
+        bug_count: bugs,
+        language: lang,
+        is_approved: false,
       }));
 
       const { data: saved, error: insertErr } = await supabase
@@ -258,11 +258,11 @@ router.post('/regenerate-variant/:question_id', async (req, res) => {
       .insert({
         question_id,
         generated_by: 'nvidia-gemma',
-        buggy_code:   v.buggy_code,
-        diff_json:    [{ explanation: v.explanation ?? '' }],
-        bug_count:    q.bug_count ?? 1,
-        language:     q.language ?? null,
-        is_approved:  false,
+        buggy_code: v.buggy_code,
+        diff_json: [{ explanation: v.explanation ?? '' }],
+        bug_count: q.bug_count ?? 1,
+        language: q.language ?? null,
+        is_approved: false,
       })
       .select()
       .single();

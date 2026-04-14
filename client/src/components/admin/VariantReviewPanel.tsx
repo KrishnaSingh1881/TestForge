@@ -30,8 +30,8 @@ function DiffView({ correctCode, buggyCode, diffEntries, monacoTheme, language }
   const changedLines = new Set(diffEntries.map(d => d.line_number));
 
   // Build decorated correct code lines
-  const correctLines = correctCode.split('\n');
-  const buggyLines   = buggyCode.split('\n');
+  const correctLines = (correctCode || '').split('\n');
+  const buggyLines   = (buggyCode || '').split('\n');
 
   return (
     <div className="space-y-3">
@@ -96,10 +96,18 @@ function DiffView({ correctCode, buggyCode, diffEntries, monacoTheme, language }
           </p>
           {diffEntries.map((d, i) => (
             <div key={i} className="text-xs font-mono">
-              <span className="mr-2" style={{ color: 'rgb(var(--text-secondary))' }}>Line {d.line_number}:</span>
-              <span style={{ color: '#f87171', textDecoration: 'line-through' }}>{d.original_line.trim()}</span>
-              <span className="mx-2" style={{ color: 'rgb(var(--text-secondary))' }}>→</span>
-              <span style={{ color: '#4ade80' }}>{d.buggy_line.trim()}</span>
+              {d.line_number ? (
+                <>
+                  <span className="mr-2" style={{ color: 'rgb(var(--text-secondary))' }}>Line {d.line_number}:</span>
+                  <span style={{ color: '#f87171', textDecoration: 'line-through' }}>{(d.original_line || '').trim()}</span>
+                  <span className="mx-2" style={{ color: 'rgb(var(--text-secondary))' }}>→</span>
+                  <span style={{ color: '#4ade80' }}>{(d.buggy_line || '').trim()}</span>
+                </>
+              ) : (
+                <span style={{ color: 'rgb(var(--text-secondary))', fontStyle: 'italic' }}>
+                  {(d as any).explanation || 'No details available'}
+                </span>
+              )}
             </div>
           ))}
         </div>
