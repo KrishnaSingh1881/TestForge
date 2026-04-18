@@ -10,6 +10,7 @@ import AnimatedList from '../../components/AnimatedList';
 import { FiArrowLeft, FiSearch, FiChevronRight, FiBarChart2, FiCalendar } from 'react-icons/fi';
 import { GlassIcon } from '../components/AppIcons';
 import GlassSelect from '../../components/admin/GlassSelect';
+import OrbitalBuffer from '../components/OrbitalBuffer';
 
 interface TestRow {
   id: string; title: string; subject: string; year: string; division: string;
@@ -204,7 +205,7 @@ export default function AdminAnalyticsApp() {
       <div className="flex-1 overflow-auto custom-scrollbar">
         {loading && !data ? (
             <div className="h-full flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+                <OrbitalBuffer size={40} className="text-accent" />
             </div>
         ) : (
           <div className="p-8">
@@ -215,13 +216,13 @@ export default function AdminAnalyticsApp() {
                         className="flex flex-col gap-4"
                         renderItem={(t) => (
                             <div className="group relative glass no-shadow p-6 flex items-center gap-6 transition-all hover:bg-white/[0.08] hover:border-white/20 border-white/5">
-                                <div className="p-4 bg-white/5 rounded-2xl group-hover:bg-indigo-500/10 transition-all duration-500">
-                                    <FiCalendar className="text-indigo-400 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+                                <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center border border-accent/20 group-hover:bg-accent/20 transition-colors shrink-0">
+                                    <FiActivity className="text-accent text-xl" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="text-primary font-black text-lg truncate uppercase tracking-tight">{t.title}</h3>
+                                    <h3 className="text-lg font-black text-primary truncate tracking-tight uppercase group-hover:text-accent transition-colors">{t.title}</h3>
                                     <div className="flex items-center gap-3 mt-1.5 font-bold uppercase tracking-widest opacity-40 text-[10px]">
-                                        <span className="text-indigo-400">{t.subject}</span>
+                                        <span className="text-accent">{t.subject}</span>
                                         <span>•</span>
                                         <span>{t.year} · {t.division}</span>
                                         <span>•</span>
@@ -537,7 +538,7 @@ export default function AdminAnalyticsApp() {
 
       {loading && (
         <div className="flex items-center justify-center py-16 absolute inset-0 pointer-events-none">
-          <span className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <OrbitalBuffer size={32} className="text-indigo-500" />
         </div>
       )}
     </div>

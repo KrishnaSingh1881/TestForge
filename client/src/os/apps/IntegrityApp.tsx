@@ -6,6 +6,7 @@ import {
   FiShield, FiAlertTriangle, FiActivity, FiSearch, FiArrowLeft,
   FiChevronRight, FiCheckCircle, FiTarget, FiSlash, FiUsers, FiFileText, FiList,
 } from 'react-icons/fi';
+import OrbitalBuffer from '../components/OrbitalBuffer';
 import AnimatedList from '../../components/AnimatedList';
 import GlassSelect from '../../components/admin/GlassSelect';
 
@@ -61,7 +62,7 @@ function AdminAttemptAudit({ attemptId, testId, studentName }: {
 
   if (loading) return (
     <div className="h-full flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-red-500/10 border-t-red-500 rounded-full animate-spin" />
+      <OrbitalBuffer size={40} className="text-red-500" />
     </div>
   );
   if (error) return (
@@ -378,15 +379,22 @@ function AdminAttemptAudit({ attemptId, testId, studentName }: {
 
 // ── Similarity flags panel ─────────────────────────────────────────────────────
 function SimilarityFlagsPanel({ testId }: { testId: string }) {
-  const [flags, setFlags]   = useState<any[]>([]);
+  const [flags, setFlags] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState<string>('');
+  const [selectedFlag, setSelectedFlag] = useState<any | null>(null);
 
   const loadFlags = () => {
     setLoading(true);
     api.get(`/admin/tests/${testId}/similarity-flags`)
-      .then(r => setFlags(r.data.flags ?? []))
+      .then(r => {
+        setFlags(r.data.flags ?? []);
+        if (selectedFlag) {
+          const updated = (r.data.flags ?? []).find((f: any) => f.id === selectedFlag.id);
+          if (updated) setSelectedFlag(updated);
+        }
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   };
@@ -408,90 +416,141 @@ function SimilarityFlagsPanel({ testId }: { testId: string }) {
     try {
       await api.patch(`/admin/flags/${flagId}/verdict`, { verdict });
       setFlags(prev => prev.map(f => f.id === flagId ? { ...f, admin_verdict: verdict, reviewed: true } : f));
+      if (selectedFlag?.id === flagId) {
+        setSelectedFlag((prev: any) => ({ ...prev, admin_verdict: verdict, reviewed: true }));
+      }
     } catch (e: any) { alert(e.response?.data?.error ?? 'Failed to update verdict'); }
   }
 
+  if (loading) return (
+    <div className="h-96 flex items-center justify-center">
+      <OrbitalBuffer size={40} className="text-red-500" />
+    </div>
+  );
+
   return (
-    <div className="p-8 space-y-5 max-w-5xl mx-auto">
+    <div className="p-8 space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between">
-        <p className="text-[9px] font-black text-secondary uppercase tracking-[0.4em] opacity-40">
-          Code Similarity Flags
-        </p>
-        <button
-          onClick={runSimilarity}
-          disabled={running}
-          className="flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all disabled:opacity-40"
-        >
-          {running ? <span className="w-3 h-3 border-2 border-red-400/40 border-t-red-400 rounded-full animate-spin" /> : '🔍'}
-          {running ? 'Analyzing...' : 'Run Similarity Check'}
-        </button>
-      </div>
-      {runResult && (
-        <p className="text-[10px] font-black text-secondary uppercase tracking-widest px-4 py-2 bg-white/5 rounded-xl border border-white/10">
-          {runResult}
-        </p>
-      )}
-      {loading ? (
-        <div className="h-32 flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-red-500/10 border-t-red-500 rounded-full animate-spin" />
+        <div>
+           <p className="text-[9px] font-black text-secondary uppercase tracking-[0.4em] opacity-40">Forensic Integrity Module</p>
+           <h2 className="text-xl font-black text-primary tracking-tight uppercase mt-1">Similarity Workbench</h2>
         </div>
-      ) : flags.length === 0 ? (
-        <div className="py-16 text-center glass no-shadow border-dashed border-white/5 rounded-[2.5rem]">
-          <FiShield className="mx-auto text-3xl text-white/10 mb-3" />
-          <p className="text-[10px] font-black text-white/20 tracking-[0.4em] uppercase">No similarity flags on this test</p>
-          <p className="text-[9px] text-white/10 mt-1 font-bold tracking-widest uppercase">Run the check above to analyze submissions</p>
+        <div className="flex items-center gap-3">
+            <button onClick={runSimilarity} disabled={running} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-accent text-white font-black text-[10px] uppercase tracking-widest shadow-lg shadow-accent/20 hover:opacity-90 active:scale-95 transition-all">
+            <FiPlay /> {running ? 'Analyzing...' : 'Execute Cross-Session Analysis'}
+          </button>
+        </div>
+      </div>
+
+      {runResult && (
+        <p className="text-[10px] font-black text-secondary uppercase tracking-widest px-4 py-2 bg-white/5 rounded-xl border border-white/10 animate-in fade-in slide-in-from-top-2">{runResult}</p>
+      )}
+
+      {flags.length === 0 ? (
+        <div className="py-24 text-center glass no-shadow border-dashed border-white/10 rounded-[3rem]">
+          <FiShield className="mx-auto text-4xl text-white/10 mb-4" />
+          <p className="text-[11px] font-black text-white/20 tracking-[0.5em] uppercase">Security Perimeter Secure</p>
+          <p className="text-[9px] text-white/10 mt-2 font-bold tracking-widest uppercase">No similarity flags detected for this evaluation</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {flags.map((f: any) => {
-            const pct = Math.round(f.similarity_score * 100);
-            const verdict = f.admin_verdict;
-            return (
-              <div key={f.id} className={`glass no-shadow p-5 rounded-[1.5rem] border-white/5 ${verdict === 'confirmed' ? 'bg-red-500/5' : verdict === 'dismissed' ? 'opacity-40' : ''}`}>
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div>
-                    <p className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-40 mb-1">
-                      {f.question_statement || 'Debugging Question'}
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-black text-primary uppercase tracking-tight">{f.student1}</span>
-                      <span className="text-[10px] font-black text-secondary opacity-30">↔</span>
-                      <span className="text-sm font-black text-primary uppercase tracking-tight">{f.student2}</span>
+        <div className={`grid gap-6 transition-all duration-500 ${selectedFlag ? 'grid-cols-12' : 'grid-cols-1'}`}>
+          <div className={`${selectedFlag ? 'col-span-4' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3'} gap-3 max-h-[700px] overflow-auto pr-2 custom-scrollbar`}>
+            {flags.map((f: any) => {
+              const pct = Math.round(f.similarity_score * 100);
+              const isSelected = selectedFlag?.id === f.id;
+              const verdict = f.admin_verdict;
+              return (
+                <div key={f.id} onClick={() => setSelectedFlag(f)}
+                  className={`group relative glass no-shadow p-5 rounded-[1.8rem] border-white/5 cursor-pointer transition-all hover:bg-white/[0.08] ${isSelected ? 'border-red-500/40 bg-red-500/[0.03]' : verdict === 'dismissed' ? 'opacity-40 hover:opacity-100' : ''}`}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                         <span className={`w-2 h-2 rounded-full ${pct >= 90 ? 'bg-red-500 animate-pulse' : 'bg-amber-500'}`} />
+                         <p className="text-[14px] font-black text-primary truncate tracking-tight uppercase">{f.student1} ↔ {f.student2}</p>
+                      </div>
+                      <p className="text-[9px] font-bold text-secondary uppercase tracking-widest opacity-40 line-clamp-1">{f.question_statement || 'Code Logic Match'}</p>
+                    </div>
+                    <div className="text-right">
+                       <p className="text-lg font-black tabular-nums" style={{ color: pct >= 90 ? '#f87171' : '#facc15' }}>{pct}%</p>
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-2xl font-black tabular-nums" style={{ color: pct >= 90 ? '#f87171' : pct >= 80 ? '#facc15' : '#4ade80' }}>
-                      {pct}%
-                    </p>
-                    <p className="text-[8px] font-black uppercase tracking-widest text-secondary opacity-30">Similarity</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {verdict === 'pending' || !verdict ? (
-                    <>
-                      <button onClick={() => setVerdict(f.id, 'confirmed')}
-                        className="px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all">
-                        ⚠ Confirm Cheating
-                      </button>
-                      <button onClick={() => setVerdict(f.id, 'dismissed')}
-                        className="px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-white/5 text-secondary border border-white/10 hover:bg-white/10 transition-all">
-                        Dismiss
-                      </button>
-                    </>
-                  ) : (
-                    <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${
-                      verdict === 'confirmed' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-white/5 text-secondary border-white/10'
-                    }`}>
-                      {verdict === 'confirmed' ? '⚠ Confirmed' : '✓ Dismissed'}
-                    </span>
+                  {verdict !== 'pending' && verdict && (
+                    <div className="mt-3">
+                         <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border ${verdict === 'confirmed' ? 'bg-red-500/20 text-red-400 border-red-500/20' : 'bg-white/5 text-secondary border-white/10'} uppercase tracking-widest`}>
+                            {verdict === 'confirmed' ? '⚠ Confirmed' : '✓ Dismissed'}
+                         </span>
+                    </div>
                   )}
-                  <span className="text-[8px] font-black text-secondary uppercase tracking-widest opacity-30 ml-auto">
-                    {f.flagged_at ? new Date(f.flagged_at).toLocaleDateString() : ''}
-                  </span>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {selectedFlag && (
+             <div className="col-span-8 space-y-4 animate-in fade-in zoom-in-95 duration-500">
+                <div className="glass no-shadow rounded-[2.5rem] border-white/5 overflow-hidden flex flex-col h-[700px]">
+                    <div className="p-6 border-b border-white/5 bg-white/[0.02] flex items-center justify-between shrink-0">
+                        <div>
+                            <h3 className="text-sm font-black text-primary uppercase tracking-wider">Forensic Comparison</h3>
+                            <p className="text-[10px] font-bold text-secondary uppercase tracking-widest opacity-40 mt-1">{selectedFlag.question_statement}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                             {selectedFlag.admin_verdict === 'pending' || !selectedFlag.admin_verdict ? (
+                                <>
+                                    <button onClick={() => setVerdict(selectedFlag.id, 'confirmed')} className="px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest bg-red-500 text-white shadow-lg shadow-red-500/20 hover:bg-red-400 transition-all">Confirm Violation</button>
+                                    <button onClick={() => setVerdict(selectedFlag.id, 'dismissed')} className="px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest bg-white/10 text-primary hover:bg-white/20 transition-all">Dismiss</button>
+                                </>
+                             ) : (
+                                <div className={`px-4 py-2 rounded-xl border flex items-center gap-2 ${selectedFlag.admin_verdict === 'confirmed' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>
+                                    <FiCheckCircle className="text-xs" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest">Verdict: {selectedFlag.admin_verdict}</span>
+                                    <button onClick={() => setVerdict(selectedFlag.id, 'pending' as any)} className="ml-2 text-[8px] underline opacity-50 hover:opacity-100">Reset</button>
+                                </div>
+                             )}
+                             <button onClick={() => setSelectedFlag(null)} className="p-2 rounded-xl bg-white/5 text-secondary hover:bg-white/10 transition-all ml-2">
+                                <FiArrowLeft />
+                             </button>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-hidden grid grid-cols-2 divide-x divide-white/5">
+                        <div className="flex flex-col overflow-hidden">
+                            <div className="p-4 bg-white/[0.01] border-b border-white/5 flex items-center justify-between shrink-0">
+                                <p className="text-[9px] font-black text-accent uppercase tracking-widest">SUBJECT A: {selectedFlag.student1}</p>
+                                <span className="text-[8px] font-black text-secondary opacity-30 uppercase">{selectedFlag.language}</span>
+                            </div>
+                            <pre className="flex-1 p-6 overflow-auto text-xs font-mono text-primary/80 leading-relaxed custom-scrollbar bg-black/5 selection:bg-red-500/30">
+                                <code>{selectedFlag.code1 || '// No source code available'}</code>
+                            </pre>
+                        </div>
+                        <div className="flex flex-col overflow-hidden">
+                             <div className="p-4 bg-white/[0.01] border-b border-white/5 flex items-center justify-between shrink-0">
+                                <p className="text-[9px] font-black text-red-400 uppercase tracking-widest">SUBJECT B: {selectedFlag.student2}</p>
+                                <span className="text-[8px] font-black text-secondary opacity-30 uppercase">{selectedFlag.language}</span>
+                            </div>
+                            <pre className="flex-1 p-6 overflow-auto text-xs font-mono text-primary/80 leading-relaxed custom-scrollbar bg-black/5 selection:bg-red-500/30">
+                                <code>{selectedFlag.code2 || '// No source code available'}</code>
+                            </pre>
+                        </div>
+                    </div>
+                    
+                    <div className="p-6 bg-red-500/[0.03] border-t border-white/5 flex items-center gap-6 shrink-0">
+                        <div className="flex items-center gap-3">
+                            <p className="text-2xl font-black text-red-500 tabular-nums">{Math.round(selectedFlag.similarity_score * 100)}%</p>
+                            <div>
+                                <p className="text-[8px] font-black text-red-500/60 uppercase tracking-widest">Logic Matching Score</p>
+                                <p className="text-[10px] font-bold text-secondary opacity-40 uppercase">Cross-verified via Jaccard Index</p>
+                            </div>
+                        </div>
+                        <div className="h-6 w-px bg-white/5" />
+                        <div className="flex-1">
+                            <p className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-40 mb-1">Administrative Action Required</p>
+                            <p className="text-[10px] font-medium text-white/60">Forensic evidence indicates high probability of logic reproduction between Subject A and Subject B.</p>
+                        </div>
+                    </div>
+                </div>
+             </div>
+          )}
         </div>
       )}
     </div>
@@ -563,7 +622,7 @@ function AdminStudentList({ testId, testTitle, onSelectStudent }: {
               <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
               <input value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Search students..."
-                className="w-full pl-11 pr-4 py-2.5 bg-black/10 border border-white/10 rounded-2xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all placeholder:text-white/10 font-bold" />
+                className="w-full pl-11 pr-4 py-2.5 bg-black/10 border border-white/10 rounded-2xl text-[10px] text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all placeholder:text-white/10 font-bold uppercase tracking-widest" />
             </div>
             <GlassSelect 
               value={sort}
@@ -584,7 +643,7 @@ function AdminStudentList({ testId, testTitle, onSelectStudent }: {
         <SimilarityFlagsPanel testId={testId} />
       ) : loading ? (
         <div className="h-64 flex items-center justify-center">
-          <div className="w-10 h-10 border-4 border-red-500/10 border-t-red-500 rounded-full animate-spin" />
+          <OrbitalBuffer size={40} className="text-red-500" />
         </div>
       ) : sorted.length === 0 ? (
         <div className="py-20 text-center glass no-shadow border-dashed border-white/10 rounded-[2.5rem]">
@@ -601,7 +660,7 @@ function AdminStudentList({ testId, testTitle, onSelectStudent }: {
             <div
               onClick={() => onSelectStudent(s.attempt_id, s.student_name, s.integrity_score)}
               className={`group glass no-shadow p-5 flex items-center gap-5 rounded-[1.5rem] border-white/5 hover:bg-white/[0.08] cursor-pointer transition-all ${
-                (s.integrity_score ?? 100) < 60 ? 'hover:border-red-500/30' : 'hover:border-indigo-500/20'
+                (s.integrity_score ?? 100) < 60 ? 'hover:border-red-500/30' : 'hover:border-accent/20'
               }`}
             >
               {/* Avatar with risk glow */}
@@ -668,7 +727,7 @@ function StudentAuditView({ testId }: { testId: string }) {
 
   if (loading) return (
     <div className="h-full flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-red-500/10 border-t-red-500 rounded-full animate-spin" />
+      <OrbitalBuffer size={40} className="text-red-500" />
     </div>
   );
   if (error) return (
@@ -715,8 +774,8 @@ function StudentAuditView({ testId }: { testId: string }) {
           data.behavioral_flags.map((f: any, i: number) => (
             <div key={i} className="glass no-shadow p-5 flex items-center justify-between rounded-[1.5rem] border-white/5 bg-red-500/[0.02]">
               <div className="flex items-center gap-5">
-                <div className="w-10 h-10 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-400">
-                  <FiAlertTriangle />
+                <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center text-xl font-black text-accent shrink-0 border border-accent/10">
+                  {f.label[0]}
                 </div>
                 <div>
                   <p className="text-sm font-black text-primary uppercase tracking-tight">{f.label}</p>
@@ -848,7 +907,7 @@ export default function IntegrityApp({ testId: propTestId, testTitle: propTestTi
             <input
               type="text" placeholder={view === 'tests' ? 'Search tests...' : 'Search audits...'} value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-black/10 border border-white/10 rounded-2xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all placeholder:text-white/10 font-bold"
+              className="w-full pl-11 pr-4 py-2.5 bg-black/10 border border-white/10 rounded-2xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all placeholder:text-white/10 font-bold"
             />
           </div>
         )}
@@ -861,7 +920,7 @@ export default function IntegrityApp({ testId: propTestId, testTitle: propTestTi
           <div className="p-8 max-w-5xl mx-auto">
             {testsLoading ? (
               <div className="h-64 flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-red-500/10 border-t-red-500 rounded-full animate-spin" />
+                <OrbitalBuffer size={40} className="text-red-500" />
               </div>
             ) : filteredTests.length === 0 ? (
               <div className="py-20 text-center glass no-shadow border-dashed border-white/10 rounded-[2.5rem]">
@@ -874,7 +933,7 @@ export default function IntegrityApp({ testId: propTestId, testTitle: propTestTi
                 return (
                   <div
                     onClick={() => { setSelectedAdminTest({ id: t.id, title: t.title }); setSearch(''); setView('students'); }}
-                    className="group glass no-shadow p-5 flex items-center gap-5 rounded-[1.5rem] border-white/5 hover:bg-white/[0.08] hover:border-red-500/20 cursor-pointer transition-all"
+                    className="group glass no-shadow p-6 flex items-center gap-6 rounded-[2.5rem] border-white/5 hover:bg-white/[0.08] hover:border-accent/40 cursor-pointer transition-all active:scale-[0.98]"
                   >
                     <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5">
                       <FiFileText className="text-secondary group-hover:text-red-400 text-xl transition-colors" />
@@ -924,7 +983,7 @@ export default function IntegrityApp({ testId: propTestId, testTitle: propTestTi
           <div className="p-8 max-w-5xl mx-auto">
             {histLoading ? (
               <div className="h-64 flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-red-500/10 border-t-red-500 rounded-full animate-spin" />
+                <OrbitalBuffer size={40} className="text-red-500" />
               </div>
             ) : filteredHistory.length === 0 ? (
               <div className="py-20 text-center glass no-shadow border-dashed border-white/10 rounded-[2.5rem]">

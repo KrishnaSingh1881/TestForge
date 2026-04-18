@@ -5,6 +5,7 @@ import api from '../../lib/axios';
 import { useOSStore } from '../store/useOSStore';
 import { FiActivity, FiTarget, FiBox, FiSearch, FiArrowLeft, FiChevronRight, FiCheckCircle, FiBarChart2, FiSlash } from 'react-icons/fi';
 import AnimatedList from '../../components/AnimatedList';
+import OrbitalBuffer from '../components/OrbitalBuffer';
 
 function pctColor(pct: number) {
   if (pct >= 75) return '#4ade80';
@@ -32,7 +33,7 @@ function AttemptDetail({ attemptId, onBack }: { attemptId: string; onBack: () =>
 
   if (loading) return (
     <div className="h-full flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-indigo-500/10 border-t-indigo-500 rounded-full animate-spin" />
+      <OrbitalBuffer size={40} className="text-indigo-500" />
     </div>
   );
 
@@ -263,7 +264,7 @@ export default function AnalyticsApp({ attemptId: initialAttemptId }: { attemptI
           <div className="p-8 max-w-5xl mx-auto">
             {listLoading ? (
               <div className="h-64 flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-indigo-500/10 border-t-indigo-500 rounded-full animate-spin" />
+                <OrbitalBuffer size={40} className="text-accent" />
               </div>
             ) : filteredHistory.length === 0 ? (
               <div className="py-24 text-center glass no-shadow border-dashed border-white/10 rounded-[2.5rem]">

@@ -10,7 +10,7 @@ interface Option {
 }
 
 interface MCQFormProps {
-  onSuccess?: () => void;
+  onSuccess?: (id?: string) => void;
   initial?: {
     id: string;
     type: 'mcq_single' | 'mcq_multi';
@@ -97,12 +97,14 @@ export default function MCQForm({ onSuccess, initial }: MCQFormProps) {
     setSaving(true);
     try {
       const payload = { type, statement, statement_image_url: statementImg, topic_tag: topicTag, difficulty, marks, options };
+      let newId = initial?.id;
       if (initial?.id) {
         await api.patch(`/questions/${initial.id}`, payload);
       } else {
-        await api.post('/questions/mcq', payload);
+        const res = await api.post('/questions/mcq', payload);
+        newId = res.data.id;
       }
-      onSuccess?.();
+      onSuccess?.(newId);
     } catch (e: any) {
       setError(e.response?.data?.error ?? 'Save failed');
     } finally {

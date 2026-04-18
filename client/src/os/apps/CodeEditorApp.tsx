@@ -4,6 +4,7 @@ import api from '../../lib/axios';
 import { useTheme } from '../../context/ThemeContext';
 import { FiPlay, FiTerminal, FiCode, FiCpu, FiAlertCircle } from 'react-icons/fi';
 import GlassSelect from '../../components/admin/GlassSelect';
+import OrbitalBuffer from '../components/OrbitalBuffer';
 
 const LANGUAGES = [
   { label: 'Python 3', value: 'python', starter: '# Write your Python code here\nprint("Hello, World!")\n' },
@@ -72,11 +73,11 @@ export default function CodeEditorApp() {
         <button 
           onClick={handleRun} 
           disabled={running}
-          className={`flex items-center gap-3 px-8 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-xl disabled:opacity-50 ${running ? 'bg-black/10 text-secondary' : 'bg-indigo-600 text-white hover:bg-indigo-500 hover:-translate-y-0.5 shadow-indigo-600/20'}`}
+          className={`flex items-center gap-3 px-8 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-xl disabled:opacity-50 ${running ? 'bg-black/10 text-secondary' : 'bg-accent text-white hover:bg-accent/90 hover:-translate-y-0.5 shadow-accent/20'}`}
         >
           {running ? (
             <>
-              <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              <OrbitalBuffer size={12} className="text-current" />
               Executing...
             </>
           ) : (
@@ -154,7 +155,7 @@ export default function CodeEditorApp() {
               )}
               {running && (
                 <div className="flex items-center gap-3 text-indigo-400/60">
-                    <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <OrbitalBuffer size={12} className="text-current" />
                     <span className="text-[10px] font-black uppercase tracking-widest">Processing Logic...</span>
                 </div>
               )}

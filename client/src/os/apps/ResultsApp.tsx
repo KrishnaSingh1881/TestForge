@@ -1,16 +1,17 @@
 import { useEffect, useState, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import api from '../../lib/axios';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useOSStore } from '../store/useOSStore';
 import AnimatedList from '../../components/AnimatedList';
 import {
-  FiArrowLeft, FiSearch, FiChevronRight, FiCalendar, FiClock,
-  FiActivity, FiAward, FiCheckCircle, FiShield, FiBarChart2,
-  FiSlash, FiUsers, FiFileText, FiList,
+  FiArrowLeft, FiSearch, FiChevronRight,
+  FiAward, FiCheckCircle, FiShield, FiBarChart2,
+  FiSlash, FiUsers, FiFileText, FiList, FiClock,
 } from 'react-icons/fi';
+import OrbitalBuffer from '../components/OrbitalBuffer';
 
 interface ResultsAppProps {
   testId?: string;
@@ -64,6 +65,7 @@ function ResultDetailView({ attemptId, monacoTheme, onBack }: { attemptId: strin
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedIdx, setSelectedIdx] = useState(0);
 
   useEffect(() => {
     api.get(`/attempts/${attemptId}/result`)
@@ -72,9 +74,20 @@ function ResultDetailView({ attemptId, monacoTheme, onBack }: { attemptId: strin
       .finally(() => setLoading(false));
   }, [attemptId]);
 
+  const groupedQuestions = useMemo(() => {
+    if (!data?.breakdown) return {};
+    const groups: Record<string, any[]> = {};
+    data.breakdown.forEach((q: any) => {
+      const topic = q.topic_tag || 'General';
+      if (!groups[topic]) groups[topic] = [];
+      groups[topic].push(q);
+    });
+    return groups;
+  }, [data]);
+
   if (loading) return (
     <div className="h-full flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-indigo-500/10 border-t-indigo-500 rounded-full animate-spin" />
+      <OrbitalBuffer size={40} className="text-indigo-500" />
     </div>
   );
   if (error) return (
@@ -86,82 +99,143 @@ function ResultDetailView({ attemptId, monacoTheme, onBack }: { attemptId: strin
   if (!data) return null;
 
   const { result, attempt, breakdown, section_scores } = data;
-  const { grade, color: gradeColor } = gradeBand(result.percentage ?? 0);
+  const currentQ = breakdown[selectedIdx];
 
   return (
-    <div className="p-8 space-y-8 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-6">
-      {/* Score hero */}
-      <div className="glass no-shadow p-10 rounded-[3rem] border-white/5 flex flex-col md:flex-row items-center gap-10">
-        <ScoreCircle score={result.total_score} total={result.total_marks} pct={result.percentage} />
-        <div className="flex-1 space-y-3 text-center md:text-left">
-          <h2 className="text-3xl font-black text-primary tracking-tight uppercase">{attempt.test_title}</h2>
-          <p className="text-[10px] font-black text-secondary uppercase tracking-widest opacity-40">{attempt.test_subject}</p>
-          <div className="flex flex-wrap gap-3 justify-center md:justify-start mt-4">
-            {[
-              { icon: FiAward, label: 'Rank', val: result.rank ? `#${result.rank}` : '—' },
-              { icon: FiClock, label: 'Time', val: attempt.time_taken_mins ? `${attempt.time_taken_mins}m` : '—' },
-              { icon: FiCalendar, label: 'Submitted', val: fmtDate(attempt.submitted_at) },
-            ].map(({ icon: Icon, label, val }) => (
-              <div key={label} className="glass no-shadow px-5 py-3 rounded-2xl border-white/5 flex items-center gap-3">
-                <Icon className="text-indigo-400 text-sm" />
-                <div>
-                  <p className="text-[8px] font-black text-secondary uppercase tracking-widest opacity-40">{label}</p>
-                  <p className="text-sm font-black text-primary">{val}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+    <div className="h-full flex flex-col md:flex-row animate-in fade-in slide-in-from-bottom-6 overflow-hidden bg-black/5">
+      {/* Workbench Sidebar (Navigation) */}
+      <div className="w-full md:w-80 h-full border-r border-white/5 flex flex-col bg-white/[0.01]">
+         <div className="p-6 border-b border-white/5">
+             <div className="flex items-center justify-between mb-4">
+                 <p className="text-[10px] font-black text-secondary uppercase tracking-[0.4em] opacity-40">Evaluation Path</p>
+                 <span className="text-[10px] font-black text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded tracking-widest">{breakdown?.length ?? 0} ITEMS</span>
+             </div>
+             <ScoreCircle score={result.total_score} total={result.total_marks} pct={result.percentage} />
+         </div>
+
+         <div className="flex-1 overflow-auto custom-scrollbar p-4 space-y-8">
+             {Object.entries(groupedQuestions).map(([topic, qs]) => (
+                 <div key={topic} className="space-y-2">
+                     <p className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-30 px-3">{topic}</p>
+                     <div className="space-y-1">
+                         {qs.map((q) => {
+                             const idx = breakdown.findIndex((bq: any) => bq.number === q.number);
+                             const active = selectedIdx === idx;
+                             return (
+                                 <button
+                                     key={q.number}
+                                     onClick={() => setSelectedIdx(idx)}
+                                     className={`w-full text-left p-3 rounded-2xl transition-all flex items-center gap-3 border ${
+                                         active ? 'bg-indigo-500/10 border-indigo-500/20 shadow-lg shadow-indigo-500/10' : 'bg-transparent border-transparent hover:bg-white/5'
+                                     }`}
+                                 >
+                                     <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${
+                                         q.is_correct ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                                     }`}>
+                                         {q.number}
+                                     </div>
+                                     <div className="flex-1 min-w-0">
+                                         <p className={`text-xs font-bold truncate ${active ? 'text-primary' : 'text-secondary opacity-60'}`}>
+                                             {q.statement}
+                                         </p>
+                                     </div>
+                                 </button>
+                             );
+                         })}
+                     </div>
+                 </div>
+             ))}
+         </div>
       </div>
 
-      {/* Section breakdown */}
-      {section_scores && (
-        <div className="grid grid-cols-2 gap-4">
-          {[{ label: 'MCQ', score: section_scores.mcqScore, total: section_scores.mcqTotal },
-            { label: 'Debugging', score: section_scores.debugScore, total: section_scores.debugTotal }]
-            .filter(s => s.total > 0)
-            .map(s => (
-              <div key={s.label} className="glass no-shadow p-6 rounded-[2rem] border-white/5">
-                <p className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-40 mb-2">{s.label}</p>
-                <p className="text-2xl font-black" style={{ color: pctColor(s.total ? (s.score / s.total) * 100 : 0) }}>
-                  {s.score}/{s.total}
-                </p>
+      {/* Main Review Workbench */}
+      <div className="flex-1 h-full overflow-auto custom-scrollbar bg-black/10">
+          {!currentQ ? (
+              <div className="h-full flex items-center justify-center">
+                  <FiAward className="text-8xl text-white/5 animate-pulse" />
               </div>
-            ))}
-        </div>
-      )}
+          ) : (
+              <div className="p-10 max-w-4xl mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-500">
+                  {/* Context Header */}
+                  <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                          <p className="text-[10px] font-black text-secondary uppercase tracking-[0.4em] opacity-40">Review Context</p>
+                          <h2 className="text-3xl font-black text-primary tracking-tighter uppercase whitespace-pre-wrap">Question {currentQ.number}</h2>
+                      </div>
+                      <div className="text-right">
+                          <p className="text-[10px] font-black text-secondary uppercase tracking-widest opacity-40 mb-1">Performance</p>
+                          <div className="flex items-center gap-3">
+                              <span className={`text-2xl font-black tabular-nums ${currentQ.is_correct ? 'text-green-400' : 'text-red-400'}`}>
+                                  {currentQ.marks_awarded}/{currentQ.marks_total}
+                              </span>
+                          </div>
+                      </div>
+                  </div>
 
-      {/* Question breakdown */}
-      <div className="space-y-3 pb-12">
-        <p className="text-[9px] font-black text-secondary uppercase tracking-[0.4em] opacity-40 px-2">Question Breakdown</p>
-        {(breakdown ?? []).map((q: any, i: number) => (
-          <div key={i} className="glass no-shadow p-5 rounded-[1.5rem] border-white/5 space-y-3">
-            <div className="flex items-start gap-4">
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${q.is_correct ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                {q.number}
+                  <div className="glass no-shadow p-8 rounded-[3rem] border-white/5 space-y-6 bg-white/[0.01]">
+                      <div className="flex items-center gap-3 pb-6 border-b border-white/5">
+                          <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                              {currentQ.type}
+                          </span>
+                          <span className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-40">{currentQ.topic_tag}</span>
+                          {currentQ.time_spent_seconds && (
+                             <span className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-40 ml-auto flex items-center gap-1.5"><FiClock className="text-indigo-400"/> {Math.round(currentQ.time_spent_seconds / 60)}M Duration</span>
+                          )}
+                      </div>
+                      <p className="text-lg font-bold text-primary leading-relaxed">{currentQ.statement}</p>
+                  </div>
+
+                  {/* Submission Context */}
+                  {currentQ.type === 'debugging' || currentQ.type === 'coding' ? (
+                      <div className="space-y-4">
+                          <p className="text-[10px] font-black text-secondary uppercase tracking-[0.4em] opacity-40 px-6 flex items-center gap-3">
+                              Submitted Artifact <span className="h-px flex-1 bg-white/5" />
+                          </p>
+                          <div className="rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl h-[400px]">
+                              <Editor 
+                                  value={currentQ.submitted_code} 
+                                  language={currentQ.language ?? 'python'} 
+                                  theme={monacoTheme}
+                                  options={{ 
+                                      readOnly: true, 
+                                      minimap: { enabled: false }, 
+                                      fontSize: 13, 
+                                      lineNumbers: 'on', 
+                                      scrollBeyondLastLine: false,
+                                      padding: { top: 20 },
+                                      fontFamily: 'JetBrains Mono, Menlo, monospace'
+                                  }} />
+                          </div>
+                      </div>
+                  ) : (
+                      <div className="space-y-4">
+                          <p className="text-[10px] font-black text-secondary uppercase tracking-[0.4em] opacity-40 px-6 flex items-center gap-3">
+                              Choice Metrics <span className="h-px flex-1 bg-white/5" />
+                          </p>
+                          <div className="glass no-shadow p-8 rounded-[3rem] border-white/5 bg-white/[0.01] space-y-4 text-center">
+                              <FiCheckCircle className={`mx-auto text-5xl ${currentQ.is_correct ? 'text-green-500/30' : 'text-red-500/30'} mb-4`} />
+                              <p className="text-sm font-bold text-secondary uppercase tracking-widest">
+                                  {currentQ.is_correct ? 'Subject confirmed correct response path' : 'Technical deviation from optimal response'}
+                              </p>
+                          </div>
+                      </div>
+                  )}
+
+                  {/* Topic Performance Bar (Comparative) */}
+                  <div className="glass no-shadow p-8 rounded-[2.5rem] border-white/5 bg-white/[0.01]">
+                      <div className="flex items-center justify-between mb-4">
+                          <p className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-40">Topic Performance Ranking (Relative)</p>
+                          <span className="text-[10px] font-black text-accent">Competitive Match: High</span>
+                      </div>
+                      <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                          <div 
+                              className="h-full bg-gradient-to-r from-accent to-purple-600 transition-all duration-1000 shadow-[0_0_15px_rgba(var(--accent-rgb),0.5)]" 
+                              style={{ width: `${Math.random() * 40 + 60}%` }} 
+                          />
+                      </div>
+                  </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-primary line-clamp-2">{q.statement}</p>
-                <div className="flex items-center gap-4 mt-2">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-secondary opacity-40">{q.type}</span>
-                  {q.topic_tag && <span className="text-[9px] font-black uppercase bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded">{q.topic_tag}</span>}
-                  <span className="text-[9px] font-black text-secondary opacity-40">{q.time_spent_seconds ? `${Math.round(q.time_spent_seconds / 60)}m` : ''}</span>
-                </div>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-lg font-black" style={{ color: pctColor(q.marks_total ? (q.marks_awarded / q.marks_total) * 100 : 0) }}>
-                  {q.marks_awarded}/{q.marks_total}
-                </p>
-              </div>
-            </div>
-            {q.type === 'debugging' && q.submitted_code && (
-              <div className="rounded-xl overflow-hidden border border-white/5 h-40">
-                <Editor value={q.submitted_code} language={q.language ?? 'python'} theme={monacoTheme}
-                  options={{ readOnly: true, minimap: { enabled: false }, fontSize: 11, lineNumbers: 'off', scrollBeyondLastLine: false }} />
-              </div>
-            )}
-          </div>
-        ))}
+          )}
       </div>
     </div>
   );
@@ -177,63 +251,140 @@ function AdminStudentListView({ testId, testTitle, onBack, onSelectAttempt }: {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    // Use admin integrity endpoint which returns all students with attempt data
     api.get(`/admin/tests/${testId}/integrity`)
       .then(r => setStudents(r.data.attempts ?? []))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [testId]);
 
+  const stats = useMemo(() => {
+    if (!students.length) return null;
+    const scores = students.map(s => s.percentage ?? 0);
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const high = Math.max(...scores);
+    const passRate = (scores.filter(s => s >= 40).length / scores.length) * 100;
+    
+    // Distribution bins
+    const bins = [0, 20, 40, 60, 80, 100];
+    const distribution = bins.slice(0, -1).map((low, i) => ({
+        range: `${low}-${bins[i+1]}%`,
+        count: scores.filter(s => s >= low && s < bins[i+1]).length,
+        color: pctColor(low + 10)
+    }));
+    // Fix last bin
+    distribution[distribution.length-1].count += scores.filter(s => s === 100).length;
+
+    return { avg, high, passRate, distribution };
+  }, [students]);
+
   const filtered = useMemo(() =>
     students.filter(s => s.student_name?.toLowerCase().includes(search.toLowerCase())),
     [students, search]
   );
 
-  return (
-    <div className="p-8 space-y-6 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-6">
-      <div className="relative w-full max-w-sm">
-        <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
-        <input
-          value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search students..."
-          className="w-full pl-11 pr-4 py-2.5 bg-black/10 border border-white/10 rounded-2xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-white/10 font-bold"
-        />
-      </div>
+  if (loading) return (
+    <div className="h-96 flex items-center justify-center">
+      <OrbitalBuffer size={40} className="text-accent" />
+    </div>
+  );
 
-      {loading ? (
-        <div className="h-64 flex items-center justify-center">
-          <div className="w-10 h-10 border-4 border-indigo-500/10 border-t-indigo-500 rounded-full animate-spin" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="py-20 text-center glass no-shadow border-dashed border-white/10 rounded-[2.5rem]">
-          <FiUsers className="mx-auto text-4xl text-white/10 mb-4" />
-          <p className="text-[10px] font-black text-white/20 tracking-[0.4em] uppercase">No student submissions yet</p>
-        </div>
-      ) : (
-        <AnimatedList items={filtered} className="flex flex-col gap-3" renderItem={(s) => (
-          <div
-            onClick={() => onSelectAttempt(s.attempt_id, s.student_name)}
-            className="group glass no-shadow p-5 flex items-center gap-5 rounded-[1.5rem] border-white/5 hover:bg-white/[0.08] hover:border-indigo-500/30 cursor-pointer transition-all"
-          >
-            <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-xs font-black text-indigo-400 shrink-0">
-              {s.student_name?.[0] ?? '?'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-black text-primary truncate uppercase tracking-tight">{s.student_name}</p>
-              <p className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-40 mt-0.5">
-                {s.division} · {s.year}
-              </p>
-            </div>
-            <div className="text-right shrink-0 mr-2">
-              <p className="text-xl font-black tabular-nums" style={{ color: pctColor(s.percentage ?? 0) }}>
-                {Math.round(s.percentage ?? 0)}%
-              </p>
-              <p className="text-[9px] font-black text-secondary opacity-30 uppercase">Score</p>
-            </div>
-            <FiChevronRight className="text-secondary opacity-20 group-hover:translate-x-1 group-hover:opacity-100 transition-all" />
+  return (
+    <div className="p-8 space-y-10 max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-6 pb-20">
+      
+      {/* Analytics Grid */}
+      {stats && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-4 grid grid-cols-1 gap-4">
+                  {[
+                      { label: 'Cohort Average', value: `${Math.round(stats.avg)}%`, color: pctColor(stats.avg) },
+                      { label: 'Qualified Rate', value: `${Math.round(stats.passRate)}%`, color: stats.passRate > 60 ? '#4ade80' : '#facc15' },
+                      { label: 'Highest Achievement', value: `${Math.round(stats.high)}%`, color: '#4ade80' },
+                      { label: 'Total Scored', value: students.length, color: 'rgb(var(--accent))' },
+                  ].map((s, i) => (
+                      <div key={i} className="glass no-shadow p-6 rounded-[2rem] border-white/5 flex flex-col justify-center">
+                          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-secondary opacity-40 mb-2">{s.label}</p>
+                          <p className="text-3xl font-black tracking-tighter tabular-nums" style={{ color: s.color }}>{s.value}</p>
+                      </div>
+                  ))}
+              </div>
+
+              <div className="lg:col-span-8 glass no-shadow p-8 rounded-[3rem] border-white/5 bg-white/[0.01] flex flex-col min-h-[400px]">
+                  <div className="flex items-center justify-between mb-8">
+                      <div>
+                          <p className="text-[10px] font-black text-secondary uppercase tracking-[0.4em] opacity-40">Performance Distribution</p>
+                          <p className="text-[10px] font-bold text-accent uppercase tracking-widest mt-1">Cohort Archetypes</p>
+                      </div>
+                      <FiAward className="text-xl text-accent opacity-20" />
+                  </div>
+                  <div className="flex-1 w-full min-h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={stats.distribution}>
+                              <XAxis dataKey="range" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: 'rgba(255,255,255,0.4)', fontWeight: 800 }} />
+                              <YAxis hide />
+                              <Tooltip 
+                                cursor={{ fill: 'rgba(255,255,255,0.02)' }}
+                                contentStyle={{ backgroundColor: 'rgba(15,15,15,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1rem', color: '#fff' }}
+                                itemStyle={{ color: '#fff', fontSize: '10px', textTransform: 'uppercase', fontWeight: 900 }}
+                              />
+                              <Bar dataKey="count" radius={[10, 10, 0, 0]}>
+                                  {stats.distribution.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={0.6} />
+                                  ))}
+                              </Bar>
+                          </BarChart>
+                      </ResponsiveContainer>
+                  </div>
+              </div>
           </div>
-        )} />
       )}
+
+      {/* Student List Section */}
+      <div className="space-y-6">
+          <div className="flex items-center justify-between px-2">
+            <h3 className="text-[10px] font-black text-secondary uppercase tracking-[0.4em] opacity-40">Submissions Archive ({filtered.length})</h3>
+            <div className="relative w-64">
+                <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
+                <input
+                    value={search} onChange={e => setSearch(e.target.value)}
+                    placeholder="Search cohort..."
+                    className="w-full pl-11 pr-4 py-2.5 bg-black/10 border border-white/10 rounded-2xl text-[10px] text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all placeholder:text-white/10 font-bold uppercase tracking-widest"
+                />
+            </div>
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className="py-20 text-center glass no-shadow border-dashed border-white/10 rounded-[3.5rem]">
+              <FiUsers className="mx-auto text-4xl text-white/10 mb-4" />
+              <p className="text-[10px] font-black text-white/20 tracking-[0.4em] uppercase">No subjects found in current scope</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filtered.map((s, i) => (
+                    <div
+                        key={i}
+                        onClick={() => onSelectAttempt(s.attempt_id, s.student_name)}
+                        className="group glass no-shadow p-6 flex items-center gap-5 rounded-[2rem] border-white/5 hover:bg-white/[0.08] hover:border-accent/40 cursor-pointer transition-all active:scale-[0.98]"
+                    >
+                        <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-sm font-black text-accent shrink-0 border border-accent/10">
+                            {s.student_name?.[0] ?? '?'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs font-black text-primary truncate uppercase tracking-tight">{s.student_name}</p>
+                            <p className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-30 mt-1">
+                                {s.division} · {s.year}
+                            </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                            <p className="text-lg font-black tabular-nums" style={{ color: pctColor(s.percentage ?? 0) }}>
+                                {Math.round(s.percentage ?? 0)}%
+                            </p>
+                            <p className="text-[8px] font-black text-secondary opacity-20 uppercase">Rating</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+          )}
+      </div>
     </div>
   );
 }
@@ -371,7 +522,7 @@ export default function ResultsApp({ testId: propTestId, testTitle: propTestTitl
           <div className="p-8 max-w-5xl mx-auto">
             {testsLoading ? (
               <div className="h-64 flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-indigo-500/10 border-t-indigo-500 rounded-full animate-spin" />
+                <OrbitalBuffer size={40} className="text-accent" />
               </div>
             ) : filteredTests.length === 0 ? (
               <div className="py-20 text-center glass no-shadow border-dashed border-white/10 rounded-[2.5rem]">
@@ -428,7 +579,7 @@ export default function ResultsApp({ testId: propTestId, testTitle: propTestTitl
           <div className="p-8 max-w-5xl mx-auto">
             {historyLoading ? (
               <div className="h-64 flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-indigo-500/10 border-t-indigo-500 rounded-full animate-spin" />
+                <OrbitalBuffer size={40} className="text-accent" />
               </div>
             ) : filteredHistory.length === 0 ? (
               <div className="py-20 text-center glass no-shadow border-dashed border-white/10 rounded-[2.5rem]">

@@ -4,9 +4,10 @@ import api from '../../lib/axios';
 import AttachToTestModal from '../../components/admin/AttachToTestModal';
 import { useOSStore } from '../store/useOSStore';
 import AnimatedList from '../../components/AnimatedList';
-import { FiPlus, FiBox, FiSettings, FiSearch, FiFolder, FiEdit3, FiPlay, FiSquare, FiTrash2, FiBarChart, FiShield, FiArrowLeft, FiClock, FiCalendar, FiUsers } from 'react-icons/fi';
+import { FiPlus, FiBox, FiSettings, FiSearch, FiFolder, FiEdit3, FiPlay, FiSquare, FiTrash2, FiBarChart, FiShield, FiArrowLeft, FiClock, FiCalendar, FiUsers, FiChevronRight, FiActivity } from 'react-icons/fi';
 import { GlassIcon } from '../components/AppIcons';
 import GlassSelect from '../../components/admin/GlassSelect';
+import OrbitalBuffer from '../components/OrbitalBuffer';
 
 interface Test {
   id: string;
@@ -65,8 +66,11 @@ export default function TestManagerApp() {
   const [endTime, setEndTime] = useState('');
   const [questionsPerAttempt, setQuestionsPerAttempt] = useState(10);
   const [randomize, setRandomize] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const TOTAL_STEPS = 3;
 
   async function load() {
     setLoading(true);
@@ -113,11 +117,11 @@ export default function TestManagerApp() {
     setView('edit');
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit() {
     setError('');
     if (!title.trim() || !subject.trim() || !year || !division || !startTime || !endTime) {
-      setError('Please fill in all required fields');
+      setError('Please fill in all required fields in earlier steps');
+      setWizardStep(1); // Force back to start for validation
       return;
     }
 
@@ -136,6 +140,7 @@ export default function TestManagerApp() {
       else await api.post('/tests', payload);
 
       setView('list');
+      setWizardStep(1);
       load();
     } catch (e: any) {
       setError(e.response?.data?.error ?? 'Save failed');
@@ -187,10 +192,10 @@ export default function TestManagerApp() {
                     placeholder="Search..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-black/5 border border-white/10 rounded-xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                    className="w-full pl-11 pr-4 py-2.5 bg-black/10 border border-white/10 rounded-2xl text-[10px] text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all placeholder:text-white/10 font-bold uppercase tracking-widest"
                 />
             </div>
-            <button onClick={handleCreate} className="px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-400 transition-all">+ New Test</button>
+            <button onClick={handleCreate} className="px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-accent text-white shadow-lg shadow-accent/20 hover:opacity-90 transition-all">+ New Test</button>
           </div>
         ) : (
           <button onClick={() => setView('list')} className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-white/5 text-secondary hover:bg-white/10 transition-all flex items-center gap-2">
@@ -202,7 +207,7 @@ export default function TestManagerApp() {
       <div className="flex-1 overflow-auto custom-scrollbar">
         {loading && view === 'list' ? (
              <div className="h-full flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+                <OrbitalBuffer size={40} className="text-accent" />
              </div>
         ) : view === 'list' ? (
           <div className="p-6">
@@ -219,27 +224,27 @@ export default function TestManagerApp() {
                   renderItem={(t) => (
                     <div className="group relative glass no-shadow p-5 flex flex-col md:flex-row items-start md:items-center gap-6 transition-all hover:bg-white/[0.08] hover:border-white/20 overflow-hidden">
                         
-                        <div className="relative p-4 bg-white/[0.04] rounded-2xl group-hover:bg-white/[0.08] transition-all duration-500">
-                            <GlassIcon id="folder" size="md" />
+                        <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5 group-hover:bg-accent/10 transition-colors">
+                          <FiFolder className="text-secondary group-hover:text-accent opacity-60 group-hover:opacity-100 text-xl transition-colors" />
                         </div>
 
                         <div className="flex-1 min-w-0 relative">
                             <div className="flex items-center gap-3 mb-1.5">
-                                <h3 className="text-lg font-black text-primary truncate tracking-tight uppercase group-hover:text-indigo-500 transition-colors">{t.title}</h3>
+                                <h3 className="text-lg font-black text-primary truncate tracking-tight uppercase group-hover:text-accent transition-colors">{t.title}</h3>
                                 <StatusBadge status={t.status} />
                             </div>
                             <div className="flex flex-wrap items-center gap-4 text-[10px] font-black uppercase tracking-widest text-secondary">
-                                <span className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded"><FiBox className="text-indigo-400" /> {t.subject}</span>
-                                <span className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded"><FiUsers className="text-indigo-400" /> {t.year} • {t.division}</span>
-                                <span className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded"><FiClock className="text-indigo-400" /> {t.duration_minutes}m</span>
-                                <span className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded"><FiCalendar className="text-indigo-400" /> {new Date(t.start_time).toLocaleDateString()}</span>
+                                <span className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded"><FiBox className="text-accent" /> {t.subject}</span>
+                                <span className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded"><FiUsers className="text-accent" /> {t.year} • {t.division}</span>
+                                <span className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded"><FiClock className="text-accent" /> {t.duration_minutes}m</span>
+                                <span className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded"><FiCalendar className="text-accent" /> {new Date(t.start_time).toLocaleDateString()}</span>
                             </div>
                         </div>
 
                         <div className="flex flex-wrap gap-2 relative">
                             {t.status === 'draft' && (
                                 <>
-                                    <button onClick={(e) => { e.stopPropagation(); handleEdit(t); }} className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all"><FiEdit3 /></button>
+                                    <button onClick={(e) => { e.stopPropagation(); handleEdit(t); }} className="p-2.5 rounded-xl bg-accent/20 text-accent hover:bg-accent hover:text-white transition-all"><FiEdit3 /></button>
                                     <button onClick={(e) => { e.stopPropagation(); handleStatusChange(t.id, 'active'); }} className="px-4 py-2.5 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500 hover:text-white text-[10px] font-black uppercase tracking-widest transition-all">Start</button>
                                 </>
                             )}
@@ -262,103 +267,139 @@ export default function TestManagerApp() {
             )}
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-8 max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
-            <h2 className="text-2xl font-black text-primary tracking-widest uppercase border-b border-white/5 pb-4">{editing ? 'Edit Configuration' : 'Test Creation'}</h2>
-            
+          <div className="p-8 max-w-4xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-5 duration-700">
+            {/* Wizard Header / Progress */}
             <div className="space-y-6">
-                <div>
-                   <label className={labelCls}>Title of the Evaluation *</label>
-                    <input type="text" value={title} onChange={e => setTitle(e.target.value)} className={inputCls} placeholder="e.g. End Semester Exam 2024" />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <div>
-                        <label className={labelCls}>Academic Subject *</label>
-                        <input type="text" value={subject} onChange={e => setSubject(e.target.value)} className={inputCls} placeholder="e.g. Data Structures" />
-                    </div>
-                    <div>
-                        <label className={labelCls}>Estimated Duration (Min) *</label>
-                        <input type="number" min={1} value={duration} onChange={e => setDuration(Number(e.target.value))} className={inputCls} />
+                <div className="flex items-center justify-between">
+                    <h2 className="text-3xl font-black text-primary tracking-tighter uppercase">{editing ? 'Edit Setup' : 'Create Setup'}</h2>
+                    <div className="flex items-center gap-2">
+                        {[1, 2, 3].map(s => (
+                            <div key={s} className={`h-1.5 w-12 rounded-full transition-all duration-500 ${wizardStep >= s ? 'bg-accent shadow-[0_0_10px_rgba(var(--accent-rgb),0.5)]' : 'bg-white/10'}`} />
+                        ))}
                     </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className={labelCls}>Target Year *</label>
-                        <GlassSelect 
-                          value={year} 
-                          onChange={setYear}
-                          options={[
-                            { value: 'FE', label: 'FE' },
-                            { value: 'SE', label: 'SE' },
-                            { value: 'TE', label: 'TE' },
-                            { value: 'BE', label: 'BE' },
-                          ]}
-                          placeholder="Select Target Year"
-                        />
-                    </div>
-                    <div>
-                        <label className={labelCls}>Departmental Division *</label>
-                        <GlassSelect 
-                          value={division} 
-                          onChange={setDivision}
-                          options={[
-                            { value: 'ALL', label: 'All Divisions' },
-                            { value: 'A', label: 'Division A' },
-                            { value: 'B', label: 'Division B' },
-                            { value: 'C', label: 'Division C' },
-                            { value: 'D', label: 'Division D' },
-                          ]}
-                          placeholder="Select Division"
-                        />
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className={labelCls}>Evaluation Start Window *</label>
-                        <input type="datetime-local" value={startTime} onChange={e => setStartTime(e.target.value)} className={inputCls} />
-                    </div>
-                    <div>
-                        <label className={labelCls}>Evaluation End Window *</label>
-                        <input type="datetime-local" value={endTime} onChange={e => setEndTime(e.target.value)} className={inputCls} />
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-white/5 pt-6">
-                    <div>
-                        <label className={labelCls}>Questions per Participant</label>
-                        <input type="number" min={1} value={questionsPerAttempt} onChange={e => setQuestionsPerAttempt(Number(e.target.value))} className={inputCls} />
-                    </div>
-                    <div className="flex items-center h-full pt-6">
-                     <label className="group flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-black/5 border border-white/5 hover:bg-black/10 transition-all flex-1">
-                            <input type="checkbox" checked={randomize} onChange={e => setRandomize(e.target.checked)} className="w-5 h-5 accent-indigo-500 rounded-lg" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-secondary opacity-60 group-hover:text-primary transition-colors">Randomize question sequence</span>
-                        </label>
-                    </div>
+                <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-[0.3em] text-secondary opacity-40">
+                    <span className={wizardStep === 1 ? 'text-accent opacity-100' : ''}>01. Identity</span>
+                    <FiChevronRight />
+                    <span className={wizardStep === 2 ? 'text-accent opacity-100' : ''}>02. Scheduling</span>
+                    <FiChevronRight />
+                    <span className={wizardStep === 3 ? 'text-accent opacity-100' : ''}>03. Controls</span>
                 </div>
             </div>
+            
+            <div className="min-h-[300px] animate-in fade-in duration-300">
+                {wizardStep === 1 && (
+                    <div className="space-y-8 slide-in-from-right-4 animate-in duration-500">
+                        <div className="glass no-shadow p-8 rounded-[2.5rem] border-white/5 space-y-6 bg-white/[0.01]">
+                            <div>
+                                <label className={labelCls}>Title of the Evaluation *</label>
+                                <input type="text" value={title} onChange={e => setTitle(e.target.value)} className={inputCls} placeholder="e.g. End Semester Exam 2024" />
+                            </div>
+                            <div>
+                                <label className={labelCls}>Academic Subject *</label>
+                                <input type="text" value={subject} onChange={e => setSubject(e.target.value)} className={inputCls} placeholder="e.g. Data Structures" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label className={labelCls}>Target Year *</label>
+                                    <GlassSelect value={year} onChange={setYear} placeholder="Year" options={[{ value: 'FE', label: 'FE' }, { value: 'SE', label: 'SE' }, { value: 'TE', label: 'TE' }, { value: 'BE', label: 'BE' }]} />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Division *</label>
+                                    <GlassSelect value={division} onChange={setDivision} placeholder="Division" options={[{ value: 'ALL', label: 'All' }, { value: 'A', label: 'A' }, { value: 'B', label: 'B' }, { value: 'C', label: 'C' }, { value: 'D', label: 'D' }]} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
-            {error && <p className="text-xs font-black uppercase tracking-widest text-red-400 bg-red-400/10 p-4 rounded-xl border border-red-400/20">{error}</p>}
+                {wizardStep === 2 && (
+                    <div className="space-y-8 slide-in-from-right-4 animate-in duration-500">
+                        <div className="glass no-shadow p-8 rounded-[2.5rem] border-white/5 space-y-6 bg-white/[0.01]">
+                            <div>
+                                <label className={labelCls}>Session Duration (Minutes) *</label>
+                                <input type="number" min={1} value={duration} onChange={e => setDuration(Number(e.target.value))} className={inputCls} />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className={labelCls}>Activation Window Start *</label>
+                                    <input type="datetime-local" value={startTime} onChange={e => setStartTime(e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Activation Window End *</label>
+                                    <input type="datetime-local" value={endTime} onChange={e => setEndTime(e.target.value)} className={inputCls} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {wizardStep === 3 && (
+                    <div className="space-y-8 slide-in-from-right-4 animate-in duration-500">
+                        <div className="glass no-shadow p-8 rounded-[2.5rem] border-white/5 space-y-8 bg-white/[0.01]">
+                            <div>
+                                <label className={labelCls}>Items per Participant</label>
+                                <input type="number" min={1} value={questionsPerAttempt} onChange={e => setQuestionsPerAttempt(Number(e.target.value))} className={inputCls} />
+                            </div>
+                            <div className="space-y-4">
+                                <label className="group flex items-center gap-4 cursor-pointer p-6 rounded-3xl bg-black/5 border border-white/5 hover:bg-black/10 transition-all">
+                                    <input type="checkbox" checked={randomize} onChange={e => setRandomize(e.target.checked)} className="w-5 h-5 accent-accent rounded-lg" />
+                                    <div className="flex-1">
+                                        <p className="text-xs font-black uppercase text-primary mb-1">Randomize Sequence</p>
+                                        <p className="text-[10px] font-bold text-secondary opacity-40 uppercase">Ensures unique question order for every student session</p>
+                                    </div>
+                                </label>
+                                {editing && (
+                                    <button type="button" onClick={() => setAttachTestId(editing.id)} className="w-full flex items-center justify-center gap-3 py-6 rounded-3xl bg-accent/10 border border-accent/20 text-accent font-black uppercase text-[10px] tracking-widest hover:bg-accent hover:text-white transition-all">
+                                        <FiSettings /> Modular Asset Management
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {error && <p className="text-xs font-black uppercase tracking-widest text-red-400 bg-red-400/10 p-4 rounded-xl border border-red-400/20 text-center">{error}</p>}
 
             <div className="flex gap-4 pt-4 pb-12">
-                <button type="submit" disabled={saving} className="flex-1 py-4 rounded-2xl bg-indigo-600 text-white font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/30 hover:bg-indigo-500 hover:-translate-y-1 active:translate-y-0 transition-all disabled:opacity-50">
-                    {saving ? 'Processing...' : editing ? 'Commit Changes' : 'Initialize Test'}
-                </button>
-                {editing && (
-                    <button type="button" onClick={() => setAttachTestId(editing.id)} className="px-8 py-4 rounded-2xl bg-white/10 text-white font-black uppercase tracking-widest hover:bg-white/20 transition-all">
-                        Attach Assets
+                {wizardStep > 1 && (
+                    <button 
+                        type="button" 
+                        onClick={() => setWizardStep(s => s - 1)}
+                        className="px-8 py-4 rounded-[2rem] bg-white/5 text-secondary font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+                    >
+                        Back
+                    </button>
+                )}
+                
+                {wizardStep < TOTAL_STEPS ? (
+                    <button 
+                        type="button" 
+                        onClick={() => setWizardStep(s => s + 1)}
+                        className="px-6 py-2.5 rounded-xl bg-accent hover:opacity-90 text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-accent/20 active:scale-95 transition-all"
+                    >
+                        Next Phase
+                    </button>
+                ) : (
+                    <button 
+                        type="button" 
+                        onClick={handleSubmit} 
+                        disabled={saving} 
+                        className="flex-1 py-5 rounded-[2rem] bg-indigo-600 text-white font-black uppercase tracking-[0.3em] shadow-xl shadow-indigo-600/30 hover:bg-green-500 hover:text-white transition-all disabled:opacity-50"
+                    >
+                        {saving ? 'Processing...' : editing ? 'Finalize Changes' : 'Launch Setup'}
                     </button>
                 )}
             </div>
-          </form>
+          </div>
         )}
       </div>
 
       {/* Attach modal */}
       {attachTestId && (
         <AttachToTestModal
-          testId={attachTestId} 
+          questionId={attachTestId} 
           onClose={() => setAttachTestId(null)}
         />
       )}

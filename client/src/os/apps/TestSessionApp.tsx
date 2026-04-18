@@ -11,9 +11,10 @@ import CodingEditorOverlay from '../components/CodingEditorOverlay';
 import {
   FiAlertTriangle, FiShield, FiClock, FiBox, FiPlus, FiPlay, FiArrowLeft, FiCode,
 } from 'react-icons/fi';
+import OrbitalBuffer from '../components/OrbitalBuffer';
 
 
-type SessionPhase = 'start-screen' | 'active' | 'evaluating' | 'done' | 'integrity-failed';
+type SessionPhase = 'start-screen' | 'active' | 'evaluating' | 'concluded' | 'integrity-failed' | 'done';
 
 const RULES = [
   'Close all other browser tabs before starting.',
@@ -360,8 +361,7 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
       if (reason === 'integrity_violation') {
         setPhase('integrity-failed');
       } else {
-        openWindow('results', { attemptId });
-        if (windowId) closeWindow(windowId);
+        setPhase('concluded');
       }
     } catch (e: any) {
       setSubmitError(e.response?.data?.error ?? 'Submission failed. Please try again.');
@@ -398,11 +398,9 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <span className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>
-            Loading test session...
-          </p>
+        <div className="flex flex-col items-center gap-6">
+          <OrbitalBuffer size={64} className="text-accent" />
+          <p className="text-[10px] font-black uppercase tracking-[0.5em] text-secondary opacity-30 animate-pulse">Initialising Secure Session...</p>
         </div>
       </div>
     );
@@ -581,6 +579,20 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
             </div>
           </div>
 
+          {/* Question Progress Bar */}
+          <div className="flex-1 max-w-md mx-8 flex flex-col gap-1.5">
+             <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-secondary opacity-40 px-1">
+                <span>Evaluation Progress</span>
+                <span>{answeredIds.size} / {questions.length} answered</span>
+             </div>
+             <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                <div 
+                  className="h-full bg-accent shadow-[0_0_10px_rgba(var(--accent-rgb),0.5)] transition-all duration-700"
+                  style={{ width: `${(answeredIds.size / questions.length) * 100}%` }}
+                />
+             </div>
+          </div>
+
           {/* Timer */}
           <div className="flex items-center gap-3 px-6 py-2 rounded-2xl glass no-shadow border-white/10">
             <div className="flex flex-col items-end">
@@ -596,7 +608,7 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
           <button
             disabled={submitting || phase === 'evaluating'}
             onClick={() => setShowConfirm(true)}
-            className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest text-white transition-all bg-indigo-600 shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 hover:-translate-y-1 active:translate-y-0 disabled:opacity-50"
+            className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest text-white transition-all bg-accent shadow-lg shadow-accent/20 hover:bg-accent/90 hover:-translate-y-1 active:translate-y-0 disabled:opacity-50"
           >
             {submitting ? 'Submitting...' : 'End Test Session'}
           </button>
@@ -685,7 +697,7 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
                   <button
                     onClick={() => setCodingOverlayQ(currentQ)}
                     className="w-full flex items-center justify-center gap-4 py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.25em] text-white transition-all hover:-translate-y-1 active:translate-y-0"
-                    style={{ background: 'linear-gradient(135deg, rgb(99,102,241) 0%, rgb(139,92,246) 100%)', boxShadow: '0 8px 32px rgba(99,102,241,0.5)' }}
+                    style={{ background: 'linear-gradient(135deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-rgb)) 100%)', boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.5)' }}
                   >
                     <FiCode className="text-xl" />
                     Launch Full-Screen Editor
@@ -699,7 +711,7 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
                     </button>
                     <span className="text-[10px] font-black text-secondary opacity-40">{currentIdx + 1} / {questions.length}</span>
                     <button disabled={currentIdx === questions.length - 1} onClick={() => setCurrentIdx(i => i + 1)}
-                      className="flex items-center gap-2 px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all disabled:opacity-20">
+                      className="flex items-center gap-2 px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-all disabled:opacity-20">
                       Next Question →
                     </button>
                   </div>
@@ -729,7 +741,7 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
                         <span className="text-[10px] font-black text-secondary tracking-widest opacity-60">{currentIdx + 1} <span className="opacity-20 mx-1">/</span> {questions.length}</span>
                     </div>
                     <button disabled={currentIdx === questions.length - 1} onClick={() => setCurrentIdx(i => i + 1)}
-                      className="flex items-center gap-2 px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all disabled:opacity-20">
+                      className="flex items-center gap-2 px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-all disabled:opacity-20">
                       Next Question →
                     </button>
                   </div>
@@ -753,7 +765,7 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
         {phase === 'evaluating' && (
           <div className="absolute inset-0 z-[90] flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-500">
             <div className="text-center glass p-12 rounded-[2.5rem] border-white/5">
-              <span className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin inline-block mb-6" />
+              <OrbitalBuffer size={64} className="text-accent mb-6" />
               <p className="text-xl font-black text-primary uppercase tracking-tighter">
                 Synchronizing Telemetry...
               </p>
@@ -787,6 +799,51 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
                 >
                     Dismiss Session
                 </button>
+             </div>
+          </div>
+        )}
+        {/* Session Concluded screen */}
+        {phase === 'concluded' && (
+          <div className="absolute inset-0 z-[100] flex items-center justify-center bg-[#0a0a15]/90 backdrop-blur-2xl animate-in fade-in zoom-in duration-700">
+             <div className="max-w-xl w-full glass p-12 text-center border-accent/20 rounded-[4rem] relative overflow-hidden group">
+                <div className="absolute -top-20 -left-20 w-40 h-40 bg-accent/20 blur-3xl rounded-full group-hover:scale-150 transition-transform duration-1000" />
+                
+                <div className="relative z-10">
+                    <div className="w-24 h-24 rounded-[2rem] bg-accent/10 flex items-center justify-center mx-auto mb-8 border border-white/10 shadow-2xl">
+                        <FiShield className="text-5xl text-accent" />
+                    </div>
+                    <h2 className="text-4xl font-black text-primary uppercase tracking-tighter mb-2">Session Concluded</h2>
+                    <p className="text-[10px] font-black text-secondary uppercase tracking-[0.4em] mb-10 opacity-60">Telemetry Synchronized Successfully</p>
+                    
+                    <div className="grid grid-cols-2 gap-4 mb-10">
+                        <div className="glass no-shadow p-6 rounded-3xl border-white/5 bg-white/[0.01]">
+                            <p className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-40 mb-2">Items Attempted</p>
+                            <p className="text-3xl font-black text-accent">{answeredIds.size} / {questions.length}</p>
+                        </div>
+                        <div className="glass no-shadow p-6 rounded-3xl border-white/5 bg-white/[0.01]">
+                            <p className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-40 mb-2">Final Integrity</p>
+                            <p className="text-3xl font-black text-green-400">{liveIntegrity}%</p>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                        <button
+                            onClick={() => {
+                                openWindow('results', { attemptId });
+                                if (windowId) closeWindow(windowId);
+                            }}
+                            className="w-full py-5 rounded-web bg-accent text-white font-black uppercase tracking-[0.2em] shadow-xl shadow-accent/20 hover:bg-accent/90 transition-all"
+                        >
+                            Review Evaluation Results
+                        </button>
+                        <button
+                            onClick={() => windowId && closeWindow(windowId)}
+                            className="w-full py-4 rounded-web bg-black/5 text-secondary font-black uppercase tracking-widest hover:bg-white/5 transition-all text-[10px]"
+                        >
+                            Return to Academic Hub
+                        </button>
+                    </div>
+                </div>
              </div>
           </div>
         )}
