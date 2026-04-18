@@ -4,7 +4,7 @@ import api from '../../lib/axios';
 import AttachToTestModal from '../../components/admin/AttachToTestModal';
 import { useOSStore } from '../store/useOSStore';
 import AnimatedList from '../../components/AnimatedList';
-import { FiPlus, FiBox, FiSettings, FiSearch, FiFolder, FiEdit3, FiPlay, FiSquare, FiTrash2, FiBarChart, FiShield, FiArrowLeft, FiClock, FiCalendar, FiUsers, FiChevronRight, FiActivity } from 'react-icons/fi';
+import { FiBox, FiSettings, FiSearch, FiFolder, FiEdit3, FiPlay, FiSquare, FiTrash2, FiBarChart, FiShield, FiArrowLeft, FiClock, FiCalendar, FiUsers, FiChevronRight } from 'react-icons/fi';
 import { GlassIcon } from '../components/AppIcons';
 import GlassSelect from '../../components/admin/GlassSelect';
 import OrbitalBuffer from '../components/OrbitalBuffer';
@@ -26,7 +26,7 @@ interface Test {
 
 type View = 'list' | 'create' | 'edit';
 
-const inputCls = 'w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-black/5 border border-white/10 text-primary focus:ring-2 focus:ring-indigo-500/50 transition-all';
+const inputCls = 'w-full px-4 py-2.5 rounded-xl text-sm outline-none bg-black/5 border border-white/10 text-primary focus:ring-2 focus:ring-accent/50 transition-all';
 const labelCls = 'block text-[10px] font-black uppercase tracking-widest text-secondary opacity-60 mb-1.5 ml-1';
 
 function StatusBadge({ status }: { status: string }) {
@@ -172,10 +172,10 @@ export default function TestManagerApp() {
   return (
     <div className="h-full flex flex-col bg-transparent">
       {/* Header */}
-      <div className="flex items-center justify-between gap-6 p-6 border-b border-white/5">
+      <div className="flex items-center justify-between gap-6 p-6 border-b border-white/5 bg-white/[0.02] backdrop-blur-md">
         <div className="flex-1">
           <h1 className="text-xl font-bold text-primary tracking-tight flex items-center gap-2">
-            <FiFolder className="text-indigo-400" />
+            <FiFolder className="text-accent" />
             Test Manager
           </h1>
           <p className="text-[10px] font-black uppercase text-secondary tracking-widest mt-0.5">
@@ -212,53 +212,50 @@ export default function TestManagerApp() {
         ) : view === 'list' ? (
           <div className="p-6">
             {filteredTests.length === 0 ? (
-                <div className="glass no-shadow p-16 text-center border-dashed border-white/10">
+                <div className="glass-2 p-16 text-center border-dashed border-white/10">
                     <p className="text-sm font-black text-secondary uppercase tracking-[0.4em]">No matching tests found</p>
                 </div>
             ) : (
                 <AnimatedList 
                   items={filteredTests}
                   containerClassName="w-full"
-                  className="max-h-none"
+                  className="grid grid-cols-1"
                   gap={16}
                   renderItem={(t) => (
-                    <div className="group relative glass no-shadow p-5 flex flex-col md:flex-row items-start md:items-center gap-6 transition-all hover:bg-white/[0.08] hover:border-white/20 overflow-hidden">
+                    <div className="group relative glass-2 p-8 flex items-center gap-8 transition-all hover:bg-white/[0.08] hover:border-accent/40 overflow-hidden rounded-[3.5rem] shadow-xl hover:shadow-2xl cursor-pointer">
                         
-                        <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5 group-hover:bg-accent/10 transition-colors">
-                          <FiFolder className="text-secondary group-hover:text-accent opacity-60 group-hover:opacity-100 text-xl transition-colors" />
+                        <div className="w-16 h-16 rounded-3xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:bg-accent/10 transition-colors shadow-2xl shrink-0">
+                          <FiFolder className="text-secondary group-hover:text-accent opacity-60 group-hover:opacity-100 text-2xl transition-colors" />
                         </div>
 
-                        <div className="flex-1 min-w-0 relative">
+                        <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-3 mb-1.5">
                                 <h3 className="text-lg font-black text-primary truncate tracking-tight uppercase group-hover:text-accent transition-colors">{t.title}</h3>
                                 <StatusBadge status={t.status} />
                             </div>
-                            <div className="flex flex-wrap items-center gap-4 text-[10px] font-black uppercase tracking-widest text-secondary">
-                                <span className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded"><FiBox className="text-accent" /> {t.subject}</span>
-                                <span className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded"><FiUsers className="text-accent" /> {t.year} • {t.division}</span>
-                                <span className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded"><FiClock className="text-accent" /> {t.duration_minutes}m</span>
-                                <span className="flex items-center gap-1.5 bg-black/5 px-2 py-1 rounded"><FiCalendar className="text-accent" /> {new Date(t.start_time).toLocaleDateString()}</span>
+                            <div className="flex flex-wrap items-center gap-4 text-[10px] font-black uppercase tracking-widest text-secondary opacity-40">
+                                <span className="flex items-center gap-1.5"><FiBox className="text-accent" /> {t.subject}</span>
+                                <span className="flex items-center gap-1.5"><FiUsers className="text-accent" /> {t.year} · {t.division}</span>
+                                <span className="flex items-center gap-1.5"><FiClock className="text-accent" /> {t.duration_minutes}m</span>
+                                <span className="flex items-center gap-1.5"><FiCalendar className="text-accent" /> {new Date(t.start_time).toLocaleDateString()}</span>
                             </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-2 relative">
+                        <div className="flex items-center gap-2 shrink-0">
                             {t.status === 'draft' && (
-                                <>
-                                    <button onClick={(e) => { e.stopPropagation(); handleEdit(t); }} className="p-2.5 rounded-xl bg-accent/20 text-accent hover:bg-accent hover:text-white transition-all"><FiEdit3 /></button>
-                                    <button onClick={(e) => { e.stopPropagation(); handleStatusChange(t.id, 'active'); }} className="px-4 py-2.5 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500 hover:text-white text-[10px] font-black uppercase tracking-widest transition-all">Start</button>
-                                </>
+                                <button onClick={(e) => { e.stopPropagation(); handleStatusChange(t.id, 'active'); }} className="px-6 py-3 rounded-2xl bg-green-500/10 text-green-400 hover:bg-green-500 hover:text-white text-[10px] font-black uppercase tracking-widest transition-all border border-green-500/10 shadow-lg shadow-green-500/10">Start</button>
                             )}
                             {t.status === 'active' && (
-                                <button onClick={(e) => { e.stopPropagation(); handleStatusChange(t.id, 'ended'); }} className="px-4 py-2.5 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white text-[10px] font-black uppercase tracking-widest transition-all">End Test</button>
+                                <button onClick={(e) => { e.stopPropagation(); handleStatusChange(t.id, 'ended'); }} className="px-6 py-3 rounded-2xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white text-[10px] font-black uppercase tracking-widest transition-all border border-red-500/10 shadow-lg shadow-red-500/10">Terminate</button>
                             )}
                             {(t.status === 'active' || t.status === 'ended') && (
                                 <>
-                                    <button onClick={(e) => { e.stopPropagation(); openWindow('results', { testId: t.id, testTitle: t.title }); }} className="p-2.5 rounded-xl bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white transition-all"><FiBarChart /></button>
-                                    <button onClick={(e) => { e.stopPropagation(); openWindow('integrity', { testId: t.id, testTitle: t.title }); }} className="p-2.5 rounded-xl bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500 hover:text-white transition-all"><FiShield /></button>
+                                    <button onClick={(e) => { e.stopPropagation(); openWindow('results', { testId: t.id, testTitle: t.title }); }} className="p-3.5 rounded-2xl bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white transition-all border border-blue-500/10" title="Analytics"><FiBarChart /></button>
+                                    <button onClick={(e) => { e.stopPropagation(); openWindow('integrity', { testId: t.id, testTitle: t.title }); }} className="p-3.5 rounded-2xl bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500 hover:text-white transition-all border border-yellow-500/10" title="Security Audit"><FiShield /></button>
                                 </>
                             )}
-                            <button onClick={(e) => { e.stopPropagation(); openWindow('question-bank', { testId: t.id, testTitle: t.title }); }} className="p-2.5 rounded-xl bg-black/5 text-secondary hover:bg-white/20 hover:text-primary transition-all"><FiSettings /></button>
-                            <button onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }} className="p-2.5 rounded-xl bg-black/5 text-secondary hover:bg-red-500 hover:text-white transition-all"><FiTrash2 /></button>
+                            <button onClick={(e) => { e.stopPropagation(); openWindow('question-bank', { testId: t.id, testTitle: t.title }); }} className="p-3.5 rounded-2xl bg-white/5 text-secondary hover:bg-accent/20 hover:text-accent transition-all border border-white/5" title="Blueprint Editor"><FiSettings /></button>
+                            <button onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }} className="p-3.5 rounded-2xl bg-white/5 text-secondary hover:bg-red-500 hover:text-white transition-all border border-white/5" title="Purge Record"><FiTrash2 /></button>
                         </div>
                     </div>
                   )}
@@ -290,7 +287,7 @@ export default function TestManagerApp() {
             <div className="min-h-[300px] animate-in fade-in duration-300">
                 {wizardStep === 1 && (
                     <div className="space-y-8 slide-in-from-right-4 animate-in duration-500">
-                        <div className="glass no-shadow p-8 rounded-[2.5rem] border-white/5 space-y-6 bg-white/[0.01]">
+                        <div className="glass-2 p-8 relative overflow-hidden">
                             <div>
                                 <label className={labelCls}>Title of the Evaluation *</label>
                                 <input type="text" value={title} onChange={e => setTitle(e.target.value)} className={inputCls} placeholder="e.g. End Semester Exam 2024" />
@@ -315,7 +312,7 @@ export default function TestManagerApp() {
 
                 {wizardStep === 2 && (
                     <div className="space-y-8 slide-in-from-right-4 animate-in duration-500">
-                        <div className="glass no-shadow p-8 rounded-[2.5rem] border-white/5 space-y-6 bg-white/[0.01]">
+                        <div className="glass-2 p-8 relative overflow-hidden">
                             <div>
                                 <label className={labelCls}>Session Duration (Minutes) *</label>
                                 <input type="number" min={1} value={duration} onChange={e => setDuration(Number(e.target.value))} className={inputCls} />

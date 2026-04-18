@@ -7,8 +7,10 @@
   --text-primary: 248 250 252;   /* slate-50  */
   --text-secondary: 148 163 184; /* slate-400 */
   --accent: 99 102 241;          /* indigo-500 */
-  --glass-bg: rgba(255 255 255 / 0.08); /* slightly more opaque dark glass */
-  --glass-border: rgba(255 255 255 / 0.15);
+  --glass-bg: rgba(255 255 255 / 0.08); 
+  --glass-surface: rgba(255 255 255 / 0.03);
+  --glass-inset: rgba(0 0 0 / 0.2);
+  --glass-border: rgba(255 255 255 / 0.18);
   --accent-glow: rgba(99, 102, 241, 0.4);
 
   /* ── OS Shell tokens ── */
@@ -24,20 +26,22 @@
 }
 
 [data-theme="light"] {
-  --bg-primary: 255 218 185;     /* peach-puff */
-  --bg-secondary: 251 196 171;   /* apricot */
-  --text-primary: 45 27 27;      /* deep coffee/coral */
-  --text-secondary: 139 94 94;   /* muted warm rose */
-  --accent: 240 128 128;         /* light-coral */
-  --glass-bg: rgba(255 255 255 / 0.6);
-  --glass-border: rgba(240 128 128 / 0.2); 
-  --accent-glow: rgba(240, 128, 128, 0.4);
+  --bg-primary: 244 151 142;     /* deep-coral #f4978e */
+  --bg-secondary: 248 173 157;   /* melon #f8ad9d */
+  --text-primary: 28 10 10;      /* deep warm charcoal #1c0a0a */
+  --text-secondary: 85 55 55;    /* muted deep coral */
+  --accent: 240 128 128;         /* light-coral #f08080 */
+  --glass-bg: rgba(251, 196, 171, 0.45);
+  --glass-surface: rgba(255, 218, 185, 0.35);
+  --glass-inset: rgba(255, 255, 255, 0.15);
+  --glass-border: rgba(255, 255, 255, 0.3); 
+  --accent-glow: rgba(240, 128, 128, 0.5);
 
-  /* ── OS Shell tokens (light — sunset glass) ── */
-  --menubar-bg: rgba(255, 218, 185, 0.75);
-  --dock-bg: rgba(255, 218, 185, 0.45);
-  --window-chrome-bg: rgba(251, 196, 171, 0.5);
-  --window-titlebar-bg: rgba(255, 218, 185, 0.35);
+  /* ── OS Shell tokens (light — reverse sunset) ── */
+  --menubar-bg: rgba(244, 151, 142, 0.75);
+  --dock-bg: rgba(244, 151, 142, 0.45); /* Deep-coral overlay for consistency */
+  --window-chrome-bg: rgba(251, 196, 171, 0.55);
+  --window-titlebar-bg: rgba(255, 218, 185, 0.25);
 
   color-scheme: light;
 }
@@ -81,9 +85,33 @@ body {
 /* Glassmorphism utility */
 .glass {
   background: var(--glass-bg);
-  backdrop-filter: blur(28px) saturate(200%);
-  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  backdrop-filter: blur(40px) saturate(210%);
+  -webkit-backdrop-filter: blur(40px) saturate(210%);
   border: 1px solid var(--glass-border);
+  box-shadow: 
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.15),
+    0 20px 25px -5px rgba(0, 0, 0, 0.2), 
+    0 10px 10px -5px rgba(0, 0, 0, 0.1);
+  border-radius: 1.5rem;
+}
+
+.glass-2 {
+  background: var(--glass-surface);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+    0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-radius: 1.25rem;
+}
+
+.glass-3 {
+  background: rgba(var(--accent), 0.05);
+  border: 1px solid rgba(var(--accent), 0.4);
+  box-shadow: 
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.1),
+    0 8px 16px rgba(var(--accent), 0.15);
   border-radius: 1rem;
 }
 
@@ -158,10 +186,12 @@ body {
 }
 
 [data-theme="light"] .app-window {
-  background-color: rgba(255, 255, 255, 0.65);
+  background-color: rgba(255, 255, 255, 0.88);
   background-image: none;
-  border-color: rgba(203, 213, 225, 0.4);
-  box-shadow: 0 20px 40px -12px rgba(15, 23, 42, 0.1);
+  border-color: rgba(240, 128, 128, 0.3);
+  box-shadow: 
+    0 0 0 1px rgba(240, 128, 128, 0.1),
+    0 20px 40px -12px rgba(45, 27, 27, 0.15);
 }
 
 .app-window-titlebar {

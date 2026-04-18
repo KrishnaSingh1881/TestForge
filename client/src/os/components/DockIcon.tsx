@@ -26,18 +26,19 @@ export default function DockIcon({ app, isOpen, isActive, isMinimized, isLight, 
   const IconComponent = APP_ICONS[app.id];
 
   // Liquid Glass tokens
-  const tileBg = isLight
-    ? isActive ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.12)'
-    : isActive ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)';
+  // Optimized for "Pinkish Glow" Dock
+  const tileBg = isActive 
+    ? 'rgba(255, 255, 255, 0.4)' 
+    : 'rgba(255, 255, 255, 0.15)';
 
-  const tileBorder = isLight
-    ? isActive ? '1px solid rgba(0, 0, 0, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)'
-    : isActive ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(255, 255, 255, 0.06)';
+  const tileBorder = isActive 
+    ? '1px solid rgba(255, 255, 255, 0.5)' 
+    : '1px solid rgba(255, 255, 255, 0.2)';
 
-  const tooltipBg = 'rgba(15, 12, 35, 0.8)';
-  const dotColor  = isLight
-    ? isActive ? '#6366f1' : 'rgba(0,0,0,0.2)'
-    : isActive ? '#818cf8' : 'rgba(255,255,255,0.2)';
+  const tooltipBg = 'rgba(28, 10, 10, 0.9)';
+  const dotColor  = isActive 
+    ? 'rgb(var(--accent))' 
+    : 'rgba(255, 255, 255, 0.5)';
 
   return (
     <div
@@ -84,9 +85,9 @@ export default function DockIcon({ app, isOpen, isActive, isMinimized, isLight, 
         className="relative"
       >
         <BorderGlow
-            glowColor={isLight ? '40 50 80' : '230 80 60'}
-            glowRadius={15}
-            glowIntensity={isLight ? 0.25 : 0.4}
+            glowColor="255 255 255"
+            glowRadius={20}
+            glowIntensity={isActive ? 0.15 : 0.05}
             borderRadius={14}
             backgroundColor={tileBg}
             className="no-shadow"

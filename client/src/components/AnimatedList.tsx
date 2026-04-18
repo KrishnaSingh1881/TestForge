@@ -133,7 +133,8 @@ const AnimatedList: React.FC<AnimatedListProps> = ({
         <div className={`relative ${containerClassName}`}>
             <div
                 ref={listRef}
-                className={`overflow-y-auto custom-scrollbar h-full ${className} ${!displayScrollbar ? 'scrollbar-hide' : ''}`}
+                className={`overflow-y-auto custom-scrollbar h-full ${!className.includes('grid') && !className.includes('flex') ? 'flex flex-col' : ''} ${className} ${!displayScrollbar ? 'scrollbar-hide' : ''}`}
+                style={{ gap: `${gap}px` }}
                 onScroll={handleScroll}
             >
                 {items.map((item, index) => (

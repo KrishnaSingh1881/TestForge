@@ -86,19 +86,13 @@ export default function Dock() {
         transform: 'translateX(-50%)',
         zIndex: 200,
         transition: 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)',
-        background: isLight
-          ? 'rgba(255, 255, 255, 0.35)'
-          : 'rgba(15, 12, 35, 0.35)',
-        backdropFilter: 'blur(40px) saturate(200%)',
-        WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-        border: isLight
-          ? '1px solid rgba(0, 0, 0, 0.08)'
-          : '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: 28,
-        padding: '10px 14px',
-        boxShadow: isLight
-          ? '0 20px 40px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.4)'
-          : '0 20px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)',
+        background: 'var(--dock-bg)',
+        backdropFilter: 'blur(65px) saturate(220%)',
+        WebkitBackdropFilter: 'blur(65px) saturate(220%)',
+        border: '2px solid rgba(255, 255, 255, 0.4)',
+        borderRadius: 36,
+        padding: '14px 20px',
+        boxShadow: '0 30px 60px -12px rgba(0, 0, 0, 0.3), inset 0 1px 1px 0 rgba(255, 255, 255, 0.2)',
         display: 'flex',
         alignItems: 'flex-end',
         gap: 12,

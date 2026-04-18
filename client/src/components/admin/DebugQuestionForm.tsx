@@ -20,7 +20,7 @@ const labelStyle = { color: 'rgb(var(--text-secondary))' };
 export default function DebugQuestionForm({ onSuccess }: Props) {
   const { theme } = useTheme();
   const [statement, setStatement]   = useState('');
-  const [language, setLanguage]     = useState<'python' | 'cpp'>('python');
+  const [language, setLanguage]     = useState<'python' | 'cpp' | 'java' | 'javascript'>('cpp');
   const [difficulty, setDifficulty] = useState('medium');
   const [marks, setMarks]           = useState(2);
   const [topicTag, setTopicTag]     = useState('');
@@ -188,19 +188,16 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Language</label>
-              <div className="flex gap-1">
-                {(['python', 'cpp'] as const).map(l => (
-                  <button key={l} type="button" onClick={() => setLanguage(l)}
-                    className="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                    style={{
-                      backgroundColor: language === l ? 'rgb(var(--accent))' : 'rgba(255,255,255,0.07)',
-                      color: language === l ? '#fff' : 'rgb(var(--text-secondary))',
-                      border: '1px solid var(--glass-border)',
-                    }}>
-                    {l === 'cpp' ? 'C++' : 'Python'}
-                  </button>
-                ))}
-              </div>
+              <GlassSelect 
+                value={language}
+                onChange={(v) => setLanguage(v as any)}
+                options={[
+                  { value: 'cpp', label: 'C++ 17' },
+                  { value: 'python', label: 'Python 3' },
+                  { value: 'java', label: 'Java 11' },
+                  { value: 'javascript', label: 'JavaScript' },
+                ]}
+              />
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Difficulty</label>
@@ -239,7 +236,7 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
             <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--glass-border)' }}>
               <Editor
                 height="260px"
-                language={language === 'cpp' ? 'cpp' : 'python'}
+                language={language}
                 theme={monacoTheme}
                 value={correctCode}
                 onChange={v => setCorrectCode(v ?? '')}

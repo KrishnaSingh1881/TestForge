@@ -8,8 +8,8 @@ import { useOSStore } from '../store/useOSStore';
 import AnimatedList from '../../components/AnimatedList';
 import {
   FiArrowLeft, FiSearch, FiChevronRight,
-  FiAward, FiCheckCircle, FiShield, FiBarChart2,
-  FiSlash, FiUsers, FiFileText, FiList, FiClock,
+  FiAward, FiCheckCircle, FiBarChart2,
+  FiSlash, FiUsers, FiList, FiClock, FiLayers,
 } from 'react-icons/fi';
 import OrbitalBuffer from '../components/OrbitalBuffer';
 
@@ -87,7 +87,7 @@ function ResultDetailView({ attemptId, monacoTheme, onBack }: { attemptId: strin
 
   if (loading) return (
     <div className="h-full flex items-center justify-center">
-      <OrbitalBuffer size={40} className="text-indigo-500" />
+      <OrbitalBuffer size={40} className="text-accent" />
     </div>
   );
   if (error) return (
@@ -108,7 +108,7 @@ function ResultDetailView({ attemptId, monacoTheme, onBack }: { attemptId: strin
          <div className="p-6 border-b border-white/5">
              <div className="flex items-center justify-between mb-4">
                  <p className="text-[10px] font-black text-secondary uppercase tracking-[0.4em] opacity-40">Evaluation Path</p>
-                 <span className="text-[10px] font-black text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded tracking-widest">{breakdown?.length ?? 0} ITEMS</span>
+                 <span className="text-[10px] font-black text-accent bg-accent/10 px-2 py-0.5 rounded tracking-widest">{breakdown?.length ?? 0} ITEMS</span>
              </div>
              <ScoreCircle score={result.total_score} total={result.total_marks} pct={result.percentage} />
          </div>
@@ -126,7 +126,7 @@ function ResultDetailView({ attemptId, monacoTheme, onBack }: { attemptId: strin
                                      key={q.number}
                                      onClick={() => setSelectedIdx(idx)}
                                      className={`w-full text-left p-3 rounded-2xl transition-all flex items-center gap-3 border ${
-                                         active ? 'bg-indigo-500/10 border-indigo-500/20 shadow-lg shadow-indigo-500/10' : 'bg-transparent border-transparent hover:bg-white/5'
+                                         active ? 'bg-accent/10 border-accent/20 shadow-lg shadow-accent/10' : 'bg-transparent border-transparent hover:bg-white/5'
                                      }`}
                                  >
                                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${
@@ -358,12 +358,12 @@ function AdminStudentListView({ testId, testTitle, onBack, onSelectAttempt }: {
               <p className="text-[10px] font-black text-white/20 tracking-[0.4em] uppercase">No subjects found in current scope</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4">
                 {filtered.map((s, i) => (
                     <div
                         key={i}
                         onClick={() => onSelectAttempt(s.attempt_id, s.student_name)}
-                        className="group glass no-shadow p-6 flex items-center gap-5 rounded-[2rem] border-white/5 hover:bg-white/[0.08] hover:border-accent/40 cursor-pointer transition-all active:scale-[0.98]"
+                        className="group glass-2 p-6 flex items-center gap-5 hover:bg-white/[0.08] hover:border-accent/40 cursor-pointer transition-all active:scale-[0.98]"
                     >
                         <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-sm font-black text-accent shrink-0 border border-accent/10">
                             {s.student_name?.[0] ?? '?'}
@@ -489,13 +489,13 @@ export default function ResultsApp({ testId: propTestId, testTitle: propTestTitl
   return (
     <div className="h-full flex flex-col bg-transparent animate-in fade-in duration-500 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-4 p-6 border-b border-white/5 bg-black/5 shrink-0">
+      <div className="flex items-center gap-4 p-6 border-b border-white/5 bg-white/[0.02] backdrop-blur-md shrink-0">
         <button onClick={handleBack} className="p-2.5 rounded-xl hover:bg-white/10 transition-colors border border-white/5 active:scale-95">
           <FiArrowLeft className="text-secondary" />
         </button>
         <div className="flex-1">
           <h1 className="text-xl font-black text-primary tracking-tight flex items-center gap-3 uppercase">
-            <FiBarChart2 className="text-indigo-500" />
+            <FiBarChart2 className="text-accent" />
             {headerTitle()}
           </h1>
           <p className="text-[10px] font-black uppercase text-secondary tracking-widest mt-0.5 opacity-40">{headerSub()}</p>
@@ -509,7 +509,7 @@ export default function ResultsApp({ testId: propTestId, testTitle: propTestTitl
               placeholder={view === 'tests' ? 'Search tests...' : 'Search trials...'}
               value={view === 'tests' ? testsSearch : histSearch}
               onChange={e => view === 'tests' ? setTestsSearch(e.target.value) : setHistSearch(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-black/10 border border-white/10 rounded-2xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-white/10 font-bold"
+              className="w-full pl-11 pr-4 py-2.5 bg-black/10 border border-white/10 rounded-2xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all placeholder:text-white/10 font-bold"
             />
           </div>
         )}
@@ -530,29 +530,28 @@ export default function ResultsApp({ testId: propTestId, testTitle: propTestTitl
                 <p className="text-[10px] font-black text-white/20 tracking-[0.4em] uppercase">No tests found</p>
               </div>
             ) : (
-              <AnimatedList items={filteredTests} className="flex flex-col gap-3" renderItem={(t) => {
+              <AnimatedList items={filteredTests} className="grid grid-cols-1" gap={16} renderItem={(t) => {
                 const statusColor = t.status === 'ended' ? '#4ade80' : t.status === 'active' ? '#facc15' : 'rgba(255,255,255,0.2)';
                 return (
                   <div
                     onClick={() => { setSelectedTest({ id: t.id, title: t.title }); setView('students'); }}
-                    className="group glass no-shadow p-5 flex items-center gap-5 rounded-[1.5rem] border-white/5 hover:bg-white/[0.08] hover:border-indigo-500/30 cursor-pointer transition-all"
+                    className="group glass-2 p-8 flex items-center gap-8 hover:bg-white/[0.08] hover:border-accent/40 cursor-pointer transition-all rounded-[3.5rem] active:scale-[0.99] shadow-xl"
                   >
-                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5">
-                      <FiFileText className="text-secondary group-hover:text-indigo-400 text-xl transition-colors" />
+                    <div className="w-16 h-16 rounded-3xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:bg-accent/10 transition-colors shadow-2xl shrink-0">
+                      <FiLayers className="text-secondary group-hover:text-accent text-2xl transition-colors" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
-                        <h3 className="text-base font-black text-primary truncate uppercase tracking-tight">{t.title}</h3>
-                        <span className="text-[8px] font-black px-2 py-0.5 rounded tracking-widest uppercase shrink-0"
-                          style={{ background: `${statusColor}20`, color: statusColor }}>
-                          {t.status}
-                        </span>
+                      <div className="flex items-center gap-4">
+                        <h3 className="text-xl font-black text-primary truncate uppercase tracking-tight group-hover:text-accent transition-colors">{t.title}</h3>
+                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-current opacity-60" style={{ color: statusColor }}>
+                            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: statusColor }} />
+                            <span className="text-[8px] font-black tracking-widest uppercase">{t.status}</span>
+                        </div>
                       </div>
-                      <p className="text-[9px] text-secondary font-black uppercase tracking-widest opacity-40 mt-1">
+                      <p className="text-[10px] text-secondary font-black uppercase tracking-[0.3em] opacity-40 mt-2">
                         {t.subject} · Year {t.year} · Div {t.division}
                       </p>
                     </div>
-                    <FiChevronRight className="text-secondary opacity-20 group-hover:translate-x-1 group-hover:opacity-100 transition-all" />
                   </div>
                 );
               }} />
@@ -587,36 +586,38 @@ export default function ResultsApp({ testId: propTestId, testTitle: propTestTitl
                 <p className="text-[10px] font-black text-white/20 tracking-[0.4em] uppercase">No concluded trials found</p>
               </div>
             ) : (
-              <AnimatedList items={filteredHistory} className="flex flex-col gap-3" renderItem={(h) => {
+              <AnimatedList items={filteredHistory} className="grid grid-cols-1" gap={16} renderItem={(h) => {
                 const isAbsent = h.status === 'absent';
                 return (
                   <div
+                    key={h.id}
                     onClick={() => { if (!isAbsent && h.id) { setSelectedAttemptId(h.id); setView('detail'); } }}
-                    className={`group glass no-shadow p-5 flex items-center gap-6 transition-all border-white/5 rounded-[1.5rem] ${
-                      isAbsent ? 'cursor-not-allowed opacity-50' : 'hover:bg-white/[0.08] hover:border-indigo-500/30 cursor-pointer'
+                    className={`group glass-2 p-8 flex flex-col gap-6 transition-all rounded-[3.5rem] border border-white/5 active:scale-[0.99] shadow-xl hover:shadow-2xl ${
+                      isAbsent ? 'cursor-not-allowed opacity-50 grayscale' : 'hover:bg-white/[0.08] hover:border-accent/40 cursor-pointer'
                     }`}
                   >
-                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5">
-                      {isAbsent ? <FiSlash className="text-red-400 opacity-60" /> : <FiCheckCircle className="text-secondary group-hover:text-indigo-400 text-xl" />}
+                    <div className="flex items-center gap-6">
+                        <div className="w-16 h-16 rounded-3xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:bg-accent/10 transition-colors shadow-2xl shrink-0">
+                          {isAbsent ? <FiSlash className="text-red-400 opacity-60 text-2xl" /> : <FiLayers className="text-secondary group-hover:text-accent text-2xl" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-4">
+                            <h3 className="text-xl font-black text-primary truncate uppercase tracking-tight group-hover:text-accent transition-colors">{h.test_title}</h3>
+                            {isAbsent ? <span className="text-[8px] font-black bg-red-500/20 text-red-500 px-3 py-1 rounded-full border border-red-500/30 tracking-[0.2em] uppercase shrink-0">ABSENT</span> : null}
+                          </div>
+                          <p className="text-[10px] text-secondary font-black uppercase tracking-[0.3em] opacity-40 mt-2">
+                            {isAbsent ? 'No trial record' : fmtDate(h.submitted_at)}
+                          </p>
+                        </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
-                        <h3 className="text-base font-black text-primary truncate uppercase tracking-tight">{h.test_title}</h3>
-                        {isAbsent && <span className="text-[8px] font-black bg-red-500/20 text-red-400 px-2 py-0.5 rounded tracking-widest uppercase shrink-0">Absent</span>}
-                      </div>
-                      <p className="text-[9px] text-secondary font-black uppercase tracking-widest opacity-40 mt-1">
-                        {isAbsent ? 'No record' : fmtDate(h.submitted_at)}
-                      </p>
+                    <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
+                        <p className="text-[10px] font-black text-secondary opacity-40 uppercase tracking-widest">
+                          {isAbsent ? 'Terminated' : `Points: ${h.total_score}/${h.total_marks}`}
+                        </p>
+                        <p className="text-3xl font-black tabular-nums tracking-tighter" style={{ color: isAbsent ? '#f87171' : pctColor(h.percentage ?? 0) }}>
+                          {isAbsent ? '—' : `${Math.round(h.percentage ?? 0)}%`}
+                        </p>
                     </div>
-                    <div className="text-right mr-3 shrink-0">
-                      <p className="text-xl font-black tabular-nums" style={{ color: isAbsent ? '#f87171' : pctColor(h.percentage ?? 0) }}>
-                        {isAbsent ? '—' : `${Math.round(h.percentage ?? 0)}%`}
-                      </p>
-                      <p className="text-[9px] font-black text-secondary opacity-30 uppercase">
-                        {isAbsent ? 'Absent' : `${h.total_score}/${h.total_marks}`}
-                      </p>
-                    </div>
-                    {!isAbsent && <FiChevronRight className="text-secondary opacity-20 group-hover:translate-x-1 group-hover:opacity-100 transition-all" />}
                   </div>
                 );
               }} />

@@ -3,7 +3,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import api from '../../lib/axios';
 import { useOSStore } from '../store/useOSStore';
-import { FiActivity, FiTarget, FiBox, FiSearch, FiArrowLeft, FiChevronRight, FiCheckCircle, FiBarChart2, FiSlash } from 'react-icons/fi';
+import { FiActivity, FiTarget, FiBox, FiSearch, FiArrowLeft, FiChevronRight, FiBarChart2, FiSlash, FiLayers } from 'react-icons/fi';
 import AnimatedList from '../../components/AnimatedList';
 import OrbitalBuffer from '../components/OrbitalBuffer';
 
@@ -33,7 +33,7 @@ function AttemptDetail({ attemptId, onBack }: { attemptId: string; onBack: () =>
 
   if (loading) return (
     <div className="h-full flex items-center justify-center">
-      <OrbitalBuffer size={40} className="text-indigo-500" />
+      <OrbitalBuffer size={40} className="text-accent" />
     </div>
   );
 
@@ -50,25 +50,25 @@ function AttemptDetail({ attemptId, onBack }: { attemptId: string; onBack: () =>
     </div>
   );
 
-  const mcqAcc  = data.question_type_accuracy?.mcq       ?? null;
-  const dbgAcc  = data.question_type_accuracy?.debugging  ?? null;
+  const mcqAcc = data.question_type_accuracy?.mcq ?? null;
+  const dbgAcc = data.question_type_accuracy?.debugging ?? null;
   const avgTime = data.avg_time_per_question_type;
 
   return (
     <div className="p-8 space-y-8 max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-6 pb-16">
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="Total Trials"  value={data.tests_attempted}       icon={FiBox} />
-        <StatCard label="Avg Score"     value={`${data.avg_percentage}%`}  color={pctColor(data.avg_percentage)}  icon={FiTarget} />
-        <StatCard label="Peak Rank"     value={data.best_rank ? `#${data.best_rank}` : '—'} color="rgb(var(--accent))" icon={FiActivity} />
-        <StatCard label="Precision"     value={`${data.overall_accuracy}%`} color={pctColor(data.overall_accuracy)} icon={FiTarget} />
+        <StatCard label="Total Trials" value={data.tests_attempted} icon={FiBox} />
+        <StatCard label="Avg Score" value={`${data.avg_percentage}%`} color={pctColor(data.avg_percentage)} icon={FiTarget} />
+        <StatCard label="Peak Rank" value={data.best_rank ? `#${data.best_rank}` : '—'} color="rgb(var(--accent))" icon={FiActivity} />
+        <StatCard label="Precision" value={`${data.overall_accuracy}%`} color={pctColor(data.overall_accuracy)} icon={FiTarget} />
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Score trend */}
         <div className="glass no-shadow p-8 rounded-[2.5rem] border-white/5 space-y-4">
           <p className="text-[9px] font-black uppercase tracking-[0.4em] text-secondary opacity-40 flex items-center gap-3">
-            <FiActivity className="text-indigo-400" /> Progression Trajectory
+            <FiActivity className="text-accent" /> Progression Trajectory
           </p>
           {data.score_trend?.length > 0 ? (
             <div className="h-52 w-full">
@@ -82,7 +82,7 @@ function AttemptDetail({ attemptId, onBack }: { attemptId: string; onBack: () =>
                     formatter={(v: any) => [`${Math.round(v)}%`, 'Score']}
                     labelFormatter={fmtDate}
                   />
-                  <Line type="monotone" dataKey="percentage" stroke="#6366f1" strokeWidth={3} dot={{ fill: '#6366f1', r: 4 }} activeDot={{ r: 6, fill: '#fff' }} />
+                  <Line type="monotone" dataKey="percentage" stroke="#f08080" strokeWidth={3} dot={{ fill: '#f08080', r: 4 }} activeDot={{ r: 6, fill: '#fff' }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -96,7 +96,7 @@ function AttemptDetail({ attemptId, onBack }: { attemptId: string; onBack: () =>
         {/* Subject breakdown */}
         <div className="glass no-shadow p-8 rounded-[2.5rem] border-white/5 space-y-4">
           <p className="text-[9px] font-black uppercase tracking-[0.4em] text-secondary opacity-40 flex items-center gap-3">
-            <FiTarget className="text-indigo-400" /> Domain Mastery
+            <FiTarget className="text-accent" /> Domain Mastery
           </p>
           {data.subject_performance?.length > 0 ? (
             <div className="h-52 w-full">
@@ -127,7 +127,7 @@ function AttemptDetail({ attemptId, onBack }: { attemptId: string; onBack: () =>
           <p className="text-[9px] font-black uppercase tracking-[0.4em] text-secondary opacity-40">Question Type Accuracy</p>
           <div className="grid md:grid-cols-2 gap-6">
             {[
-              { label: 'MCQ Accuracy',       val: mcqAcc, icon: '☑', color: '#6366f1' },
+              { label: 'MCQ Accuracy', val: mcqAcc, icon: '☑', color: '#6366f1' },
               { label: 'Debugging Accuracy', val: dbgAcc, icon: '🐛', color: '#f43f5e' },
             ].map(({ label, val, icon, color }) => (
               <div key={label}>
@@ -142,9 +142,9 @@ function AttemptDetail({ attemptId, onBack }: { attemptId: string; onBack: () =>
             ))}
           </div>
           {avgTime && (
-            <div className="pt-4 border-t border-white/5 grid grid-cols-2 gap-4">
+            <div className="pt-4 border-t border-white/5 grid grid-cols-1 gap-4">
               {[
-                { label: 'Avg time/MCQ',   val: avgTime.mcq       ? `${Math.round(avgTime.mcq)}s` : '—' },
+                { label: 'Avg time/MCQ', val: avgTime.mcq ? `${Math.round(avgTime.mcq)}s` : '—' },
                 { label: 'Avg time/Debug', val: avgTime.debugging ? `${Math.round(avgTime.debugging / 60)}m` : '—' },
               ].map(m => (
                 <div key={m.label} className="text-center">
@@ -231,13 +231,13 @@ export default function AnalyticsApp({ attemptId: initialAttemptId }: { attemptI
   return (
     <div className="h-full flex flex-col bg-transparent animate-in fade-in duration-500 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-4 p-6 border-b border-white/5 bg-black/5 shrink-0">
+      <div className="flex items-center gap-4 p-6 border-b border-white/5 bg-white/[0.02] backdrop-blur-md shrink-0">
         <button onClick={handleBack} className="p-2.5 rounded-xl hover:bg-white/10 transition-colors border border-white/5 active:scale-95">
           <FiArrowLeft className="text-secondary" />
         </button>
         <div className="flex-1">
           <h1 className="text-xl font-black text-primary tracking-tight flex items-center gap-3">
-            <FiBarChart2 className="text-indigo-500" />
+            <FiBarChart2 className="text-accent" />
             {view === 'list' ? 'Diagnostics Registry' : 'Performance Analytics'}
           </h1>
           <p className="text-[10px] font-black uppercase text-secondary tracking-widest mt-0.5 opacity-40">
@@ -253,7 +253,7 @@ export default function AnalyticsApp({ attemptId: initialAttemptId }: { attemptI
               placeholder="Search trials..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-black/10 border border-white/10 rounded-2xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-white/10 font-bold"
+              className="w-full pl-11 pr-4 py-2.5 bg-black/10 border border-white/10 rounded-2xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all placeholder:text-white/10 font-bold"
             />
           </div>
         )}
@@ -275,7 +275,7 @@ export default function AnalyticsApp({ attemptId: initialAttemptId }: { attemptI
             ) : (
               <AnimatedList
                 items={filteredHistory}
-                className="flex flex-col gap-3"
+                gap={16}
                 renderItem={(h) => {
                   const isAbsent = h.status === 'absent';
                   return (
@@ -286,16 +286,15 @@ export default function AnalyticsApp({ attemptId: initialAttemptId }: { attemptI
                           setView('detail');
                         }
                       }}
-                      className={`group glass no-shadow p-5 flex items-center gap-6 transition-all border-white/5 rounded-[1.5rem] ${
-                        isAbsent
+                      className={`group glass-2 p-5 flex items-center gap-6 transition-all ${isAbsent
                           ? 'cursor-not-allowed opacity-50'
-                          : 'hover:bg-white/[0.08] hover:border-indigo-500/30 cursor-pointer'
-                      }`}
+                          : 'hover:bg-white/[0.08] hover:border-accent/40 cursor-pointer'
+                        }`}
                     >
-                      <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5 transition-all">
+                      <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5 group-hover:bg-accent/10 transition-all transition-colors">
                         {isAbsent
                           ? <FiSlash className="text-red-400 opacity-60" />
-                          : <FiCheckCircle className="text-secondary group-hover:text-indigo-400 text-xl" />
+                          : <FiLayers className="text-secondary group-hover:text-accent text-xl transition-colors" />
                         }
                       </div>
                       <div className="flex-1 min-w-0">
@@ -339,8 +338,8 @@ export default function AnalyticsApp({ attemptId: initialAttemptId }: { attemptI
 
 function StatCard({ label, value, color, icon: Icon }: { label: string; value: string | number; color?: string; icon?: any }) {
   return (
-    <div className="glass no-shadow p-6 rounded-[2rem] border-white/5 flex flex-col items-center justify-center text-center group">
-      {Icon && <Icon className="text-indigo-400/20 mb-3 text-xl group-hover:scale-110 group-hover:text-indigo-400 transition-all" />}
+    <div className="glass-2 p-6 flex flex-col items-center justify-center text-center group bg-white/[0.01]">
+      {Icon && <Icon className="text-accent/20 mb-3 text-xl group-hover:scale-110 group-hover:text-accent transition-all" />}
       <p className="text-2xl font-black tracking-tighter" style={{ color: color ?? 'rgb(var(--accent))' }}>{value}</p>
       <p className="text-[9px] font-black uppercase tracking-[0.2em] text-secondary opacity-40 mt-1">{label}</p>
     </div>

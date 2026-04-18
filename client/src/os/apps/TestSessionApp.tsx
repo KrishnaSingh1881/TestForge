@@ -32,6 +32,12 @@ function formatTime(secs: number) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+function pctColor(pct: number) {
+  if (pct >= 80) return '#4ade80';
+  if (pct >= 50) return '#facc15';
+  return '#f87171';
+}
+
 interface TestSessionAppProps {
   testId?: string;
   attemptId?: string;
@@ -531,11 +537,74 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
     );
   }
 
-  // Active test session
+  if (phase === 'integrity-failed') {
+    return (
+      <div className="absolute inset-0 z-[120] flex items-center justify-center bg-[#0a0a0f]/95 backdrop-blur-xl animate-in fade-in duration-500">
+         <div className="max-w-md w-full glass-2 p-12 text-center border-red-500/20 rounded-[3rem] bg-black/40">
+            <div className="w-24 h-24 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-8 border border-red-500/20 animate-pulse">
+                <FiShield className="text-5xl text-red-500" />
+            </div>
+            <h2 className="text-3xl font-black text-red-400 uppercase tracking-tighter mb-4">Integrity Breach</h2>
+            <div className="space-y-4 mb-8">
+                <p className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] leading-relaxed opacity-60">
+                    Security protocols have <span className="text-red-400">IMMEDIATELY TERMINATED</span> this session.
+                </p>
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+                    <p className="text-[9px] font-black text-secondary uppercase tracking-widest">Reason for Lockout</p>
+                    <p className="text-xs font-bold text-primary uppercase">{submitError || 'Multiple tab switches or focus loss detected.'}</p>
+                </div>
+            </div>
+            <button
+                onClick={() => {
+                    openWindow('results', { attemptId });
+                    if (windowId) closeWindow(windowId);
+                }}
+                className="w-full py-5 rounded-web bg-accent text-white font-black uppercase tracking-[0.2em] shadow-xl shadow-accent/20 hover:bg-accent/90 transition-all"
+            >
+                Review Evaluation Results
+            </button>
+         </div>
+      </div>
+    );
+  }
+
+  if (phase === 'concluded') {
+    return (
+      <div className="absolute inset-0 z-[110] flex items-center justify-center bg-[#0a0a0f]/95 backdrop-blur-xl animate-in fade-in duration-500">
+         <div className="max-w-md w-full glass-2 p-12 text-center border-white/10 rounded-[3rem] bg-white/[0.02]">
+            <div className="w-24 h-24 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-8 border border-green-500/20">
+                <FiShield className="text-5xl text-green-400" />
+            </div>
+            <h2 className="text-3xl font-black text-primary uppercase tracking-tighter mb-4">Session Secure</h2>
+            <p className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] mb-8 opacity-60">
+                Evaluation completed and synchronized successfully.
+            </p>
+            <div className="space-y-3">
+                <button
+                    onClick={() => {
+                        openWindow('results', { attemptId });
+                        if (windowId) closeWindow(windowId);
+                    }}
+                    className="w-full py-5 rounded-web bg-accent text-white font-black uppercase tracking-[0.2em] shadow-xl shadow-accent/20 hover:bg-accent/90 transition-all"
+                >
+                    Review Evaluation Results
+                </button>
+                <button
+                    onClick={() => windowId && closeWindow(windowId)}
+                    className="w-full py-4 rounded-web bg-black/5 text-secondary font-black uppercase tracking-widest hover:bg-white/5 transition-all text-[10px]"
+                >
+                    Return to Academic Hub
+                </button>
+            </div>
+         </div>
+      </div>
+    );
+  }
+
   if (phase === 'active' || phase === 'evaluating') {
     return (
       <div className="h-full flex flex-col relative" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
-        {/* ── Fullscreen coding overlay (z-99999, covers everything) ── */}
+        {/* ── Fullscreen coding overlay ── */}
         {codingOverlayQ && (
           <CodingEditorOverlay
             key={codingOverlayQ.id}
@@ -551,35 +620,34 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
             onSubmit={(qid) => {
               onAnswered(qid, true);
               setCodingOverlayQ(null);
-              // Auto-advance to next question if not last
               setCurrentIdx(i => Math.min(i + 1, questions.length - 1));
             }}
             onSkip={() => setCodingOverlayQ(null)}
             onClose={() => setCodingOverlayQ(null)}
           />
         )}
-        {/* Top bar with timer and submit */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/5 backdrop-blur-md">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase tracking-widest text-secondary opacity-40">Active Evaluation</span>
-            <span className="text-sm font-black text-primary truncate max-w-[200px] uppercase tracking-tight">
-              {attempt?.test_title || test?.title}
-            </span>
-          </div>
 
-          {/* Live Integrity Score */}
-          <div className="flex items-center gap-2 px-4 py-2 rounded-2xl glass no-shadow border-white/10">
-            <FiShield className="text-lg" style={{ color: liveIntegrity > 60 ? '#4ade80' : liveIntegrity > 30 ? '#facc15' : '#f87171' }} />
-            <div className="flex flex-col items-end">
-              <span className="text-[9px] font-black uppercase tracking-widest text-secondary opacity-40">Integrity</span>
-              <span className="font-mono font-black text-base tabular-nums leading-none mt-0.5"
-                style={{ color: liveIntegrity > 60 ? '#4ade80' : liveIntegrity > 30 ? '#facc15' : '#f87171' }}>
-                {liveIntegrity}/100
-              </span>
+        {/* Top bar with timer and submit */}
+        <div className="flex items-center justify-between px-8 py-4 border-b border-white/5 bg-white/[0.02] backdrop-blur-md animate-in slide-in-from-top-4 duration-500 relative z-[90]">
+          <div className="flex items-center gap-6">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase text-secondary tracking-[0.3em] opacity-40">Active Proctored Hub</span>
+              <h2 className="text-sm font-black text-primary uppercase tracking-tight mt-0.5">{test?.title}</h2>
+            </div>
+            <div className="w-1 h-8 rounded-full bg-white/5" />
+            <div className={`flex flex-col ${liveIntegrityRef.current < 50 ? 'animate-pulse' : ''}`}>
+              <span className="text-[10px] font-black uppercase text-secondary tracking-[0.3em] opacity-40">Biometric Integrity</span>
+              <div className="flex items-center gap-2 mt-0.5">
+                 <span className="text-sm font-black font-mono tracking-tight" style={{ color: pctColor(liveIntegrityRef.current) }}>
+                   {liveIntegrityRef.current}/100
+                 </span>
+                 <div className="w-16 h-1 rounded-full bg-white/5 overflow-hidden">
+                    <div className="h-full transition-all duration-500" style={{ width: `${liveIntegrityRef.current}%`, backgroundColor: pctColor(liveIntegrityRef.current) }} />
+                 </div>
+              </div>
             </div>
           </div>
 
-          {/* Question Progress Bar */}
           <div className="flex-1 max-w-md mx-8 flex flex-col gap-1.5">
              <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-secondary opacity-40 px-1">
                 <span>Evaluation Progress</span>
@@ -593,7 +661,6 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
              </div>
           </div>
 
-          {/* Timer */}
           <div className="flex items-center gap-3 px-6 py-2 rounded-2xl glass no-shadow border-white/10">
             <div className="flex flex-col items-end">
               <span className="text-[9px] font-black uppercase tracking-widest text-secondary opacity-40">Time Left</span>
@@ -604,14 +671,6 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
             <div className="w-1 h-8 rounded-full bg-white/5" />
             <FiClock className="text-xl opacity-20" style={{ color: timerColor }} />
           </div>
-
-          <button
-            disabled={submitting || phase === 'evaluating'}
-            onClick={() => setShowConfirm(true)}
-            className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest text-white transition-all bg-accent shadow-lg shadow-accent/20 hover:bg-accent/90 hover:-translate-y-1 active:translate-y-0 disabled:opacity-50"
-          >
-            {submitting ? 'Submitting...' : 'End Test Session'}
-          </button>
         </div>
 
         {/* Integrity warning toast */}
@@ -619,21 +678,20 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[95] animate-in slide-in-from-top-4 duration-300 fade-in">
             <div className={`flex items-center gap-3 px-6 py-3 rounded-2xl border shadow-2xl shadow-black/50 backdrop-blur-xl animate-pulse`}
               style={{ 
-                background: liveIntegrity > 50 
-                  ? 'linear-gradient(135deg, rgba(234,179,8,0.9), rgba(202,138,4,0.9))' // Yellow for warnings
-                  : 'linear-gradient(135deg, rgba(220,38,38,0.9), rgba(180,20,20,0.9))', // Red for critical
-                borderColor: liveIntegrity > 50 ? 'rgba(255,255,200,0.4)' : 'rgba(255,120,120,0.4)'
+                background: liveIntegrityRef.current > 50 
+                  ? 'linear-gradient(135deg, rgba(234,179,8,0.9), rgba(202,138,4,0.9))' 
+                  : 'linear-gradient(135deg, rgba(220,38,38,0.9), rgba(180,20,20,0.9))',
+                borderColor: liveIntegrityRef.current > 50 ? 'rgba(255,255,200,0.4)' : 'rgba(255,120,120,0.4)'
               }}>
-              <span className="text-xl">{liveIntegrity > 50 ? '⚠️' : '🚨'}</span>
+              <span className="text-xl">{liveIntegrityRef.current > 50 ? '⚠️' : '🚨'}</span>
               <p className="text-[11px] font-black uppercase tracking-widest text-white">{integrityToast}</p>
               <button onClick={() => setIntegrityToast('')} className="ml-2 text-white/50 hover:text-white text-lg leading-none transition-colors">×</button>
             </div>
           </div>
         )}
 
-        {/* Body: sidebar + main */}
+        {/* Body */}
         <div className="flex flex-1 min-h-0">
-          {/* Question navigator */}
           <QuestionNavigator
             questions={questions}
             currentIdx={currentIdx}
@@ -643,34 +701,30 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
             onSelect={setCurrentIdx}
           />
 
-          {/* Main question area */}
           <main className="flex-1 min-h-0 overflow-hidden relative">
             {!currentQ ? (
               <div className="h-full flex items-center justify-center">
-                <div className="glass p-10 text-center">
-                  <p style={{ color: 'rgb(var(--text-secondary))' }}>No questions available.</p>
+                <div className="glass-2 p-10 text-center bg-white/[0.01]">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary opacity-40">Synchronizing item registry...</p>
                 </div>
               </div>
             ) : elapsedMins < (currentQ.unlock_at_minutes ?? 0) ? (
               <div className="h-full flex items-center justify-center p-8">
-                <div className="glass p-12 text-center">
-                  <p className="text-4xl mb-4">🔒</p>
-                  <p className="text-lg font-semibold mb-2" style={{ color: 'rgb(var(--text-primary))' }}>Question Locked</p>
-                  <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>
-                    Unlocks at {currentQ.unlock_at_minutes} minutes into the test.
+                <div className="glass-2 p-12 text-center bg-white/[0.01]">
+                  <p className="text-4xl mb-4 grayscale">🔒</p>
+                  <p className="text-lg font-black text-primary uppercase tracking-tight mb-2">Item Access Restricted</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-secondary opacity-40">
+                    Temporal lock active. Access granted at {currentQ.unlock_at_minutes} minute mark.
                   </p>
                 </div>
               </div>
             ) : (currentQ.type === 'debugging' || currentQ.type === 'coding') ? (
-              // Coding/Debugging — show question card + Launch Editor button
               <div className="h-full overflow-y-auto p-8 flex items-center justify-center">
                 <div className="max-w-2xl w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  {/* Question header */}
                   <div className="glass no-shadow p-6 rounded-[2rem] border-white/5 space-y-4">
                     <div className="flex items-center gap-3">
-                      <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest"
-                        style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
-                        {currentQ.type === 'debugging' ? '🐛 Debugging' : '💻 Coding'}
+                      <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-accent/10 text-accent border border-accent/20">
+                        {currentQ.type === 'debugging' ? '🐛 Algorithmic Debug' : '💻 Logic Synthesis'}
                       </span>
                       {currentQ.marks && (
                         <span className="text-[10px] font-bold text-secondary opacity-50">{currentQ.marks} marks</span>
@@ -679,13 +733,11 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
                     <p className="text-base font-semibold text-primary leading-relaxed">{currentQ.statement}</p>
                   </div>
 
-                  {/* Buggy code preview */}
                   {currentQ.buggy_code && (
-                    <div className="glass no-shadow rounded-[2rem] border-white/5 overflow-hidden">
-                      <div className="px-4 py-2 flex items-center gap-2 border-b"
-                        style={{ background: 'rgba(239,68,68,0.06)', borderColor: 'rgba(239,68,68,0.15)' }}>
-                        <span className="w-2 h-2 rounded-full bg-red-500" />
-                        <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: '#f87171' }}>Buggy Code</span>
+                    <div className="glass-2 rounded-[2rem] border-white/5 overflow-hidden bg-white/[0.01]">
+                      <div className="px-4 py-2 flex items-center gap-2 border-b bg-red-500/5 border-red-500/10">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-red-400">Fault Trace (Buggy Code)</span>
                       </div>
                       <pre className="p-4 text-xs font-mono text-primary/70 overflow-x-auto max-h-48 custom-scrollbar leading-relaxed whitespace-pre-wrap">
                         {currentQ.buggy_code}
@@ -693,7 +745,6 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
                     </div>
                   )}
 
-                  {/* Launch button */}
                   <button
                     onClick={() => setCodingOverlayQ(currentQ)}
                     className="w-full flex items-center justify-center gap-4 py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.25em] text-white transition-all hover:-translate-y-1 active:translate-y-0"
@@ -703,7 +754,6 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
                     Launch Full-Screen Editor
                   </button>
 
-                  {/* Nav buttons */}
                   <div className="flex items-center justify-between pt-2">
                     <button disabled={currentIdx === 0} onClick={() => setCurrentIdx(i => i - 1)}
                       className="flex items-center gap-2 px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-black/5 text-secondary border border-white/5 hover:bg-black/10 hover:text-primary transition-all disabled:opacity-20">
@@ -718,7 +768,6 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
                 </div>
               </div>
             ) : (
-              // MCQ questions scroll normally
               <div className="h-full overflow-y-auto p-8">
                 <div className="max-w-3xl mx-auto space-y-6">
                   {(currentQ.type === 'mcq_single' || currentQ.type === 'mcq_multi') && (
@@ -732,26 +781,12 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
                       onToggleReview={onToggleReview}
                     />
                   )}
-                  <div className="flex items-center justify-between pt-8 border-t border-white/5">
-                    <button disabled={currentIdx === 0} onClick={() => setCurrentIdx(i => i - 1)}
-                      className="flex items-center gap-2 px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-black/5 text-secondary border border-white/5 hover:bg-black/10 hover:text-primary transition-all disabled:opacity-20">
-                      <FiArrowLeft /> Previous
-                    </button>
-                    <div className="px-4 py-1.5 bg-black/5 rounded-full border border-white/5">
-                        <span className="text-[10px] font-black text-secondary tracking-widest opacity-60">{currentIdx + 1} <span className="opacity-20 mx-1">/</span> {questions.length}</span>
-                    </div>
-                    <button disabled={currentIdx === questions.length - 1} onClick={() => setCurrentIdx(i => i + 1)}
-                      className="flex items-center gap-2 px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-all disabled:opacity-20">
-                      Next Question →
-                    </button>
-                  </div>
                 </div>
               </div>
             )}
           </main>
         </div>
 
-        {/* Submit confirmation modal */}
         {showConfirm && (
           <SubmitConfirmModal
             answeredCount={answeredIds.size}
@@ -761,9 +796,8 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
           />
         )}
 
-        {/* Evaluating screen */}
         {phase === 'evaluating' && (
-          <div className="absolute inset-0 z-[90] flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-500">
+          <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-500">
             <div className="text-center glass p-12 rounded-[2.5rem] border-white/5">
               <OrbitalBuffer size={64} className="text-accent mb-6" />
               <p className="text-xl font-black text-primary uppercase tracking-tighter">
@@ -774,77 +808,6 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
                 <p className="text-sm text-red-400 mt-4 bg-red-400/10 p-4 rounded-xl border border-red-400/20">{submitError}</p>
               )}
             </div>
-          </div>
-        )}
-
-        {/* Integrity Failed screen */}
-        {phase === 'integrity-failed' && (
-          <div className="absolute inset-0 z-[100] flex items-center justify-center bg-[#0a0a0f]/90 backdrop-blur-xl animate-in fade-in duration-500">
-             <div className="max-w-md w-full glass shadow-2xl p-12 text-center border-red-500/20 rounded-[3rem]">
-                <div className="w-24 h-24 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-8 border border-red-500/20 animate-pulse">
-                    <FiShield className="text-5xl text-red-500" />
-                </div>
-                <h2 className="text-3xl font-black text-red-500 uppercase tracking-tighter mb-4">Integrity Breach</h2>
-                <div className="space-y-4 mb-8">
-                    <p className="text-sm font-bold text-primary opacity-80 uppercase tracking-tight leading-relaxed">
-                        Your test session has been <span className="text-red-400">IMMEDIATELY TERMINATED</span>.
-                    </p>
-                    <p className="text-xs font-bold text-secondary opacity-60 uppercase tracking-widest leading-relaxed">
-                        Reason: You have exceeded the maximum allowed tab switches. This incident has been logged and reported to the administrator.
-                    </p>
-                </div>
-                <button
-                    onClick={() => windowId && closeWindow(windowId)}
-                    className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-primary font-black uppercase tracking-widest hover:bg-white/10 transition-all"
-                >
-                    Dismiss Session
-                </button>
-             </div>
-          </div>
-        )}
-        {/* Session Concluded screen */}
-        {phase === 'concluded' && (
-          <div className="absolute inset-0 z-[100] flex items-center justify-center bg-[#0a0a15]/90 backdrop-blur-2xl animate-in fade-in zoom-in duration-700">
-             <div className="max-w-xl w-full glass p-12 text-center border-accent/20 rounded-[4rem] relative overflow-hidden group">
-                <div className="absolute -top-20 -left-20 w-40 h-40 bg-accent/20 blur-3xl rounded-full group-hover:scale-150 transition-transform duration-1000" />
-                
-                <div className="relative z-10">
-                    <div className="w-24 h-24 rounded-[2rem] bg-accent/10 flex items-center justify-center mx-auto mb-8 border border-white/10 shadow-2xl">
-                        <FiShield className="text-5xl text-accent" />
-                    </div>
-                    <h2 className="text-4xl font-black text-primary uppercase tracking-tighter mb-2">Session Concluded</h2>
-                    <p className="text-[10px] font-black text-secondary uppercase tracking-[0.4em] mb-10 opacity-60">Telemetry Synchronized Successfully</p>
-                    
-                    <div className="grid grid-cols-2 gap-4 mb-10">
-                        <div className="glass no-shadow p-6 rounded-3xl border-white/5 bg-white/[0.01]">
-                            <p className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-40 mb-2">Items Attempted</p>
-                            <p className="text-3xl font-black text-accent">{answeredIds.size} / {questions.length}</p>
-                        </div>
-                        <div className="glass no-shadow p-6 rounded-3xl border-white/5 bg-white/[0.01]">
-                            <p className="text-[9px] font-black text-secondary uppercase tracking-widest opacity-40 mb-2">Final Integrity</p>
-                            <p className="text-3xl font-black text-green-400">{liveIntegrity}%</p>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col gap-3">
-                        <button
-                            onClick={() => {
-                                openWindow('results', { attemptId });
-                                if (windowId) closeWindow(windowId);
-                            }}
-                            className="w-full py-5 rounded-web bg-accent text-white font-black uppercase tracking-[0.2em] shadow-xl shadow-accent/20 hover:bg-accent/90 transition-all"
-                        >
-                            Review Evaluation Results
-                        </button>
-                        <button
-                            onClick={() => windowId && closeWindow(windowId)}
-                            className="w-full py-4 rounded-web bg-black/5 text-secondary font-black uppercase tracking-widest hover:bg-white/5 transition-all text-[10px]"
-                        >
-                            Return to Academic Hub
-                        </button>
-                    </div>
-                </div>
-             </div>
           </div>
         )}
       </div>

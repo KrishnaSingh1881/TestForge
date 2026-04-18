@@ -43,6 +43,7 @@ interface CodingEditorOverlayProps {
   onPasteAttempt?: () => void;
   onSubmit: (qid: string, code: string) => void;
   onSkip: () => void;
+  onClose?: () => void;
 }
 
 function formatTime(secs: number) {

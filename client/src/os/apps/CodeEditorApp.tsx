@@ -55,12 +55,12 @@ export default function CodeEditorApp() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-transparent animate-in fade-in duration-500">
+    <div className="h-full flex flex-col bg-transparent animate-in fade-in duration-500 overflow-hidden">
       {/* Premium Toolbar */}
-      <div className="flex items-center gap-4 px-6 py-4 bg-black/5 border-b border-white/5 backdrop-blur-md shrink-0">
-        <div className="flex items-center gap-3 pr-4 border-r border-white/10">
-          <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
-            <FiCode />
+      <div className="flex items-center gap-4 px-6 py-4 bg-white/[0.02] backdrop-blur-md border-b border-white/5 shrink-0">
+        <div className="flex items-center gap-3 pr-4 border-r border-white/10 group">
+          <div className="w-8 h-8 rounded-xl bg-white/5 text-secondary flex items-center justify-center border border-white/5 group-hover:bg-accent/10 transition-colors">
+            <FiCode className="group-hover:text-accent transition-colors" />
           </div>
           <GlassSelect 
             value={lang.value} 
@@ -87,8 +87,8 @@ export default function CodeEditorApp() {
           )}
         </button>
 
-        <div className="ml-auto flex items-center gap-3 px-4 py-1.5 bg-black/5 rounded-full border border-white/5">
-           <FiCpu className="text-indigo-400 opacity-40 text-sm" />
+        <div className="ml-auto flex items-center gap-3 px-4 py-1.5 bg-white/5 rounded-full border border-white/5">
+           <FiCpu className="text-accent opacity-40 text-sm" />
            <span className="text-[9px] font-black uppercase tracking-widest text-secondary opacity-40">Scratchpad Environment v1.0.4</span>
         </div>
       </div>
@@ -127,7 +127,7 @@ export default function CodeEditorApp() {
               value={stdin}
               onChange={e => setStdin(e.target.value)}
               placeholder="Inject programmatic inputs..."
-              className="w-full h-32 resize-none bg-black/5 text-primary border border-white/5 rounded-2xl p-4 text-xs font-mono outline-none focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:opacity-20"
+              className="w-full h-32 resize-none bg-black/5 text-primary border border-white/5 rounded-2xl p-4 text-xs font-mono outline-none focus:ring-1 focus:ring-accent/30 transition-all placeholder:opacity-20"
             />
           </div>
 
@@ -144,28 +144,25 @@ export default function CodeEditorApp() {
               )}
             </div>
             <div 
-                ref={outputRef} 
-                className="flex-1 overflow-auto p-6 font-mono text-[11px] leading-relaxed custom-scrollbar selection:bg-indigo-500/30"
+              ref={outputRef}
+              className="flex-1 overflow-auto p-6 font-mono text-xs custom-scrollbar"
             >
-              {!stdout && !stderr && !running && (
-                <div className="h-full flex flex-col items-center justify-center text-center opacity-20 group">
-                    <FiTerminal className="text-3xl mb-3 group-hover:scale-110 transition-transform" />
-                    <p className="text-[9px] font-black uppercase tracking-widest">Awaiting Command Execution</p>
+              {stdout && (
+                <div className="mb-4">
+                  <div className="text-[8px] font-black text-green-400/50 uppercase tracking-widest mb-1">Stdout</div>
+                  <pre className="text-green-400/90 whitespace-pre-wrap">{stdout}</pre>
                 </div>
               )}
-              {running && (
-                <div className="flex items-center gap-3 text-indigo-400/60">
-                    <OrbitalBuffer size={12} className="text-current" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Processing Logic...</span>
-                </div>
-              )}
-              {stdout && <div className="text-primary/90 whitespace-pre-wrap animate-in fade-in slide-in-from-top-1">{stdout}</div>}
               {stderr && (
-                <div className="mt-2 p-3 bg-red-400/5 border border-red-400/20 rounded-xl text-red-400/80 whitespace-pre-wrap animate-in zoom-in duration-300">
-                    <div className="flex items-center gap-2 mb-1 opacity-60">
-                        <FiAlertCircle /> <span className="text-[9px] font-black uppercase tracking-widest">Exception Trace</span>
-                    </div>
-                    {stderr}
+                <div className="mb-4">
+                  <div className="text-[8px] font-black text-red-400/50 uppercase tracking-widest mb-1">Stderr</div>
+                  <pre className="text-red-400/90 whitespace-pre-wrap">{stderr}</pre>
+                </div>
+              )}
+              {!stdout && !stderr && !running && (
+                <div className="h-full flex flex-col items-center justify-center opacity-20 grayscale">
+                   <FiTerminal className="text-3xl mb-2" />
+                   <p className="text-[10px] uppercase font-black tracking-widest">Awaiting execution...</p>
                 </div>
               )}
             </div>

@@ -31,7 +31,7 @@ const DEFAULT_SETTINGS: TestSettings = {
   allow_back_navigation: true,
 };
 
-const inputCls = 'w-full px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500';
+const inputCls = 'w-full px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent transition-all';
 const inputStyle = {
   backgroundColor: 'rgba(255,255,255,0.07)',
   border: '1px solid var(--glass-border)',
@@ -45,15 +45,15 @@ function Toggle({ label, description, value, onChange }: {
     <div className="flex items-center justify-between py-3"
       style={{ borderBottom: '1px solid var(--glass-border)' }}>
       <div>
-        <p className="text-sm font-medium" style={{ color: 'rgb(var(--text-primary))' }}>{label}</p>
-        {description && <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>{description}</p>}
+        <p className="text-sm font-black uppercase tracking-tight text-primary">{label}</p>
+        {description && <p className="text-[10px] font-bold uppercase tracking-widest text-secondary opacity-40 mt-1">{description}</p>}
       </div>
       <button
         onClick={() => onChange(!value)}
-        className="relative w-11 h-6 rounded-full transition-colors flex-shrink-0"
+        className="relative w-11 h-6 rounded-full transition-all flex-shrink-0"
         style={{ backgroundColor: value ? 'rgb(var(--accent))' : 'rgba(255,255,255,0.15)' }}
       >
-        <span className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform"
+        <span className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-lg transition-transform"
           style={{ transform: value ? 'translateX(20px)' : 'translateX(0)' }} />
       </button>
     </div>
@@ -103,20 +103,19 @@ export default function TestSettingsApp() {
   }
 
   return (
-    <div className="h-full overflow-auto p-6 space-y-6 bg-transparent custom-scrollbar">
+    <div className="h-full overflow-auto p-8 space-y-8 bg-transparent custom-scrollbar animate-in fade-in duration-500">
       <div>
-        <h1 className="text-2xl font-bold text-primary">Test Settings</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>
-          Configure the test environment for each test
+        <h1 className="text-2xl font-black text-primary uppercase tracking-tight">Test Settings</h1>
+        <p className="text-[10px] font-black uppercase text-secondary tracking-widest mt-1 opacity-40">
+           Environment configuration & Behavioral enforcement
         </p>
       </div>
 
       {/* Test selector */}
-      <div className="glass p-5">
-        <label className="block text-xs mb-2 font-medium uppercase tracking-wide"
-          style={{ color: 'rgb(var(--text-secondary))' }}>Select Test</label>
+      <div className="glass-2 p-6 bg-white/[0.01]">
+        <label className="block text-[10px] font-black uppercase tracking-widest text-secondary opacity-40 mb-3">Select Target Evaluation</label>
         {loading ? (
-          <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>Loading tests...</p>
+          <p className="text-xs font-black uppercase tracking-widest opacity-20">Syncing database...</p>
         ) : (
           <GlassSelect 
             value={selectedTestId}
@@ -131,11 +130,10 @@ export default function TestSettingsApp() {
       </div>
 
       {selectedTestId && (
-        <>
+        <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
           {/* Integrity & Anti-cheat */}
-          <div className="glass p-5">
-            <p className="text-xs font-medium uppercase tracking-wide mb-1"
-              style={{ color: 'rgb(var(--text-secondary))' }}>Integrity & Anti-cheat</p>
+          <div className="glass-2 p-6 bg-white/[0.01]">
+            <p className="text-[10px] font-black uppercase tracking-widest text-secondary opacity-40 mb-4">Integrity & Forensic Countermeasures</p>
             <Toggle
               label="Allow Paste"
               description="Let students paste code/text into answers"
@@ -160,26 +158,25 @@ export default function TestSettingsApp() {
               value={settings.auto_submit_on_tab_limit}
               onChange={v => set('auto_submit_on_tab_limit', v)}
             />
-            <div className="flex items-center justify-between py-3">
+            <div className="flex items-center justify-between py-4">
               <div>
-                <p className="text-sm font-medium" style={{ color: 'rgb(var(--text-primary))' }}>Max Tab Switches</p>
-                <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>
-                  Number of tab switches before auto-submit triggers
+                <p className="text-sm font-black uppercase tracking-tight text-primary">Max Tab Switches</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary opacity-40 mt-1">
+                  Alert threshold before biometric disqualification
                 </p>
               </div>
               <input
                 type="number" min={1} max={20} value={settings.max_tab_switches}
                 onChange={e => set('max_tab_switches', Number(e.target.value))}
-                className="w-20 px-3 py-1.5 rounded-lg text-sm text-center outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-20 px-3 py-1.5 rounded-lg text-sm text-center font-bold outline-none focus:ring-2 focus:ring-accent"
                 style={inputStyle}
               />
             </div>
           </div>
 
           {/* UI & Experience */}
-          <div className="glass p-5">
-            <p className="text-xs font-medium uppercase tracking-wide mb-1"
-              style={{ color: 'rgb(var(--text-secondary))' }}>UI & Experience</p>
+          <div className="glass-2 p-6 bg-white/[0.01]">
+            <p className="text-[10px] font-black uppercase tracking-widest text-secondary opacity-40 mb-4">Interface & Feedback Systems</p>
             <Toggle
               label="Show Remaining Time"
               description="Display countdown timer to students"
@@ -200,21 +197,21 @@ export default function TestSettingsApp() {
             />
           </div>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-red-400 font-bold uppercase tracking-widest">{error}</p>}
 
           <div className="flex gap-3">
             <button onClick={handleSave} disabled={saving}
-              className="px-6 py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-              style={{ backgroundColor: saved ? '#4ade80' : 'rgb(var(--accent))' }}>
-              {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save Settings'}
+              className={`flex-1 px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-xl disabled:opacity-50 ${saved ? 'bg-green-500 text-white' : 'bg-accent text-white hover:bg-accent/90 hover:-translate-y-0.5 shadow-accent/20'}`}
+            >
+              {saving ? 'Synchronizing...' : saved ? '✓ Configuration Locked' : 'Authorize Save'}
             </button>
             <button onClick={() => setSettings(DEFAULT_SETTINGS)}
-              className="px-4 py-2.5 rounded-lg text-sm"
-              style={{ backgroundColor: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', color: 'rgb(var(--text-secondary))' }}>
-              Reset to Defaults
+              className="px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] border border-white/5 bg-white/5 text-secondary hover:bg-white/10 transition-all"
+            >
+              Reset Protocols
             </button>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
