@@ -12,6 +12,9 @@ export default function LockScreen() {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'student' | 'admin'>('student');
   const [isLogin, setIsLogin] = useState(true);
+  const [year, setYear] = useState('SE');
+  const [division, setDivision] = useState('A');
+  const [subject, setSubject] = useState('');
 
   const cardRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -36,16 +39,37 @@ export default function LockScreen() {
         gsap.to(cardRef.current, { x: -6, repeat: 5, yoyo: true, duration: 0.05, onComplete: () => gsap.set(cardRef.current, { x: 0 }) });
       }
     } else {
-      const { error: authError } = await supabase.auth.signUp({ 
-        email, 
-        password,
-        options: { data: { name, role: mode } }
-      });
-      if (authError) {
-        setError(authError.message);
-        setLoading(false);
-      } else {
-        setError('Check your email for confirmation!');
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            name, 
+            email, 
+            password, 
+            role: mode,
+            year:     mode === 'student' ? year     : null,
+            division: mode === 'student' ? division : null,
+            subject:  mode === 'admin'   ? subject  : null
+          }),
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          setError(data.error || 'Registration failed');
+          setLoading(false);
+        } else {
+          // After registration, auto login
+          const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+          if (loginError) {
+             setError('Account created! Please sign in.');
+             setIsLogin(true);
+          }
+          setLoading(false);
+        }
+      } catch (err) {
+        setError('Connection error. Is the server running?');
         setLoading(false);
       }
     }
@@ -105,13 +129,46 @@ export default function LockScreen() {
 
             <form onSubmit={handleAction} className="w-full space-y-3">
               {!isLogin && (
-                <input
-                  type="text"
-                  placeholder="Full Name"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="w-full h-11 px-4 bg-transparent border border-white/5 focus:border-white/20 rounded-xl outline-none text-white text-sm transition-all placeholder:text-white/20"
-                />
+                <>
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    className="w-full h-11 px-4 bg-transparent border border-white/5 focus:border-white/20 rounded-xl outline-none text-white text-sm transition-all placeholder:text-white/20"
+                  />
+                  
+                  {mode === 'student' ? (
+                    <div className="flex gap-2">
+                       <select 
+                          value={year} 
+                          onChange={e => setYear(e.target.value)}
+                          className="flex-1 h-11 px-3 bg-[#16161a] border border-white/5 focus:border-white/20 rounded-xl outline-none text-white text-sm transition-all appearance-none"
+                        >
+                          <option value="SE">SE</option>
+                          <option value="TE">TE</option>
+                          <option value="BE">BE</option>
+                        </select>
+                        <select 
+                          value={division} 
+                          onChange={e => setDivision(e.target.value)}
+                          className="flex-1 h-11 px-3 bg-[#16161a] border border-white/5 focus:border-white/20 rounded-xl outline-none text-white text-sm transition-all appearance-none"
+                        >
+                          <option value="A">Div A</option>
+                          <option value="B">Div B</option>
+                          <option value="C">Div C</option>
+                        </select>
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="Subject Specialized In (e.g. OS, DSA)"
+                      value={subject}
+                      onChange={e => setSubject(e.target.value)}
+                      className="w-full h-11 px-4 bg-transparent border border-white/5 focus:border-white/20 rounded-xl outline-none text-white text-sm transition-all placeholder:text-white/20"
+                    />
+                  )}
+                </>
               )}
               
               <input

@@ -106,8 +106,8 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
     }
   }
 
-  function handleVariantUpdate(updated: any) {
-    setVariants(prev => prev.map(v => v.id === updated.id ? updated : v));
+  function handleVariantUpdate(updated: any, oldId?: string) {
+    setVariants(prev => prev.map(v => (v.id === updated.id || (oldId && v.id === oldId)) ? updated : v));
   }
   function handleVariantRemove(id: string) {
     setVariants(prev => prev.filter(v => v.id !== id));

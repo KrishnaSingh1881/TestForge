@@ -188,17 +188,18 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
   }
 
   const filtered = allQuestions.filter(q => {
-    // 1. Auto-filter by subject if we are inside a test context
-    if (activeTest && screen === 'add-question') {
-      const qSub = q.topic_tag?.toLowerCase() || q.language?.toLowerCase() || '';
-      const tSub = activeTest.subject?.toLowerCase() || '';
-      if (tSub && !qSub.includes(tSub) && !tSub.includes(qSub)) return false;
-    }
-
     if (typeFilter && q.type !== typeFilter) return false;
     if (search.trim() && !q.statement.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
+
+  const isMatchingSubject = (q: Question) => {
+    if (!activeTest) return true;
+    const qSub = (q.topic_tag || q.language || '').toLowerCase();
+    const tSub = (activeTest.subject || '').toLowerCase();
+    return !tSub || qSub.includes(tSub) || tSub.includes(qSub);
+  };
+
 
   // ── Screen: Pick Test ──────────────────────────────────────
   if (screen === 'pick-test') {
@@ -408,10 +409,18 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
                 <tbody>
                   {filtered.map((q, i) => {
                     const alreadyAttached = testQuestions.some(tq => tq.question_id === q.id);
+                    const match = isMatchingSubject(q);
                     return (
-                      <tr key={q.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--glass-border)' : 'none' }}>
+                      <tr key={q.id} style={{ 
+                        borderBottom: i < filtered.length - 1 ? '1px solid var(--glass-border)' : 'none',
+                        opacity: match ? 1 : 0.6,
+                        backgroundColor: match ? 'transparent' : 'rgba(239, 68, 68, 0.02)'
+                      }}>
                         <td className="px-4 py-3 max-w-xs">
-                          <p className="truncate" style={{ color: 'rgb(var(--text-primary))' }}>{q.statement}</p>
+                          <div className="flex items-center gap-2">
+                            {!match && <span title="Subject mismatch" className="cursor-help">⚠️</span>}
+                            <p className="truncate" style={{ color: 'rgb(var(--text-primary))' }}>{q.statement}</p>
+                          </div>
                         </td>
                         <td className="px-4 py-3"><TypeBadge type={q.type} /></td>
                         <td className="px-4 py-3">
@@ -447,6 +456,7 @@ export default function QuestionBankApp({ testId: initTestId, testTitle: initTes
                       </tr>
                     );
                   })}
+
                 </tbody>
               </table>
             </div>

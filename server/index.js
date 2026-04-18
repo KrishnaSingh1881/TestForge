@@ -8,7 +8,7 @@ import questionsRoutes from './routes/questions.js';
 import attemptsRoutes from './routes/attempts.js';
 import adminRoutes from './routes/admin.js';
 import aiRoutes from './routes/ai.js';
-import ghostRoutes from './routes/ghost.js';
+
 import executeRoutes from './routes/execute.js';
 import analyticsRoutes from './routes/analytics.js';
 
@@ -33,7 +33,7 @@ app.use('/api/questions', questionsRoutes);
 app.use('/api/attempts', attemptsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ai', aiRoutes);
-app.use('/api/ghost', ghostRoutes);
+
 app.use('/api/execute', executeRoutes);
 app.use('/api/analytics', analyticsRoutes);
 

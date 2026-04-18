@@ -64,11 +64,11 @@ router.post('/mcq', async (req, res) => {
 
   // Insert options
   const optionRows = options.map((opt, i) => ({
-    question_id:      question.id,
-    option_text:      opt.option_text ?? null,
+    question_id: question.id,
+    option_text: opt.option_text ?? null,
     option_image_url: opt.option_image_url ?? null,
-    is_correct:       Boolean(opt.is_correct),
-    display_order:    opt.display_order ?? i,
+    is_correct: Boolean(opt.is_correct),
+    display_order: opt.display_order ?? i,
   }));
 
   const { error: optErr } = await supabase.from('mcq_options').insert(optionRows);
@@ -109,12 +109,12 @@ router.patch('/:id', async (req, res) => {
   if (existing.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
 
   const updates = {};
-  if (statement           !== undefined) updates.statement            = statement;
-  if (statement_image_url !== undefined) updates.statement_image_url  = statement_image_url;
-  if (topic_tag           !== undefined) updates.topic_tag            = topic_tag;
-  if (difficulty          !== undefined) updates.difficulty           = difficulty;
-  if (marks               !== undefined) updates.marks                = marks;
-  if (type                !== undefined) updates.type                 = type;
+  if (statement !== undefined) updates.statement = statement;
+  if (statement_image_url !== undefined) updates.statement_image_url = statement_image_url;
+  if (topic_tag !== undefined) updates.topic_tag = topic_tag;
+  if (difficulty !== undefined) updates.difficulty = difficulty;
+  if (marks !== undefined) updates.marks = marks;
+  if (type !== undefined) updates.type = type;
 
   const { data: question, error: updateErr } = await supabase
     .from('question_bank')
@@ -130,11 +130,11 @@ router.patch('/:id', async (req, res) => {
     await supabase.from('mcq_options').delete().eq('question_id', id);
 
     const optionRows = options.map((opt, i) => ({
-      question_id:      id,
-      option_text:      opt.option_text ?? null,
+      question_id: id,
+      option_text: opt.option_text ?? null,
       option_image_url: opt.option_image_url ?? null,
-      is_correct:       Boolean(opt.is_correct),
-      display_order:    opt.display_order ?? i,
+      is_correct: Boolean(opt.is_correct),
+      display_order: opt.display_order ?? i,
     }));
 
     const { error: optErr } = await supabase.from('mcq_options').insert(optionRows);
@@ -168,7 +168,7 @@ router.delete('/:id', async (req, res) => {
 router.post('/debug', async (req, res) => {
   const { statement, topic_tag, difficulty, marks, language, correct_code, bug_count } = req.body;
 
-  if (!statement)    return res.status(400).json({ error: 'statement is required' });
+  if (!statement) return res.status(400).json({ error: 'statement is required' });
   if (!correct_code) return res.status(400).json({ error: 'correct_code is required' });
   if (!language || !['python', 'cpp'].includes(language)) {
     return res.status(400).json({ error: 'language must be python or cpp' });
@@ -177,15 +177,15 @@ router.post('/debug', async (req, res) => {
   const { data: question, error } = await supabase
     .from('question_bank')
     .insert({
-      created_by:  req.user.id,
-      type:        'debugging',
+      created_by: req.user.id,
+      type: 'debugging',
       statement,
-      topic_tag:   topic_tag   ?? null,
-      difficulty:  difficulty  ?? null,
-      marks:       marks       ?? 1,
+      topic_tag: topic_tag ?? null,
+      difficulty: difficulty ?? null,
+      marks: marks ?? 1,
       language,
       correct_code,
-      bug_count:   bug_count   ?? 1,
+      bug_count: bug_count ?? 1,
     })
     .select()
     .single();
@@ -213,10 +213,10 @@ router.post('/debug/:id/test-cases', async (req, res) => {
   if (q.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
 
   const rows = test_cases.map(tc => ({
-    question_id:     id,
-    input:           tc.input ?? '',
+    question_id: id,
+    input: tc.input ?? '',
     expected_output: tc.expected_output,
-    is_hidden:       Boolean(tc.is_hidden),
+    is_hidden: Boolean(tc.is_hidden),
   }));
 
   const { data, error } = await supabase.from('test_cases').insert(rows).select();
@@ -281,9 +281,37 @@ router.post('/debug/:id/approve-variant', async (req, res) => {
   return res.status(201).json({ variant: data });
 });
 
-// ── PATCH /variants/:id/approve ──────────────────────────────
+// ── PATCH /questions/variants/:id/approve ────────────────────────
+router.patch('/variants/:id/approve', async (req, res) => {
+  const { id } = req.params;
 
-// ── PATCH /variants/:id/reject ───────────────────────────────
+  const { data: v } = await supabase
+    .from('debug_variants')
+    .select('id, question_id')
+    .eq('id', id)
+    .single();
+
+  if (!v) return res.status(404).json({ error: 'Variant not found' });
+
+  const { data: q } = await supabase
+    .from('question_bank')
+    .select('created_by')
+    .eq('id', v.question_id)
+    .single();
+
+  if (!q || q.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+  const { data, error } = await supabase
+    .from('debug_variants')
+    .update({ is_approved: true, approved_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  return res.json({ variant: data });
+});
+
 router.patch('/variants/:id/reject', async (req, res) => {
   const { id } = req.params;
 
@@ -375,13 +403,13 @@ router.post('/import', upload.single('file'), async (req, res) => {
   }
 
   // 2. Validate each row
-  const valid   = [];
-  const errors  = [];
+  const valid = [];
+  const errors = [];
 
   for (const raw of rawRows) {
     const result = validateQuestion(raw, raw._row);
     if (result.ok) valid.push(result.question);
-    else           errors.push({ row: raw._row, reason: result.reason });
+    else errors.push({ row: raw._row, reason: result.reason });
   }
 
   // 3. Insert valid questions
@@ -392,11 +420,14 @@ router.post('/import', upload.single('file'), async (req, res) => {
       .from('question_bank')
       .insert({
         created_by: req.user.id,
-        type:       q.type,
-        statement:  q.statement,
-        topic_tag:  q.topic_tag,
+        type: q.type,
+        statement: q.statement,
+        topic_tag: q.topic_tag,
         difficulty: q.difficulty,
-        marks:      q.marks,
+        marks: q.marks,
+        language: q.language,
+        correct_code: q.correct_code,
+        bug_count: q.bug_count,
       })
       .select('id')
       .single();
@@ -407,9 +438,9 @@ router.post('/import', upload.single('file'), async (req, res) => {
     }
 
     const optRows = q.options.map(o => ({
-      question_id:   question.id,
-      option_text:   o.option_text,
-      is_correct:    o.is_correct,
+      question_id: question.id,
+      option_text: o.option_text,
+      is_correct: o.is_correct,
       display_order: o.display_order,
     }));
 
@@ -426,16 +457,16 @@ router.post('/import', upload.single('file'), async (req, res) => {
 
   // 4. Log to question_import_logs
   await supabase.from('question_import_logs').insert({
-    imported_by:   req.user.id,
-    file_type:     ext,
-    total_rows:    rawRows.length,
+    imported_by: req.user.id,
+    file_type: ext,
+    total_rows: rawRows.length,
     success_count: successCount,
-    error_rows:    errors.length > 0 ? errors : null,
+    error_rows: errors.length > 0 ? errors : null,
   });
 
   return res.json({
     success_count: successCount,
-    error_count:   errors.length,
+    error_count: errors.length,
     errors,
   });
 });

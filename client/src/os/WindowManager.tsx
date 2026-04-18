@@ -12,7 +12,7 @@ import IntegrityApp from './apps/IntegrityApp';
 import AdminAnalyticsApp from './apps/AdminAnalyticsApp';
 import CodeEditorApp from './apps/CodeEditorApp';
 import TestSettingsApp from './apps/TestSettingsApp';
-import GhostSessionApp from './apps/GhostSessionApp';
+
 
 const APP_COMPONENTS: Record<AppType, React.ComponentType<any>> = {
   'tests':           TestsApp,
@@ -25,7 +25,7 @@ const APP_COMPONENTS: Record<AppType, React.ComponentType<any>> = {
   'admin-analytics': AdminAnalyticsApp,
   'code-editor':     CodeEditorApp,
   'test-settings':   TestSettingsApp,
-  'ghost':           GhostSessionApp,
+
 };
 
 export default function WindowManager() {

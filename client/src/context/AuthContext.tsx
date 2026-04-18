@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function fetchProfile(accessToken: string) {
     try {
-      const res = await fetch('http://localhost:4000/api/auth/me', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) return null;

@@ -18,7 +18,7 @@ interface Props {
   language: 'python' | 'cpp';
   variants: Variant[];
   questionId: string;
-  onApprove: (v: Variant) => void;
+  onApprove: (v: Variant, oldId?: string) => void;
   onReject: (id: string) => void;
   onRegenerate: () => void;
 }
@@ -127,13 +127,19 @@ export default function VariantReviewPanel({ correctCode, language, variants, qu
   async function approve(v: Variant) {
     setLoadingId(v.id);
     try {
-      // POSTing the data because it's unsaved in the DB
-      const { data } = await api.post(`/questions/debug/${questionId}/approve-variant`, {
-        buggy_code: v.buggy_code,
-        diff_json: v.diff_json,
-        generated_by: v.generated_by
-      });
-      onApprove(data.variant);
+      // If variant has a real ID (not temporary from AI generation), just approve it via PATCH
+      if (!v.id.startsWith('temp-')) {
+        const { data } = await api.patch(`/questions/variants/${v.id}/approve`);
+        onApprove(data.variant, v.id);
+      } else {
+        // If it's a temp ID, we POST it to save and approve in one go
+        const { data } = await api.post(`/questions/debug/${questionId}/approve-variant`, {
+          buggy_code: v.buggy_code,
+          diff_json: v.diff_json,
+          generated_by: v.generated_by
+        });
+        onApprove(data.variant, v.id);
+      }
     } catch (e: any) {
       alert(e.response?.data?.error ?? 'Approval failed');
     } finally {
@@ -143,14 +149,24 @@ export default function VariantReviewPanel({ correctCode, language, variants, qu
 
   async function reject(v: Variant) {
     if (!confirm('Reject and delete this variant?')) return;
+    
+    // If it's a temp ID, just remove from UI
+    if (v.id.startsWith('temp-')) {
+      onReject(v.id);
+      return;
+    }
+
     setLoadingId(v.id);
     try {
       await api.patch(`/questions/variants/${v.id}/reject`);
       onReject(v.id);
+    } catch (e: any) {
+      alert(e.response?.data?.error ?? 'Rejection failed');
     } finally {
       setLoadingId(null);
     }
   }
+
 
   return (
     <div className="glass p-6 space-y-4">
