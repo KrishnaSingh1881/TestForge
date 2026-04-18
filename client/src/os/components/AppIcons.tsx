@@ -125,7 +125,7 @@ export function IconSettings() {
   );
 }
 
-export const APP_ICONS: Record<string, () => JSX.Element> = {
+export const APP_ICONS: Record<string, React.FC> = {
   'tests':           IconTests,
   'test-session':    IconTests,
   'results':         IconResults,

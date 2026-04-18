@@ -6,8 +6,10 @@ export type FontSize = 'small' | 'medium' | 'large' | 'xl';
 interface OSSettings {
   fontSize: FontSize;
   dockAutohide: boolean;
+  isFocusMode: boolean;
   setFontSize: (size: FontSize) => void;
   toggleDockAutohide: () => void;
+  setFocusMode: (active: boolean) => void;
 }
 
 function applyFont(size: FontSize) {
@@ -19,11 +21,13 @@ export const useOSSettings = create<OSSettings>()(
     (set) => ({
       fontSize: 'medium',
       dockAutohide: false,
+      isFocusMode: false,
       setFontSize: (size) => {
         applyFont(size);
         set({ fontSize: size });
       },
       toggleDockAutohide: () => set(s => ({ dockAutohide: !s.dockAutohide })),
+      setFocusMode: (active) => set({ isFocusMode: active }),
     }),
     { name: 'os-settings' }
   )

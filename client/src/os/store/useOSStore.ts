@@ -50,6 +50,8 @@ interface OSStore {
   unlockWindow: (id: string) => void;
   closeAll: () => void;
   setResponsiveMode: (mode: ResponsiveMode) => void;
+  setSwitcherOpen: (open: boolean) => void;
+  isSwitcherOpen: boolean;
 }
 
 // Default sizes and positions per app type
@@ -91,6 +93,7 @@ export const useOSStore = create<OSStore>((set, get) => ({
   focusedWindowId: null,
   nextZIndex: 100,
   responsiveMode: 'desktop',
+  isSwitcherOpen: false,
 
   openWindow: (appType, appProps) => {
     const state = get();
@@ -266,4 +269,5 @@ export const useOSStore = create<OSStore>((set, get) => ({
   setResponsiveMode: (mode) => {
     set({ responsiveMode: mode });
   },
+  setSwitcherOpen: (open) => set({ isSwitcherOpen: open }),
 }));

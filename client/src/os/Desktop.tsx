@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import WindowManager from './WindowManager';
 import { useTheme } from '../context/ThemeContext';
+import { useOSSettings } from './store/useOSSettings';
 
 interface Particle {
   x: number; y: number;
@@ -14,11 +15,12 @@ export default function Desktop() {
   const wallpaperRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { theme } = useTheme();
+  const { isFocusMode } = useOSSettings();
   const isLight = theme === 'light';
 
   // GSAP parallax on mouse move
   useEffect(() => {
-    if (!wallpaperRef.current) return;
+    if (!wallpaperRef.current || isFocusMode) return;
     const xTo = gsap.quickTo(wallpaperRef.current, 'x', { duration: 1.4, ease: 'power1.out' });
     const yTo = gsap.quickTo(wallpaperRef.current, 'y', { duration: 1.4, ease: 'power1.out' });
     const onMove = (e: MouseEvent) => {
@@ -80,25 +82,25 @@ export default function Desktop() {
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
 
         if (light) {
-          // Darker, bigger warm brown/amber glowing particles for light mode
+          // Clean blue/indigo glowing particles for crystal light mode
           const r = Math.random();
           let color: string;
-          if (r > 0.7)       color = `rgba(110, 55, 8,  ${p.opacity * 1.1})`;   // dark burnt brown
-          else if (r > 0.4)  color = `rgba(140, 75, 15, ${p.opacity * 1.0})`;   // deep amber brown
-          else               color = `rgba(125, 65, 10, ${p.opacity * 0.95})`;  // rich warm brown
+          if (r > 0.7)       color = `rgba(59,  130, 246, ${p.opacity * 0.9})`;   // blue-500
+          else if (r > 0.4)  color = `rgba(99,  102, 241, ${p.opacity * 0.8})`;   // indigo-500
+          else               color = `rgba(148, 163, 184, ${p.opacity * 0.7})`;   // slate-400
 
-          // Bigger glow halo
-          const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 6);
-          grd.addColorStop(0, `rgba(150, 85, 20, ${p.opacity * 0.6})`);
-          grd.addColorStop(1, `rgba(150, 85, 20, 0)`);
+          // Subtle cool glow halo
+          const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 5);
+          grd.addColorStop(0, `rgba(99, 102, 241, ${p.opacity * 0.35})`);
+          grd.addColorStop(1, `rgba(99, 102, 241, 0)`);
           ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size * 6, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, p.size * 5, 0, Math.PI * 2);
           ctx.fillStyle = grd;
           ctx.fill();
 
-          // Bigger core dot
+          // Precise core dot
           ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size * 1.8, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, p.size * 1.4, 0, Math.PI * 2);
           ctx.fillStyle = color;
           ctx.fill();
         } else {
@@ -132,23 +134,33 @@ export default function Desktop() {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
     };
-  }, []); // single loop — reads data-theme live from DOM
+  }, [isFocusMode]); // Re-run or pause loop when Focus Mode changes
 
   return (
-    <div style={{ position: 'fixed', inset: 0, overflow: 'hidden' }}>
+    <div 
+      className={isFocusMode ? 'focus-mode-distraction-free' : ''}
+      style={{ position: 'fixed', inset: 0, overflow: 'hidden' }}
+    >
       {/* Background layer — transitions via CSS */}
       <div
         ref={wallpaperRef}
-        style={{ position: 'absolute', inset: -30, willChange: 'transform' }}
+        style={{ 
+          position: 'absolute', 
+          inset: -30, 
+          willChange: 'transform',
+          transform: isFocusMode ? 'translate(0,0) !important' : undefined 
+        }}
       >
         <div className={isLight ? 'desktop-bg desktop-bg--light' : 'desktop-bg'} />
       </div>
 
       {/* Particle canvas */}
-      <canvas
-        ref={canvasRef}
-        style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }}
-      />
+      {!isFocusMode && (
+        <canvas
+          ref={canvasRef}
+          style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }}
+        />
+      )}
 
       {/* Windows */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
@@ -180,18 +192,18 @@ export default function Desktop() {
           transition: opacity 0.8s ease;
         }
 
-        /* ── Light mode background — warm beige/sand ── */
+        /* ── Light mode background — Arctic Crystal ── */
         .desktop-bg--light {
-          background: #f5ede0;
+          background: #f8fafc;
         }
         .desktop-bg--light::before {
           background:
-            radial-gradient(ellipse 70% 50% at 50% 100%, rgba(200, 140, 60,  0.22) 0%, transparent 65%),
-            radial-gradient(ellipse 50% 35% at 80% 10%,  rgba(220, 170, 80,  0.14) 0%, transparent 60%),
-            radial-gradient(ellipse 40% 30% at 15% 25%,  rgba(180, 120, 50,  0.10) 0%, transparent 55%);
+            radial-gradient(ellipse 70% 50% at 50% 100%, rgba(59,  130, 246, 0.12) 0%, transparent 65%),
+            radial-gradient(ellipse 50% 35% at 80% 10%,  rgba(99,  102, 241, 0.08) 0%, transparent 60%),
+            radial-gradient(ellipse 40% 30% at 15% 25%,  rgba(148, 163, 184, 0.05) 0%, transparent 55%);
         }
         .desktop-bg--light::after {
-          background: radial-gradient(ellipse 55% 40% at 50% 95%, rgba(200, 140, 50, 0.18) 0%, transparent 60%);
+          background: radial-gradient(ellipse 55% 40% at 50% 95%, rgba(59, 130, 246, 0.08) 0%, transparent 60%);
         }
 
         @keyframes ambientPulse {

@@ -15,11 +15,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createContext, useContext } from 'react';
 
 // ── Stub ResizeObserver (not available in jsdom) ──────────────
-global.ResizeObserver = class ResizeObserver {
+vi.stubGlobal('ResizeObserver', class {
   observe() {}
   unobserve() {}
   disconnect() {}
-};
+});
 
 // ── Mock framer-motion to avoid animation issues in jsdom ─────
 vi.mock('framer-motion', () => ({

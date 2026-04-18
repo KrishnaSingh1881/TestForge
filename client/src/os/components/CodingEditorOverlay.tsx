@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import type { OnMount } from '@monaco-editor/react';
 import type * as Monaco from 'monaco-editor';
-import { FiPlay, FiSkipForward, FiSend, FiX, FiAlertTriangle, FiShield, FiEye } from 'react-icons/fi';
+import { FiPlay, FiSkipForward, FiSend, FiAlertTriangle, FiShield, FiEye } from 'react-icons/fi';
 import api from '../../lib/axios';
 import { useBehavioralTracking } from '../../hooks/useBehavioralTracking';
 
@@ -43,7 +43,6 @@ interface CodingEditorOverlayProps {
   onPasteAttempt?: () => void;
   onSubmit: (qid: string, code: string) => void;
   onSkip: () => void;
-  onClose: () => void;
 }
 
 function formatTime(secs: number) {
@@ -66,7 +65,6 @@ export default function CodingEditorOverlay({
   onPasteAttempt,
   onSubmit,
   onSkip,
-  onClose,
 }: CodingEditorOverlayProps) {
   const [code, setCode] = useState(initialCode || question.buggy_code || '');
   const [runsLeft, setRunsLeft] = useState(initialRuns);
@@ -74,7 +72,6 @@ export default function CodingEditorOverlay({
   const [results, setResults] = useState<RunResult[]>([]);
   const [submitConfirm, setSubmitConfirm] = useState(false);
   const [toast, setToast] = useState('');
-  const [activePanel, setActivePanel] = useState<'buggy' | 'editor'>('editor');
   const [showBuggy, setShowBuggy] = useState(false); // side-by-side on wide screens
 
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);

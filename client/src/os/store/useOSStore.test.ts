@@ -55,10 +55,10 @@ describe('useOSStore - Property Tests', () => {
 
       // Open 5 windows
       const id1 = openWindow('tests');
-      const id2 = openWindow('results');
-      const id3 = openWindow('analytics');
-      const id4 = openWindow('question-bank');
-      const id5 = openWindow('test-manager');
+      openWindow('results');
+      openWindow('analytics');
+      openWindow('question-bank');
+      openWindow('test-manager');
 
       // Focus the first window (which should have the lowest zIndex)
       focusWindow(id1);
@@ -104,7 +104,7 @@ describe('useOSStore - Property Tests', () => {
       const { openWindow, focusWindow } = useOSStore.getState();
 
       const id1 = openWindow('tests');
-      const id2 = openWindow('results');
+      openWindow('results');
 
       // Focus id1 twice
       focusWindow(id1);

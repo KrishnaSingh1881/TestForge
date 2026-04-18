@@ -32,6 +32,7 @@ export default function TrafficLights({ windowId, isLocked }: TrafficLightsProps
         className="traffic-light traffic-light-red flex items-center justify-center"
         onClick={(e) => { e.stopPropagation(); closeWindow(windowId); }}
         title="Close"
+        aria-label="Close window"
       >
         {hovered && <span className="text-[9px] font-bold leading-none" style={{ color: 'rgba(0,0,0,0.55)' }}>×</span>}
       </button>
@@ -41,6 +42,7 @@ export default function TrafficLights({ windowId, isLocked }: TrafficLightsProps
         className="traffic-light traffic-light-yellow flex items-center justify-center"
         onClick={(e) => { e.stopPropagation(); minimizeWindow(windowId); }}
         title="Minimize"
+        aria-label="Minimize window"
       >
         {hovered && <span className="text-[9px] font-bold leading-none" style={{ color: 'rgba(0,0,0,0.55)' }}>−</span>}
       </button>
@@ -53,6 +55,7 @@ export default function TrafficLights({ windowId, isLocked }: TrafficLightsProps
           isMaximized ? unmaximizeWindow(windowId) : maximizeWindow(windowId);
         }}
         title={isMaximized ? 'Restore' : 'Maximize'}
+        aria-label={isMaximized ? 'Restore window' : 'Maximize window'}
       >
         {hovered && (
           <span className="text-[9px] font-bold leading-none" style={{ color: 'rgba(0,0,0,0.55)' }}>

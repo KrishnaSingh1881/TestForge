@@ -3,6 +3,7 @@ import api from '../../lib/axios';
 import { useOSStore } from '../store/useOSStore';
 import { useHeartbeat } from '../../hooks/useHeartbeat';
 import { useIntegrityListeners } from '../../hooks/useIntegrityListeners';
+import { useOSSettings } from '../store/useOSSettings';
 import QuestionNavigator from '../../components/test/QuestionNavigator';
 import MCQQuestion from '../../components/test/MCQQuestion';
 import SubmitConfirmModal from '../../components/test/SubmitConfirmModal';
@@ -37,6 +38,7 @@ interface TestSessionAppProps {
 
 export default function TestSessionApp({ id: windowId, testId, attemptId: initialAttemptId }: TestSessionAppProps & { id: string }) {
   const { openWindow, closeWindow, lockWindow, unlockWindow } = useOSStore();
+  const { isFocusMode, setFocusMode } = useOSSettings();
 
   const [phase, setPhase] = useState<SessionPhase>('start-screen');
   const [test, setTest] = useState<any>(null);
@@ -213,6 +215,15 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
     }, 1000);
     return () => clearInterval(id);
   }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Phase 6: Automated Focus Mode
+  useEffect(() => {
+    if (phase === 'active') {
+      const prevMode = isFocusMode;
+      setFocusMode(true);
+      return () => setFocusMode(prevMode);
+    }
+  }, [phase, setFocusMode]);
 
   // Enforce test settings (copy-paste, right-click, keyboard shortcuts) during active test
   useEffect(() => {
@@ -594,9 +605,14 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
         {/* Integrity warning toast */}
         {integrityToast && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[95] animate-in slide-in-from-top-4 duration-300 fade-in">
-            <div className="flex items-center gap-3 px-6 py-3 rounded-2xl border shadow-2xl shadow-black/50"
-              style={{ background: 'linear-gradient(135deg, rgba(220,38,38,0.95), rgba(180,20,20,0.95))', borderColor: 'rgba(255,120,120,0.4)', backdropFilter: 'blur(20px)' }}>
-              <span className="text-xl">⚠️</span>
+            <div className={`flex items-center gap-3 px-6 py-3 rounded-2xl border shadow-2xl shadow-black/50 backdrop-blur-xl animate-pulse`}
+              style={{ 
+                background: liveIntegrity > 50 
+                  ? 'linear-gradient(135deg, rgba(234,179,8,0.9), rgba(202,138,4,0.9))' // Yellow for warnings
+                  : 'linear-gradient(135deg, rgba(220,38,38,0.9), rgba(180,20,20,0.9))', // Red for critical
+                borderColor: liveIntegrity > 50 ? 'rgba(255,255,200,0.4)' : 'rgba(255,120,120,0.4)'
+              }}>
+              <span className="text-xl">{liveIntegrity > 50 ? '⚠️' : '🚨'}</span>
               <p className="text-[11px] font-black uppercase tracking-widest text-white">{integrityToast}</p>
               <button onClick={() => setIntegrityToast('')} className="ml-2 text-white/50 hover:text-white text-lg leading-none transition-colors">×</button>
             </div>

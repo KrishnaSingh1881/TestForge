@@ -7,8 +7,12 @@ import MenuBar from './MenuBar';
 import Dock from './Dock';
 import LockScreen from './LockScreen';
 import ClickSpark from '../components/ClickSpark';
+import { useKeyboardManager } from './hooks/useKeyboardManager';
+import WindowSwitcher from './components/WindowSwitcher';
 
-export default function OSShell(): JSX.Element {
+export default function OSShell() {
+  useKeyboardManager(); // Register global OS keyboard listeners
+
   const { session, user } = useAuth();
   const { theme } = useTheme();
   const { closeAll, setResponsiveMode } = useOSStore();
@@ -98,6 +102,7 @@ export default function OSShell(): JSX.Element {
             <Desktop />
             <MenuBar />
             <Dock />
+            <WindowSwitcher />
           </>
         )}
       </ClickSpark>

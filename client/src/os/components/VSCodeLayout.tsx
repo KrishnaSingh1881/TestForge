@@ -19,6 +19,7 @@ interface DebuggingQuestion {
     expected_output: string;
     is_hidden: boolean;
   }>;
+  marks?: number | string;
 }
 
 interface VSCodeLayoutProps {
@@ -97,7 +98,7 @@ export default function VSCodeLayout({
     return () => { if (idleWarnIntervalRef.current) clearInterval(idleWarnIntervalRef.current); };
   }, [sessionPhase, onIdleWarning]);
 
-  const handleEditorMount: OnMount = (editor, monaco) => {
+  const handleEditorMount: OnMount = (editor, _monaco) => {
     editorRef.current = editor;
 
     // Attach behavioral tracking

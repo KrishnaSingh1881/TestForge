@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { motion, MotionValue } from 'framer-motion';
+import { motion } from 'framer-motion';
 import type { AppDefinition } from '../apps/registry';
 import { registerDockIconRef } from '../AppWindow';
 import { APP_ICONS } from './AppIcons';
@@ -11,11 +11,10 @@ interface DockIconProps {
   isActive: boolean;
   isMinimized: boolean;
   isLight: boolean;
-  mouseX: MotionValue<number>;
   onClick: () => void;
 }
 
-export default function DockIcon({ app, isOpen, isActive, isMinimized, isLight, mouseX, onClick }: DockIconProps) {
+export default function DockIcon({ app, isOpen, isActive, isMinimized, isLight, onClick }: DockIconProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState(false);
 
@@ -34,14 +33,6 @@ export default function DockIcon({ app, isOpen, isActive, isMinimized, isLight, 
   const tileBorder = isLight
     ? isActive ? '1px solid rgba(0, 0, 0, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)'
     : isActive ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(255, 255, 255, 0.06)';
-
-  const tileShadow = isLight
-    ? isActive
-      ? '0 12px 24px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.4)'
-      : '0 4px 12px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.2)'
-    : isActive
-      ? '0 0 20px rgba(99,102,241,0.3), 0 12px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)'
-      : '0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03)';
 
   const tooltipBg = 'rgba(15, 12, 35, 0.8)';
   const dotColor  = isLight

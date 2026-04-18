@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { Mail, Shield, User, Globe } from 'lucide-react';
+import { Shield } from 'lucide-react';
 
 export default function LockScreen() {
   const [email, setEmail] = useState('');
@@ -36,7 +35,7 @@ export default function LockScreen() {
       if (authError) {
         setError('Invalid credentials');
         setLoading(false);
-        gsap.to(cardRef.current, { x: -6, repeat: 5, yoyo: true, duration: 0.05, onComplete: () => gsap.set(cardRef.current, { x: 0 }) });
+        gsap.to(cardRef.current, { x: -6, repeat: 5, yoyo: true, duration: 0.05, onComplete: () => { gsap.set(cardRef.current, { x: 0 }); } });
       }
     } else {
       try {

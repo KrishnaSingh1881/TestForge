@@ -23,18 +23,18 @@
 }
 
 [data-theme="light"] {
-  --bg-primary: 245 237 224;     /* warm beige */
-  --bg-secondary: 235 220 195;   /* slightly darker sand */
-  --text-primary: 40 25 8;       /* dark brown */
-  --text-secondary: 120 85 45;   /* medium brown */
-  --accent: 99 102 241;
-  --glass-bg: rgba(255 235 210 / 0.55); /* noticeably more opaque warm glass */
-  --glass-border: rgba(120 70 30 / 0.35); /* stronger warm border */
+  --bg-primary: 248 250 252;     /* slate-50 */
+  --bg-secondary: 241 245 249;   /* slate-100 */
+  --text-primary: 15 23 42;      /* slate-900 */
+  --text-secondary: 71 85 105;   /* slate-600 */
+  --accent: 59 130 246;          /* blue-500 */
+  --glass-bg: rgba(255 255 255 / 0.7);
+  --glass-border: rgba(203 213 225 / 0.5); /* slate-300 edge */
 
-  /* ── OS Shell tokens (light — warm glass) ── */
-  --menubar-bg: rgba(245, 220, 180, 0.65);
-  --dock-bg: rgba(245, 220, 180, 0.4);
-  --window-chrome-bg: rgba(245, 230, 200, 0.5);
+  /* ── OS Shell tokens (light — crystal glass) ── */
+  --menubar-bg: rgba(255, 255, 255, 0.75);
+  --dock-bg: rgba(255, 255, 255, 0.5);
+  --window-chrome-bg: rgba(241, 245, 249, 0.6);
   --window-titlebar-bg: rgba(255, 255, 255, 0.4);
 
   color-scheme: light;
@@ -61,6 +61,19 @@ body {
   color: rgb(var(--text-primary));
   font-family: 'Inter', system-ui, sans-serif;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Accessibility & Focus ── */
+:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.os-shell :focus-visible {
+  outline-color: #818cf8; /* indigo-400 for better visibility in glass shell */
 }
 
 /* Glassmorphism utility */
@@ -73,8 +86,8 @@ body {
 }
 
 [data-theme="light"] .glass {
-  /* Subtle dark tint to differentiate cards from main window background */
-  background-image: linear-gradient(rgba(40, 25, 8, 0.03), rgba(40, 25, 8, 0.03));
+  /* No tint needed for crystal glass, maintains pure white frosted look */
+  background-image: none;
 }
 
 .no-shadow {
@@ -143,10 +156,10 @@ body {
 }
 
 [data-theme="light"] .app-window {
-  background-color: rgba(255, 252, 245, 0.6);
-  background-image: linear-gradient(rgba(40, 25, 8, 0.05), rgba(40, 25, 8, 0.05)); /* Slightly darker brown tint for separation */
-  border-color: rgba(120, 85, 45, 0.3);
-  box-shadow: 0 20px 40px -12px rgba(120, 80, 20, 0.2);
+  background-color: rgba(255, 255, 255, 0.65);
+  background-image: none;
+  border-color: rgba(203, 213, 225, 0.4);
+  box-shadow: 0 20px 40px -12px rgba(15, 23, 42, 0.1);
 }
 
 .app-window-titlebar {
@@ -155,8 +168,8 @@ body {
 }
 
 [data-theme="light"] .app-window-titlebar {
-  background: rgba(255, 255, 255, 0.25);
-  border-bottom: 1px solid rgba(120, 85, 45, 0.15);
+  background: rgba(248, 250, 252, 0.35);
+  border-bottom: 1px solid rgba(203, 213, 225, 0.2);
 }
 
 .app-window-content {
@@ -170,3 +183,16 @@ body {
 /* Utility for theme mapping */
 .text-primary { color: rgb(var(--text-primary)); }
 .text-secondary { color: rgb(var(--text-secondary)); }
+
+/* ── Focus Mode Utilities ── */
+.focus-mode-distraction-free {
+  --particle-opacity-mult: 0;
+  --parallax-mult: 0;
+}
+
+.focus-ring-subtle {
+  transition: box-shadow 0.2s ease;
+}
+.focus-ring-subtle:focus-visible {
+  box-shadow: 0 0 0 3px rgba(var(--accent), 0.3);
+}

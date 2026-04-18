@@ -14,11 +14,11 @@ import { createContext, useContext, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 
 // ── Stub ResizeObserver (not available in jsdom) ─────────────
-global.ResizeObserver = class ResizeObserver {
+vi.stubGlobal('ResizeObserver', class {
   observe() {}
   unobserve() {}
   disconnect() {}
-};
+});
 
 // ── Mock heavy child components ───────────────────────────────
 vi.mock('./Desktop', () => ({ default: () => <div data-testid="desktop" /> }));

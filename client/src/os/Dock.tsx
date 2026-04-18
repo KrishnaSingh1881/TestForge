@@ -1,4 +1,3 @@
-import { useMotionValue } from 'framer-motion';
 import { useOSStore } from './store/useOSStore';
 import { getAppsForRole } from './apps/registry';
 import DockIcon from './components/DockIcon';
@@ -12,7 +11,6 @@ export default function Dock() {
   const { theme } = useTheme();
   const { windows, openWindow, focusWindow, restoreWindow, responsiveMode } = useOSStore();
   const { dockAutohide } = useOSSettings();
-  const mouseX = useMotionValue(Infinity);
   const isLight = theme === 'light';
   const [hovered, setHovered] = useState(false);
 
@@ -43,23 +41,29 @@ export default function Dock() {
 
   if (isMobile) {
     return (
-      <nav style={{
-        position: 'fixed', bottom: 12, left: 12, right: 12,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-around',
-        padding: '8px',
-        background: 'rgba(15, 12, 35, 0.45)',
-        backdropFilter: 'blur(30px) saturate(200%)',
-        WebkitBackdropFilter: 'blur(30px) saturate(200%)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: 20,
-        height: 68, zIndex: 200,
-        boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-      }}>
+      <nav 
+        aria-label="Application Dock"
+        style={{
+          position: 'fixed', bottom: 12, left: 12, right: 12,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-around',
+          padding: '8px',
+          background: 'rgba(15, 12, 35, 0.45)',
+          backdropFilter: 'blur(30px) saturate(200%)',
+          WebkitBackdropFilter: 'blur(30px) saturate(200%)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: 20,
+          height: 68, zIndex: 200,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+        }}>
         {apps.map(app => {
           const isOpen = windows.some(w => w.appType === app.id && !w.isMinimized);
           return (
-            <button key={app.id} onClick={() => handleAppClick(app.id)}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', flex: 1 }}>
+            <button 
+              key={app.id} 
+              onClick={() => handleAppClick(app.id)}
+              aria-label={`Open ${app.name}`}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', flex: 1 }}
+            >
               <span style={{ fontSize: 24, opacity: isOpen ? 1 : 0.6, filter: isOpen ? 'drop-shadow(0 0 8px rgba(99,102,241,0.5))' : 'none' }}>{app.icon}</span>
               <span style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: isOpen ? '#818cf8' : 'rgba(255,255,255,0.3)' }}>{app.name}</span>
             </button>
@@ -71,7 +75,8 @@ export default function Dock() {
 
   return (
     <>
-    <div
+    <nav
+      aria-label="Application Dock"
       style={{
         position: 'fixed',
         bottom: hasMaximized ? -200 : dockAutohide ? (hovered ? 16 : -90) : 16,
@@ -98,8 +103,7 @@ export default function Dock() {
         alignItems: 'flex-end',
         gap: 12,
       }}
-      onMouseMove={e => mouseX.set(e.clientX)}
-      onMouseLeave={() => { mouseX.set(Infinity); setHovered(false); }}
+      onMouseLeave={() => setHovered(false)}
       onMouseEnter={() => setHovered(true)}
     >
       {apps.map(app => {
@@ -116,12 +120,11 @@ export default function Dock() {
             isActive={isActive}
             isMinimized={isMinimized}
             isLight={isLight}
-            mouseX={mouseX}
             onClick={() => handleAppClick(app.id)}
           />
         );
       })}
-    </div>
+    </nav>
 
     {/* Autohide trigger zone — invisible strip at bottom edge */}
     {dockAutohide && !hasMaximized && (
