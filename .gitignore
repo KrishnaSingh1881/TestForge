@@ -27,7 +27,12 @@ Thumbs.db
 
 # Kiro IDE specs (local only)
 .kiro/
-.kiro
+
+# Agent skills
+.agent/
+
+# Graphify output (generated files)
+graphify-out/
 
 # Local files
 test.md
