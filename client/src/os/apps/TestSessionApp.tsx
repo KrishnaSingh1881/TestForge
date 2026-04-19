@@ -8,6 +8,7 @@ import QuestionNavigator from '../../components/test/QuestionNavigator';
 import MCQQuestion from '../../components/test/MCQQuestion';
 import SubmitConfirmModal from '../../components/test/SubmitConfirmModal';
 import CodingEditorOverlay from '../components/CodingEditorOverlay';
+import Counter from '../../components/Counter';
 import {
   FiAlertTriangle, FiShield, FiClock, FiBox, FiPlus, FiPlay, FiArrowLeft, FiCode,
 } from 'react-icons/fi';
@@ -281,7 +282,6 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
     `;
     document.head.appendChild(styleEl);
 
-    // Always block copy during test (no exceptions)
     const copyHandler = (e: Event) => {
       e.preventDefault();
       deductIntegrity(10, 'Copy attempt blocked (−10)');
@@ -289,7 +289,6 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
     document.addEventListener('copy', copyHandler);
     handlers.push(['copy', copyHandler]);
 
-    // Always block paste during test
     const pasteHandler = (e: Event) => {
       e.preventDefault();
       deductIntegrity(10, 'Paste attempt blocked (−10)');
@@ -303,32 +302,11 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
       handlers.push(['contextmenu', h]);
     }
 
-    // Block keyboard shortcuts + Global Telemetry
     const keyHandler = (e: KeyboardEvent) => {
       const ctrl = e.ctrlKey || e.metaKey;
-      
-      // Global Backspace/Key Statistics for Analytics
-      if (e.key === 'Backspace') {
-          // Send to server periodically or on heartbeat
-          api.patch(`/attempts/${attemptId}/integrity`, { event: 'telemetry', data: { backspace: 1 } }).catch(() => {});
-      } else if (e.key.length === 1) {
-          api.patch(`/attempts/${attemptId}/integrity`, { event: 'telemetry', data: { keystroke: 1 } }).catch(() => {});
-      }
-
-      if (ctrl && (e.key === 'c' || e.key === 'C')) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      if (ctrl && (e.key === 'v' || e.key === 'V')) {
-        e.preventDefault();
-        e.stopPropagation();
-        deductIntegrity(10, 'Paste attempt blocked (−10)');
-      }
-      if (ctrl && (e.key === 'x' || e.key === 'X')) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      // Block inspect / dev tools
+      if (ctrl && (e.key === 'c' || e.key === 'C')) { e.preventDefault(); e.stopPropagation(); }
+      if (ctrl && (e.key === 'v' || e.key === 'V')) { e.preventDefault(); e.stopPropagation(); deductIntegrity(10, 'Paste attempt blocked (−10)'); }
+      if (ctrl && (e.key === 'x' || e.key === 'X')) { e.preventDefault(); e.stopPropagation(); }
       if (e.key === 'F12') e.preventDefault();
       if (ctrl && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) e.preventDefault();
       if (ctrl && e.key === 'u') e.preventDefault();
@@ -698,9 +676,23 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
           <div className="flex items-center gap-3 px-6 py-2 rounded-2xl glass no-shadow border-white/10">
             <div className="flex flex-col items-end">
               <span className="text-[9px] font-black uppercase tracking-widest text-secondary opacity-40">Time Left</span>
-              <span className="font-mono font-black text-xl tabular-nums leading-none mt-1" style={{ color: timerColor }}>
-                {formatTime(timeLeft)}
-              </span>
+              <div className="mt-1">
+                <Counter
+                  value={timeLeft}
+                  fontSize={24}
+                  padding={4}
+                  gap={2}
+                  borderRadius={6}
+                  horizontalPadding={8}
+                  textColor={timerColor}
+                  fontWeight="900"
+                  gradientFrom="transparent"
+                  gradientTo="transparent"
+                  counterStyle={{
+                    fontFamily: 'monospace',
+                  }}
+                />
+              </div>
             </div>
             <div className="w-1 h-8 rounded-full bg-white/5" />
             <FiClock className="text-xl opacity-20" style={{ color: timerColor }} />
@@ -804,15 +796,21 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
             ) : (
               <div className="h-full overflow-y-auto p-8">
                 <div className="max-w-3xl mx-auto space-y-6">
-                  {(currentQ.type === 'mcq_single' || currentQ.type === 'mcq_multi') && (
+                  {!attemptId ? (
+                    <div className="flex items-center justify-center h-64">
+                      <OrbitalBuffer size={40} className="text-accent" />
+                      <p className="ml-4 text-sm text-secondary">Loading attempt...</p>
+                    </div>
+                  ) : (currentQ.type === 'mcq_single' || currentQ.type === 'mcq_multi') && (
                     <MCQQuestion
                       key={currentQ.id}
                       question={currentQ}
-                      attemptId={attemptId!}
+                      attemptId={attemptId}
                       questionNumber={currentIdx + 1}
                       isMarkedForReview={reviewIds.has(currentQ.id)}
                       onAnswered={onAnswered}
                       onToggleReview={onToggleReview}
+                      onNext={() => setCurrentIdx(i => Math.min(i + 1, questions.length - 1))}
                     />
                   )}
                 </div>

@@ -24,10 +24,11 @@ interface Props {
   isMarkedForReview: boolean;
   onAnswered: (questionId: string, answered: boolean) => void;
   onToggleReview: (questionId: string) => void;
+  onNext?: () => void;
 }
 
 export default function MCQQuestion({
-  question, attemptId, questionNumber, isMarkedForReview, onAnswered, onToggleReview,
+  question, attemptId, questionNumber, isMarkedForReview, onAnswered, onToggleReview, onNext,
 }: Props) {
   const isMulti = question.type === 'mcq_multi';
 
@@ -84,10 +85,11 @@ export default function MCQQuestion({
         setSaveError('');
         setSaveSuccess(true);
         setHasUnsavedChanges(false);
-        console.log('✅ MCQ response saved successfully');
-        
-        // Clear success message after 2 seconds
-        setTimeout(() => setSaveSuccess(false), 2000);
+        // Auto-advance to next question after short delay
+        setTimeout(() => {
+          setSaveSuccess(false);
+          onNext?.();
+        }, 600);
       } else {
         console.error('❌ Save response returned ok: false');
         setSaveError('Save failed - please try again');
@@ -100,6 +102,7 @@ export default function MCQQuestion({
         data: err.response?.data,
         message: err.message
       });
+      console.error('🔍 Full server error:', JSON.stringify(err.response?.data, null, 2));
       const errorMsg = err.response?.data?.error || 'Failed to save — please try again';
       setSaveError(errorMsg);
     } finally {

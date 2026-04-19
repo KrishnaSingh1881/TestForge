@@ -539,7 +539,10 @@ router.post('/:id/responses', async (req, res) => {
     ({ error } = await supabase.from('responses').insert(payload));
   }
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) {
+    console.error('[RESPONSES] Supabase error:', error);
+    return res.status(500).json({ error: error.message, details: error.details, hint: error.hint });
+  }
   return res.json({ ok: true });
 });
 
