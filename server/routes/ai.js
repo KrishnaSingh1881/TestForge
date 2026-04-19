@@ -206,30 +206,86 @@ router.post('/generate-variants', async (req, res) => {
       return res.status(502).json({ error: 'AI returned no variants' });
     }
 
-    // If question_id provided, save to DB
-    if (question_id) {
-      const rows = variants.map(v => ({
-        question_id,
-        generated_by: 'nvidia-gemma',
-        buggy_code: v.buggy_code ?? v.code ?? '',
-        diff_json: [{ explanation: v.explanation ?? '' }],
-        bug_count: bugs,
-        language: lang,
-        is_approved: false,
-      }));
+    // Return variants WITHOUT saving to DB
+    // Client will handle approval and saving via /questions/debug/:id/approve-variant
+    const formatted = variants.map(v => ({
+      buggy_code: v.buggy_code ?? v.code ?? '',
+      diff_json: [{ explanation: v.explanation ?? '' }],
+      bug_count: bugs,
+      language: lang,
+      is_approved: false,
+      generated_by: 'local-ollama',
+    }));
 
-      const { data: saved, error: insertErr } = await supabase
-        .from('debug_variants')
-        .insert(rows)
-        .select();
-
-      if (insertErr) return res.status(500).json({ error: insertErr.message });
-      return res.json({ variants: saved });
-    }
-
-    return res.json({ variants });
+    return res.json({ variants: formatted });
   } catch (e) {
     return res.status(502).json({ error: e.message });
+  }
+});
+
+// ── POST /api/ai/generate-variants-stream ────────────────────
+// Generates variants one-by-one for better UX feedback
+router.post('/generate-variants-stream', async (req, res) => {
+  const { question_id, correct_code, bug_count = 1, language = 'python', count = 5 } = req.body;
+
+  let code = correct_code;
+  let lang = language;
+  let bugs = bug_count;
+
+  // If question_id provided, fetch from DB
+  if (question_id && !code) {
+    const { data: q, error } = await supabase
+      .from('question_bank')
+      .select('id, created_by, correct_code, bug_count, language')
+      .eq('id', question_id)
+      .single();
+
+    if (error || !q) return res.status(404).json({ error: 'Question not found' });
+    if (q.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+    if (!q.correct_code) return res.status(400).json({ error: 'Question has no correct_code' });
+
+    code = q.correct_code;
+    lang = q.language ?? language;
+    bugs = q.bug_count ?? bug_count;
+  }
+
+  if (!code) return res.status(400).json({ error: 'correct_code or question_id is required' });
+
+  // Set up SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  try {
+    // Generate variants one at a time
+    for (let i = 0; i < count; i++) {
+      const prompt = buildVariantPrompt(code, bugs, lang, 1);
+      const variants = await callAI(prompt, `Variant ${i + 1}/${count}`);
+      
+      const v = Array.isArray(variants) ? variants[0] : variants;
+      
+      if (v?.buggy_code) {
+        const formatted = {
+          id: `temp-${Date.now()}-${i}`,
+          buggy_code: v.buggy_code,
+          diff_json: [{ explanation: v.explanation ?? '' }],
+          bug_count: bugs,
+          language: lang,
+          is_approved: false,
+          generated_by: 'local-ollama',
+        };
+        
+        // Send variant as SSE event
+        res.write(`data: ${JSON.stringify(formatted)}\n\n`);
+      }
+    }
+    
+    // Send completion event
+    res.write(`data: {"done": true}\n\n`);
+    res.end();
+  } catch (e) {
+    res.write(`data: {"error": "${e.message}"}\n\n`);
+    res.end();
   }
 });
 

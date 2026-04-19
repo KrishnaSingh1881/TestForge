@@ -36,10 +36,11 @@ export default function MCQQuestion({
   );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const startTime = useRef(Date.now());
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const firstClickTime = useRef<number | null>(null);
   const changeCount = useRef(0);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Reset when question changes
   useEffect(() => {
@@ -48,16 +49,20 @@ export default function MCQQuestion({
     firstClickTime.current = null;
     changeCount.current = 0;
     setSaveError('');
+    setSaveSuccess(false);
+    setHasUnsavedChanges(false);
   }, [question.id]);
 
   async function saveResponse(ids: string[]) {
+    console.log('💾 Saving MCQ response:', { questionId: question.id, attemptId, selectedIds: ids });
     setSaving(true);
     setSaveError('');
+    setSaveSuccess(false);
     const timeToFirstClick = firstClickTime.current !== null
       ? firstClickTime.current - startTime.current
       : null;
     try {
-      await api.post(`/attempts/${attemptId}/responses`, {
+      const response = await api.post(`/attempts/${attemptId}/responses`, {
         question_id:         question.id,
         selected_option_ids: ids,
         time_spent_seconds:  Math.floor((Date.now() - startTime.current) / 1000),
@@ -71,9 +76,32 @@ export default function MCQQuestion({
           test_runs_before_submit: 0,
         },
       });
-      onAnswered(question.id, ids.length > 0);
-    } catch {
-      setSaveError('Failed to save — retrying...');
+      
+      console.log('💾 Save response:', response.data);
+      
+      if (response.data.ok) {
+        onAnswered(question.id, ids.length > 0);
+        setSaveError('');
+        setSaveSuccess(true);
+        setHasUnsavedChanges(false);
+        console.log('✅ MCQ response saved successfully');
+        
+        // Clear success message after 2 seconds
+        setTimeout(() => setSaveSuccess(false), 2000);
+      } else {
+        console.error('❌ Save response returned ok: false');
+        setSaveError('Save failed - please try again');
+      }
+    } catch (err: any) {
+      console.error('❌ Failed to save MCQ response:', err);
+      console.error('Error details:', {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        message: err.message
+      });
+      const errorMsg = err.response?.data?.error || 'Failed to save — please try again';
+      setSaveError(errorMsg);
     } finally {
       setSaving(false);
     }
@@ -94,10 +122,11 @@ export default function MCQQuestion({
     }
 
     setSelected(next);
+    setHasUnsavedChanges(true);
+  }
 
-    // Debounce save by 300ms
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => saveResponse(next), 300);
+  function handleSave() {
+    saveResponse(selected);
   }
 
   return (
@@ -112,13 +141,6 @@ export default function MCQQuestion({
             <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-black/5 text-secondary opacity-60 rounded-full border border-white/5">
               {question.marks} mark{question.marks !== 1 ? 's' : ''}
             </span>
-            {saving && (
-              <span className="text-[10px] font-black uppercase tracking-widest text-secondary opacity-40 flex items-center gap-2">
-                <span className="w-3 h-3 border border-indigo-400/40 border-t-indigo-400 rounded-full animate-spin inline-block" />
-                Auto-Saving...
-              </span>
-            )}
-            {saveError && <span className="text-[10px] font-black uppercase tracking-widest text-red-400">{saveError}</span>}
           </div>
 
           <p className="text-lg font-bold text-primary leading-relaxed uppercase tracking-tight">
@@ -138,6 +160,49 @@ export default function MCQQuestion({
           className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${isMarkedForReview ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40 shadow-lg shadow-yellow-500/20' : 'bg-black/5 text-secondary border-white/5 hover:bg-black/10'}`}
         >
           {isMarkedForReview ? '★ Marked' : '☆ Mark Review'}
+        </button>
+      </div>
+
+      {/* Save status and button */}
+      <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-black/5 border border-white/5">
+        <div className="flex items-center gap-3">
+          {saving && (
+            <span className="text-[10px] font-black uppercase tracking-widest text-secondary opacity-60 flex items-center gap-2">
+              <span className="w-3 h-3 border border-indigo-400/40 border-t-indigo-400 rounded-full animate-spin inline-block" />
+              Saving...
+            </span>
+          )}
+          {saveSuccess && (
+            <span className="text-[10px] font-black uppercase tracking-widest text-green-400 flex items-center gap-2">
+              <span className="text-sm">✓</span>
+              Saved successfully
+            </span>
+          )}
+          {saveError && (
+            <span className="text-[10px] font-black uppercase tracking-widest text-red-400">
+              {saveError}
+            </span>
+          )}
+          {!saving && !saveSuccess && !saveError && hasUnsavedChanges && (
+            <span className="text-[10px] font-black uppercase tracking-widest text-yellow-400 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+              Unsaved changes
+            </span>
+          )}
+          {!saving && !saveSuccess && !saveError && !hasUnsavedChanges && selected.length > 0 && (
+            <span className="text-[10px] font-black uppercase tracking-widest text-green-400/60 flex items-center gap-2">
+              <span className="text-sm">✓</span>
+              Saved
+            </span>
+          )}
+        </div>
+        
+        <button
+          onClick={handleSave}
+          disabled={saving || !hasUnsavedChanges}
+          className="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20"
+        >
+          {saving ? 'Saving...' : 'Save Answer'}
         </button>
       </div>
 
@@ -193,7 +258,10 @@ export default function MCQQuestion({
       {/* Clear selection */}
       {selected.length > 0 && (
         <button
-          onClick={() => { setSelected([]); saveResponse([]); }}
+          onClick={() => { 
+            setSelected([]); 
+            setHasUnsavedChanges(true);
+          }}
           className="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-secondary opacity-40 hover:opacity-100 hover:text-red-400 transition-all"
         >
           Clear Current Selection

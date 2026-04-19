@@ -176,31 +176,143 @@ After a test closes, admins can run a similarity analysis. Code submissions are 
 
 ### Integrity & Behavioral Tracking
 
+TestForge implements a comprehensive behavioral tracking system that monitors student behavior during tests to detect potential academic dishonesty. The system tracks both **coding behavior** (typing patterns, paste events) and **session behavior** (tab switches, focus loss).
+
+#### System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     CLIENT SIDE                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────────┐         ┌──────────────────┐         │
+│  │  MCQQuestion     │         │  DebugQuestion   │         │
+│  │  Component       │         │  Component       │         │
+│  └────────┬─────────┘         └────────┬─────────┘         │
+│           │                            │                    │
+│           │ Tracks:                    │ Tracks:            │
+│           │ • Time to first click      │ • WPM              │
+│           │ • Edit count               │ • Paste events     │
+│           │                            │ • Backspace count  │
+│           │                            │ • Test runs        │
+│           │                            │ • Idle periods     │
+│           │                            │                    │
+│           └────────────┬───────────────┘                    │
+│                        │                                     │
+│                        ▼                                     │
+│           POST /attempts/:id/responses                      │
+│           { behavioral_meta: {...} }                        │
+│                                                              │
+│  ┌──────────────────────────────────────────────┐          │
+│  │  useIntegrityListeners Hook                  │          │
+│  │  • Detects tab switches                      │          │
+│  │  • Detects focus loss                        │          │
+│  └────────────────────┬─────────────────────────┘          │
+│                       │                                     │
+│                       ▼                                     │
+│           PATCH /attempts/:id/integrity                    │
+│           { event: 'tab_switch' | 'focus_lost' }           │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     SERVER SIDE                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────────────────────────────────────┐          │
+│  │  Routes                                       │          │
+│  │  • POST /attempts/:id/responses               │          │
+│  │    → Saves behavioral_meta to responses table │          │
+│  │  • PATCH /attempts/:id/integrity              │          │
+│  │    → Increments tab_switches/focus_lost_count │          │
+│  └────────────────────┬─────────────────────────┘          │
+│                       │                                     │
+│                       ▼                                     │
+│  ┌──────────────────────────────────────────────┐          │
+│  │  Database Triggers                            │          │
+│  │  • auto_generate_behavioral_flags()           │          │
+│  │    → Analyzes behavioral_meta                 │          │
+│  │    → Generates flags based on thresholds      │          │
+│  │    → Inserts into behavioral_flags            │          │
+│  │    → Upserts into behavioral_details          │          │
+│  │                                                │          │
+│  │  • auto_generate_attempt_level_flags()        │          │
+│  │    → Generates tab_switch/focus_loss flags    │          │
+│  │                                                │          │
+│  │  • compute_integrity_score()                  │          │
+│  │    → Counts flags by severity                 │          │
+│  │    → Calculates final integrity score         │          │
+│  └───────────────────────────────────────────────┘          │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
 #### Live Integrity Score
 Displayed in the test session top bar. Starts at 100, decrements in real-time:
-- Tab switch: **−30**
-- Paste attempt: **−5**
-- Copy attempt: **−5**
-- Score reaches 0: **auto-submit triggered**
+- **Tab switch: −30 points** (MAX 3 allowed, auto-submit after 3rd)
+- Paste attempt: −5 points
+- Copy attempt: −5 points
+- Score reaches 0: auto-submit triggered
+
+#### Tab Switch Policy (Critical)
+```
+1st Switch:  -30 points  ⚠️  Warning
+2nd Switch:  -30 points  🔴 Critical Warning
+3rd Switch:  -30 points  🚨 AUTO-SUBMIT
+
+MAX ALLOWED: 3 switches
+CONSEQUENCE: Test automatically submitted
+```
 
 #### Behavioral Fingerprinting (Per Coding/Debugging Question)
 The platform tracks *how* a student answers, not just *what* they answer:
 
-| Signal | What it detects |
-|--------|----------------|
-| `time_to_first_keystroke` | Delay before first edit. Under 3 seconds on a complex question is suspicious — likely pre-prepared. |
-| `wpm_consistency` | Rolling 10-second WPM average. Inhuman speeds (>120 WPM) flag mechanical input or paste. |
-| `backspace_count` | Number of corrections. Zero backspaces on a 40+ line submission at high WPM strongly suggests copy-paste. |
-| `paste_events` | Direct paste detection via Monaco's `onDidPaste` event. |
-| `edit_count` | Number of distinct edit sessions (debounced at 2 seconds). |
-| `test_runs_before_submit` | How many times the student ran their code. Zero runs on a correct submission is a flag. |
-| `idle_periods` | Stretches of 3+ minutes with no keystrokes. May indicate seeking external help. |
+| Signal | What it detects | Flag Threshold |
+|--------|----------------|----------------|
+| `time_to_first_keystroke` | Delay before first edit. Under 3 seconds on a complex question is suspicious — likely pre-prepared. | <3000ms = HIGH |
+| `wpm_consistency` | Rolling 10-second WPM average. Inhuman speeds (>120 WPM) flag mechanical input or paste. | >120 WPM = MEDIUM |
+| `backspace_count` | Number of corrections. Zero backspaces on a 40+ line submission at high WPM strongly suggests copy-paste. | ≤2 + >100 WPM = HIGH |
+| `paste_events` | Direct paste detection via Monaco's `onDidPaste` event. | ≥1 = HIGH |
+| `edit_count` | Number of distinct edit sessions (debounced at 2 seconds). | Low count = suspicious |
+| `test_runs_before_submit` | How many times the student ran their code. Zero runs on a correct submission is a flag. | 0 runs = MEDIUM |
+| `idle_periods` | Stretches of 3+ minutes with no keystrokes. May indicate seeking external help. | >180s = MEDIUM |
 
 #### MCQ Behavioral Tracking
 For MCQ questions, the platform tracks:
 - `time_to_first_keystroke` — time to first option click
 - `edit_count` — number of option changes (indecision or copying from someone)
 - `time_spent_seconds` — total time on the question
+
+#### Automatic Flag Generation
+Flags are generated **automatically** by database triggers when responses are saved:
+
+**HIGH Severity Flags (−15 points each):**
+- **Paste Event**: Paste operation detected in code editor
+- **Fast Start**: Typed within 3 seconds of opening question
+- **No Corrections**: No backspaces at high WPM (pre-typed code)
+- **Tab Switch Limit**: 3rd tab switch reached (triggers auto-submit)
+
+**MEDIUM Severity Flags (−7 points each):**
+- **High WPM**: Typing speed >120 WPM
+- **Tab Switch**: 1-2 tab switches detected
+- **Focus Loss**: Window focus lost 5+ times
+- **Long Idle**: Idle period >3 minutes
+- **No Test Run**: Submitted code without running tests
+
+#### Integrity Score Calculation
+```
+Base Score: 100
+
+Deductions:
+- High severity flag: −15 points each
+- Medium severity flag: −7 points each
+- Tab switch: −30 points each (MAX 3, auto-submit after 3rd)
+- Focus lost: −2 points each
+- Similarity flag (confirmed): −15 points
+
+Minimum: 0
+```
 
 #### Admin Integrity Dashboard
 Per-student audit view showing:
@@ -214,12 +326,146 @@ Per-student audit view showing:
 - **MCQ Telemetry**: Compact per-question view with first-click timing and option change count
 - **Similarity Report**: Flagged submission pairs with similarity percentage, admin can confirm or dismiss
 
+#### Database Schema for Behavioral Tracking
+
+**behavioral_flags table:**
+```sql
+CREATE TABLE behavioral_flags (
+  id           uuid PRIMARY KEY,
+  attempt_id   uuid REFERENCES attempts(id),
+  question_id  uuid REFERENCES question_bank(id),  -- NULL for attempt-level
+  type         text NOT NULL,  -- 'paste', 'fast_start', 'tab_switch', etc.
+  label        text NOT NULL,  -- Human-readable description
+  severity     text CHECK (severity IN ('low', 'medium', 'high')),
+  flagged_at   timestamp DEFAULT now()
+);
+```
+
+**behavioral_details table:**
+```sql
+CREATE TABLE behavioral_details (
+  id                       uuid PRIMARY KEY,
+  attempt_id               uuid REFERENCES attempts(id),
+  question_id              uuid REFERENCES question_bank(id),
+  time_to_first_keystroke  int,      -- milliseconds
+  paste_events             int,
+  backspace_count          int,
+  edit_count               int,
+  wpm_consistency          int,      -- average WPM
+  test_runs_before_submit  int,
+  idle_periods             jsonb,    -- [{ start, duration_seconds }]
+  UNIQUE(attempt_id, question_id)
+);
+```
+
 #### Server-Side Integrity Score Trigger
 The final `integrity_score` (0-100) stored in the `results` table is computed by a PostgreSQL trigger on result insert:
-- Tab switches: −5 per event
-- Focus lost: −2 per event
-- Similarity flag (not dismissed): −15
-- Score floor: 0
+
+```sql
+CREATE OR REPLACE FUNCTION compute_integrity_score()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_tab_switches int; v_focus_lost int; v_score int := 100;
+  v_high_flags int; v_med_flags int; v_sim boolean;
+BEGIN
+  -- Get attempt metrics
+  SELECT tab_switches, focus_lost_count
+  INTO v_tab_switches, v_focus_lost
+  FROM attempts WHERE id = NEW.attempt_id;
+
+  -- Count behavioral flags
+  SELECT 
+    COUNT(*) FILTER (WHERE severity = 'high'),
+    COUNT(*) FILTER (WHERE severity = 'medium')
+  INTO v_high_flags, v_med_flags
+  FROM behavioral_flags WHERE attempt_id = NEW.attempt_id;
+
+  -- Check similarity flags
+  SELECT EXISTS (
+    SELECT 1 FROM similarity_flags
+    WHERE (attempt_id_1 = NEW.attempt_id OR attempt_id_2 = NEW.attempt_id)
+    AND admin_verdict != 'dismissed'
+  ) INTO v_sim;
+
+  -- Calculate score
+  v_score := v_score - (COALESCE(v_tab_switches, 0) * 30);
+  v_score := v_score - (COALESCE(v_focus_lost, 0) * 2);
+  v_score := v_score - (COALESCE(v_high_flags, 0) * 15);
+  v_score := v_score - (COALESCE(v_med_flags, 0) * 7);
+  IF v_sim THEN v_score := v_score - 15; END IF;
+
+  NEW.integrity_score := GREATEST(v_score, 0);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+#### Client-Side Hooks
+
+**useBehavioralTracking.ts** - Tracks coding behavior:
+```typescript
+const { meta, onKeyDown, onPaste, onRunCode } = useBehavioralTracking(questionOpenTime);
+
+// Attach to Monaco editor
+editor.onKeyDown(onKeyDown);
+editor.onDidPaste(onPaste);
+
+// Call when running code
+onRunCode();
+
+// meta object contains all tracked metrics
+// {
+//   time_to_first_keystroke: 5000,
+//   wpm_consistency: 45,
+//   backspace_count: 23,
+//   edit_count: 8,
+//   paste_events: 0,
+//   test_runs_before_submit: 3,
+//   idle_periods: [...]
+// }
+```
+
+**useIntegrityListeners.ts** - Tracks session behavior:
+```typescript
+useIntegrityListeners({
+  attemptId: 'uuid',
+  active: true,
+  onEvent: (msg) => showToast(msg),
+  onTabSwitchCount: (count) => {
+    if (count >= 3) {
+      showToast('🚨 3 tab switches — Auto-submitting!');
+      setTimeout(() => handleSubmit(true, 'integrity_violation'), 1000);
+    }
+  }
+});
+
+// Automatically detects and reports:
+// - Tab switches (visibilitychange event)
+// - Focus loss (blur event)
+```
+
+#### Setup Behavioral Tracking
+
+1. **Run Migration:**
+```bash
+# Copy server/migration_behavioral_tables.sql into Supabase SQL Editor
+# Run the entire file to create tables and triggers
+```
+
+2. **Verify Setup:**
+```bash
+node --env-file=.env server/verify_behavioral_setup.js
+```
+
+3. **Seed Test Data (Optional):**
+```bash
+node --env-file=.env server/seed_behavioral.js
+```
+
+For complete documentation, see:
+- `BEHAVIORAL_TRACKING_IMPLEMENTATION.md` - Implementation guide
+- `server/BEHAVIORAL_TRACKING_README.md` - Technical documentation
+- `TAB_SWITCH_POLICY_CARD.md` - Quick reference card
 
 ---
 
@@ -344,12 +590,50 @@ TestForge/
 | `responses` | Answers with behavioral_meta JSONB |
 | `results` | Computed scores, rank, integrity_score |
 | `similarity_flags` | Flagged submission pairs |
+| **`behavioral_flags`** | **Individual integrity violations with severity** |
+| **`behavioral_details`** | **Detailed behavioral metrics per question** |
+
+### Behavioral Tracking Schema
+
+**behavioral_flags** - Stores individual integrity violations:
+```sql
+CREATE TABLE behavioral_flags (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  attempt_id   uuid NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
+  question_id  uuid REFERENCES question_bank(id) ON DELETE CASCADE,
+  type         text NOT NULL,  -- 'paste', 'fast_start', 'no_corrections', etc.
+  label        text NOT NULL,  -- Human-readable description
+  severity     text NOT NULL CHECK (severity IN ('low', 'medium', 'high')),
+  flagged_at   timestamp NOT NULL DEFAULT now(),
+  created_at   timestamp DEFAULT now()
+);
+```
+
+**behavioral_details** - Stores detailed metrics per question:
+```sql
+CREATE TABLE behavioral_details (
+  id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  attempt_id               uuid NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
+  question_id              uuid NOT NULL REFERENCES question_bank(id) ON DELETE CASCADE,
+  time_to_first_keystroke  int,   -- milliseconds
+  paste_events             int DEFAULT 0,
+  backspace_count          int DEFAULT 0,
+  edit_count               int DEFAULT 0,
+  wpm_consistency          int DEFAULT 0,  -- average WPM
+  test_runs_before_submit  int DEFAULT 0,
+  idle_periods             jsonb DEFAULT '[]'::jsonb,
+  created_at               timestamp DEFAULT now(),
+  UNIQUE(attempt_id, question_id)
+);
+```
 
 ### Key Design Decisions
 - **RLS enforced at DB level**: A student JWT cannot access admin data even via direct API calls
 - **Integrity score computed by trigger**: `compute_integrity_score()` runs on `results` INSERT
 - **question_selection stored on attempt**: Each student's random question sample is locked at start
 - **behavioral_meta as JSONB**: Flexible schema for all behavioral signals per response
+- **Automatic flag generation**: Database triggers analyze behavioral_meta and generate flags
+- **Two-tier tracking**: Question-level flags (from behavioral_meta) + Attempt-level flags (tab switches, focus loss)
 
 ---
 
@@ -553,15 +837,51 @@ Rules:
 
 Run these in Supabase SQL Editor if not already applied:
 
+### 1. Core Schema & RLS
 ```sql
--- 1. Add settings column to tests (for per-test environment config)
+-- Run these files in exact order:
+-- 1. server/schema.sql                          — Creates all tables, views, triggers
+-- 2. server/rls.sql                             — Row Level Security policies
+```
+
+### 2. Feature Migrations
+```sql
+-- Add settings column to tests (for per-test environment config)
 ALTER TABLE tests ADD COLUMN IF NOT EXISTS settings JSONB DEFAULT '{}';
 
--- 2. Add question_selection to attempts (for randomized question pools)
+-- Add question_selection to attempts (for randomized question pools)
 ALTER TABLE attempts ADD COLUMN IF NOT EXISTS question_selection JSONB;
 
--- 3. Add nvidia-gemma to variant_source enum (for AI-generated variants)
+-- Add nvidia-gemma to variant_source enum (for AI-generated variants)
 ALTER TYPE variant_source ADD VALUE IF NOT EXISTS 'nvidia-gemma';
+```
+
+### 3. Behavioral Tracking Migration (Required)
+```bash
+# Run the complete behavioral tracking migration:
+# Copy server/migration_behavioral_tables.sql into Supabase SQL Editor and run
+
+# This creates:
+# - behavioral_flags table
+# - behavioral_details table
+# - auto_generate_behavioral_flags() trigger
+# - auto_generate_attempt_level_flags() trigger
+# - Updated compute_integrity_score() trigger
+# - Row Level Security policies
+```
+
+**Verify behavioral tracking setup:**
+```bash
+node --env-file=.env server/verify_behavioral_setup.js
+```
+
+Expected output:
+```
+✓ behavioral_flags table exists
+✓ behavioral_details table exists
+✓ responses.behavioral_meta column exists
+✓ attempts integrity columns exist
+✅ All checks passed!
 ```
 
 ---
@@ -582,3 +902,90 @@ If you ran `seed.sql`:
 ## License
 
 MIT — Built for academic integrity and modern testing experiences.
+
+
+---
+
+## Behavioral Tracking System - Complete Guide
+
+### Overview
+
+TestForge includes a comprehensive behavioral tracking system that monitors student behavior during tests to detect potential academic dishonesty. The system automatically generates integrity flags based on behavioral patterns.
+
+### Quick Setup
+
+1. **Run the migration:**
+   ```bash
+   # Copy server/migration_behavioral_tables.sql into Supabase SQL Editor and run
+   ```
+
+2. **Verify setup:**
+   ```bash
+   cd server
+   node --env-file=.env verify_behavioral_setup.js
+   ```
+
+3. **Seed test data (optional):**
+   ```bash
+   node --env-file=.env seed_behavioral.js
+   ```
+
+### Documentation
+
+For complete documentation on the behavioral tracking system, see:
+
+- **`BEHAVIORAL_TRACKING_IMPLEMENTATION.md`** - Implementation guide and testing checklist
+- **`server/BEHAVIORAL_TRACKING_README.md`** - Comprehensive technical documentation with API endpoints
+- **`BEHAVIORAL_TRACKING_FLOW.md`** - Visual flow diagrams and architecture
+- **`TAB_SWITCH_POLICY_CARD.md`** - Quick reference card for tab switch policy
+- **`SETUP_CHECKLIST.md`** - Step-by-step setup and testing checklist
+
+### Key Features
+
+- **Automatic flag generation** via database triggers
+- **Real-time integrity scoring** with live updates
+- **10+ behavioral metrics** tracked per question
+- **Tab switch limit** (3 max, auto-submit after 3rd)
+- **Admin dashboard** with risk-coded student list
+- **Student transparency** - students can view their own flags
+- **Row Level Security** - proper access control
+
+### Flag Types
+
+**HIGH Severity (−15 points):**
+- Paste event detected
+- Typed within 3 seconds of opening question
+- No corrections at high WPM (pre-typed code)
+- Tab switch limit reached (3rd switch)
+
+**MEDIUM Severity (−7 points):**
+- Extreme typing speed (>120 WPM)
+- Tab switches (1-2)
+- Focus loss (5+)
+- Long idle periods (>3 min)
+- No test runs before submit
+
+### Integrity Score Formula
+
+```
+Base: 100 points
+
+Deductions:
+- High severity flag: −15 points each
+- Medium severity flag: −7 points each
+- Tab switch: −30 points each (MAX 3, auto-submit after 3rd)
+- Focus lost: −2 points each
+- Similarity flag: −15 points
+
+Minimum: 0 points
+```
+
+### Support
+
+For issues or questions about the behavioral tracking system:
+1. Check the comprehensive documentation files
+2. Run `verify_behavioral_setup.js` to diagnose
+3. Review Supabase logs for errors
+4. See troubleshooting section in `SETUP_CHECKLIST.md`
+
+---

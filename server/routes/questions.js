@@ -388,6 +388,30 @@ router.post('/import', upload.single('file'), async (req, res) => {
     return res.status(400).json({ error: 'Only .csv and .json files are supported' });
   }
 
+  const testId = req.body.test_id;  // Optional test_id to auto-attach
+  console.log('[IMPORT] Received test_id:', testId);
+
+  // Verify test ownership if test_id provided
+  if (testId) {
+    const { data: test, error: testErr } = await supabase
+      .from('tests')
+      .select('id, created_by')
+      .eq('id', testId)
+      .single();
+
+    if (testErr || !test) {
+      console.error('[IMPORT] Test not found:', testId, testErr);
+      return res.status(404).json({ error: 'Test not found' });
+    }
+    if (test.created_by !== req.user.id) {
+      console.error('[IMPORT] User does not own test');
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    console.log('[IMPORT] Test verified:', test.id);
+  } else {
+    console.log('[IMPORT] No test_id provided - questions will not be attached');
+  }
+
   // 1. Parse file
   let rawRows;
   try {
@@ -412,8 +436,22 @@ router.post('/import', upload.single('file'), async (req, res) => {
     else errors.push({ row: raw._row, reason: result.reason });
   }
 
-  // 3. Insert valid questions
+  // 3. Insert valid questions and optionally attach to test
   let successCount = 0;
+  let currentOrder = 0;
+
+  // Get starting order if attaching to test
+  if (testId) {
+    const { data: maxOrder } = await supabase
+      .from('test_questions')
+      .select('question_order')
+      .eq('test_id', testId)
+      .order('question_order', { ascending: false })
+      .limit(1)
+      .single();
+    
+    currentOrder = (maxOrder?.question_order ?? -1) + 1;
+  }
 
   for (const q of valid) {
     const { data: question, error: qErr } = await supabase
@@ -452,8 +490,29 @@ router.post('/import', upload.single('file'), async (req, res) => {
       continue;
     }
 
+    // Auto-attach to test if test_id provided
+    if (testId) {
+      const { error: attachErr } = await supabase
+        .from('test_questions')
+        .insert({
+          test_id: testId,
+          question_id: question.id,
+          unlock_at_minutes: 0,
+          question_order: currentOrder++,
+        });
+
+      if (attachErr) {
+        console.error('[IMPORT] Failed to attach question to test:', attachErr);
+        // Don't fail the import, just log the error
+      } else {
+        console.log('[IMPORT] Attached question', question.id, 'at order', currentOrder - 1);
+      }
+    }
+
     successCount++;
   }
+
+  console.log('[IMPORT] Import complete:', successCount, 'questions created', testId ? 'and attached' : '(not attached)');
 
   // 4. Log to question_import_logs
   await supabase.from('question_import_logs').insert({

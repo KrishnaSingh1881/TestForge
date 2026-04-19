@@ -8,6 +8,7 @@ import {
 import api from '../../lib/axios';
 import MCQForm from '../../components/admin/MCQForm';
 import DebugQuestionForm from '../../components/admin/DebugQuestionForm';
+import BulkImportPanel from '../../components/admin/BulkImportPanel';
 import AnimatedList from '../../components/AnimatedList';
 import OrbitalBuffer from '../components/OrbitalBuffer';
 import { useOSStore } from '../store/useOSStore';
@@ -261,24 +262,26 @@ export default function QuestionBankApp({ id, testId: initTestId }: { id: string
             className="flex-1 flex flex-col overflow-hidden"
           >
             <Header title="Injection Mode" sub="Select assessment archetype" onBack={() => setMode('list')} search={search} setSearch={setSearch} />
-            <div className="flex-1 flex flex-col p-12 max-w-2xl mx-auto w-full justify-center space-y-4">
-              {[
-                { id: 'mcq' as WorkbenchMode, icon: <FiFileText />, title: 'Multiple Choice', desc: 'Quantitative selection protocols' },
-                { id: 'debug' as WorkbenchMode, icon: <FiCpu />, title: 'Debugging Forensic', desc: 'Code repair and remediation tasks' },
-                { id: 'coding' as WorkbenchMode, icon: <FiLayers />, title: 'Developmental', desc: 'Full algorithm construction scope' },
-                { id: 'import' as WorkbenchMode, icon: <FiUpload />, title: 'Bulk Artifacts', desc: 'Ingest external dataset volumes' }
-              ].map((opt) => (
-                <button key={opt.id} onClick={() => setMode(opt.id)} className="group glass-2 p-6 flex items-center gap-6 hover:bg-white/[0.08] hover:border-accent/40 transition-all active:scale-[0.98]">
-                  <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-2xl text-secondary transition-all group-hover:scale-110 group-hover:bg-accent/10 group-hover:text-accent border border-white/5">
-                    {opt.icon}
-                  </div>
-                  <div className="text-left flex-1 min-w-0">
-                    <h4 className="text-base font-black text-primary uppercase tracking-tight">{opt.title}</h4>
-                    <p className="text-[10px] text-secondary font-black uppercase tracking-widest opacity-30 mt-1">{opt.desc}</p>
-                  </div>
-                  <FiChevronRight className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-secondary" />
-                </button>
-              ))}
+            <div className="flex-1 overflow-auto custom-scrollbar p-12">
+              <div className="max-w-2xl mx-auto w-full space-y-4">
+                {[
+                  { id: 'mcq' as WorkbenchMode, icon: <FiFileText />, title: 'Multiple Choice', desc: 'Quantitative selection protocols' },
+                  { id: 'debug' as WorkbenchMode, icon: <FiCpu />, title: 'Debugging Forensic', desc: 'Code repair and remediation tasks' },
+                  { id: 'coding' as WorkbenchMode, icon: <FiLayers />, title: 'Developmental', desc: 'Full algorithm construction scope' },
+                  { id: 'import' as WorkbenchMode, icon: <FiUpload />, title: 'Bulk Artifacts', desc: 'Ingest external dataset volumes' }
+                ].map((opt) => (
+                  <button key={opt.id} onClick={() => setMode(opt.id)} className="group glass-2 p-6 flex items-center gap-6 hover:bg-white/[0.08] hover:border-accent/40 transition-all active:scale-[0.98] w-full">
+                    <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-2xl text-secondary transition-all group-hover:scale-110 group-hover:bg-accent/10 group-hover:text-accent border border-white/5">
+                      {opt.icon}
+                    </div>
+                    <div className="text-left flex-1 min-w-0">
+                      <h4 className="text-base font-black text-primary uppercase tracking-tight">{opt.title}</h4>
+                      <p className="text-[10px] text-secondary font-black uppercase tracking-widest opacity-30 mt-1">{opt.desc}</p>
+                    </div>
+                    <FiChevronRight className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-secondary" />
+                  </button>
+                ))}
+              </div>
             </div>
           </motion.div>
         )}
@@ -299,14 +302,41 @@ export default function QuestionBankApp({ id, testId: initTestId }: { id: string
                   {mode === 'mcq' ? (
                     <MCQForm
                       onSuccess={async (newQId) => {
+                        console.log('[QuestionBankApp] MCQ created, ID:', newQId);
                         if (newQId) {
-                          await api.post(`/questions/${newQId}/attach`, { test_id: activeTest.id, unlock_at_minutes: 0, question_order: testQuestions.length });
+                          try {
+                            const attachRes = await api.post(`/questions/${newQId}/attach`, { 
+                              test_id: activeTest.id, 
+                              unlock_at_minutes: 0, 
+                              question_order: testQuestions.length 
+                            });
+                            console.log('[QuestionBankApp] Attach successful:', attachRes.data);
+                          } catch (err: any) {
+                            console.error('[QuestionBankApp] Attach failed:', err.response?.data || err.message);
+                          }
                         }
                         refreshQuestions();
                       }}
                     />
                   ) : (
-                    <DebugQuestionForm onSuccess={refreshQuestions} />
+                    <DebugQuestionForm 
+                      onSuccess={async (newQId) => {
+                        console.log('[QuestionBankApp] Debug question created, ID:', newQId);
+                        if (newQId) {
+                          try {
+                            const attachRes = await api.post(`/questions/${newQId}/attach`, { 
+                              test_id: activeTest.id, 
+                              unlock_at_minutes: 0, 
+                              question_order: testQuestions.length 
+                            });
+                            console.log('[QuestionBankApp] Attach successful:', attachRes.data);
+                          } catch (err: any) {
+                            console.error('[QuestionBankApp] Attach failed:', err.response?.data || err.message);
+                          }
+                        }
+                        refreshQuestions();
+                      }} 
+                    />
                   )}
                 </div>
               </div>
@@ -323,14 +353,10 @@ export default function QuestionBankApp({ id, testId: initTestId }: { id: string
             className="flex-1 flex flex-col overflow-hidden"
           >
             <Header title="Artifact Intake" sub="Localized dataset ingestion" onBack={() => setMode('pick-type')} search={search} setSearch={setSearch} />
-            <div className="flex-1 flex items-center justify-center p-8">
-              <div className="max-w-xl w-full glass-2 p-12 text-center relative overflow-hidden">
-                <FiUpload className="mx-auto text-5xl mb-6 text-accent opacity-40 hover:scale-110 transition-transform cursor-pointer" />
-                <h2 className="text-2xl font-black text-primary tracking-tighter uppercase">Drop Core</h2>
-                <p className="text-[10px] font-black text-secondary tracking-[0.4em] uppercase opacity-30 mt-2 mb-10">Select JSON / CSV Bundle</p>
-                <button onClick={() => setMode('list')} className="text-[10px] font-black uppercase text-accent/60 tracking-widest hover:opacity-100 transition-opacity">Abort intake procedure</button>
-              </div>
-            </div>
+            <BulkImportPanel 
+              testId={activeTest.id}
+              onComplete={() => { setMode('list'); refreshQuestions(); }} 
+            />
           </motion.div>
         )}
       </AnimatePresence>

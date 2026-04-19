@@ -102,7 +102,7 @@ export default function MCQForm({ onSuccess, initial }: MCQFormProps) {
         await api.patch(`/questions/${initial.id}`, payload);
       } else {
         const res = await api.post('/questions/mcq', payload);
-        newId = res.data.id;
+        newId = res.data.question?.id || res.data.id;
       }
       onSuccess?.(newId);
     } catch (e: any) {

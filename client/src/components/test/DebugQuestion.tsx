@@ -52,10 +52,11 @@ export default function DebugQuestion({
   const [runResults, setRunResults]   = useState<RunResult[]>([]);
   const [saving, setSaving]           = useState(false);
   const [saveError, setSaveError]     = useState('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [activeTab, setActiveTab]     = useState<'cases' | 'output'>('cases');
 
   const questionOpenTime = useRef(Date.now());
-  const saveTimer        = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startTime        = useRef(Date.now());
   const editorRef        = useRef<any>(null);
 
@@ -69,33 +70,68 @@ export default function DebugQuestion({
     questionOpenTime.current = Date.now();
     startTime.current = Date.now();
     setSaveError('');
+    setSaveSuccess(false);
+    setHasUnsavedChanges(false);
   }, [question.id]);
 
-  // Save response (debounced)
+  // Save response (manual)
   const saveResponse = useCallback(async (currentCode: string) => {
+    console.log('💾 Saving debug response:', { 
+      questionId: question.id, 
+      attemptId, 
+      codeLength: currentCode.length,
+      behavioralMeta: meta 
+    });
     setSaving(true);
     setSaveError('');
+    setSaveSuccess(false);
     try {
-      await api.post(`/attempts/${attemptId}/responses`, {
+      const response = await api.post(`/attempts/${attemptId}/responses`, {
         question_id:        question.id,
         submitted_code:     currentCode,
         language:           question.language,
         time_spent_seconds: Math.floor((Date.now() - startTime.current) / 1000),
         behavioral_meta:    meta,
       });
-      onAnswered(question.id, currentCode.trim().length > 0);
-    } catch {
-      setSaveError('Save failed — will retry');
+      
+      console.log('💾 Save response:', response.data);
+      
+      if (response.data.ok) {
+        onAnswered(question.id, currentCode.trim().length > 0);
+        setSaveError('');
+        setSaveSuccess(true);
+        setHasUnsavedChanges(false);
+        console.log('✅ Debug response saved successfully');
+        
+        // Clear success message after 2 seconds
+        setTimeout(() => setSaveSuccess(false), 2000);
+      } else {
+        console.error('❌ Save response returned ok: false');
+        setSaveError('Save failed - please try again');
+      }
+    } catch (err: any) {
+      console.error('❌ Failed to save debug response:', err);
+      console.error('Error details:', {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        message: err.message
+      });
+      const errorMsg = err.response?.data?.error || 'Save failed — please try again';
+      setSaveError(errorMsg);
     } finally {
       setSaving(false);
     }
-  }, [attemptId, question.id, question.language, meta]);
+  }, [attemptId, question.id, question.language, meta, onAnswered]);
 
   function handleCodeChange(val: string | undefined) {
     const v = val ?? '';
     setCode(v);
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => saveResponse(v), 1500);
+    setHasUnsavedChanges(true);
+  }
+
+  function handleSave() {
+    saveResponse(code);
   }
 
   const handleEditorMount: OnMount = (editor) => {
@@ -149,13 +185,6 @@ export default function DebugQuestion({
               style={{ backgroundColor: 'rgba(255,255,255,0.07)', color: 'rgb(var(--text-secondary))' }}>
               {question.marks} mark{question.marks !== 1 ? 's' : ''}
             </span>
-            {saving && (
-              <span className="text-xs flex items-center gap-1" style={{ color: 'rgb(var(--text-secondary))' }}>
-                <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin inline-block" />
-                Saving...
-              </span>
-            )}
-            {saveError && <span className="text-xs text-red-400">{saveError}</span>}
           </div>
           <p className="text-base leading-relaxed" style={{ color: 'rgb(var(--text-primary))' }}>
             {question.statement}
@@ -174,6 +203,50 @@ export default function DebugQuestion({
             border: `1px solid ${isMarkedForReview ? 'rgba(234,179,8,0.4)' : 'var(--glass-border)'}`,
           }}>
           {isMarkedForReview ? '★ Marked' : '☆ Mark'}
+        </button>
+      </div>
+
+      {/* Save status and button */}
+      <div className="flex items-center justify-between gap-4 p-3 rounded-xl"
+        style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)' }}>
+        <div className="flex items-center gap-3">
+          {saving && (
+            <span className="text-xs flex items-center gap-2" style={{ color: 'rgb(var(--text-secondary))' }}>
+              <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin inline-block" />
+              Saving...
+            </span>
+          )}
+          {saveSuccess && (
+            <span className="text-xs flex items-center gap-2" style={{ color: '#4ade80' }}>
+              <span>✓</span>
+              Saved successfully
+            </span>
+          )}
+          {saveError && (
+            <span className="text-xs" style={{ color: '#f87171' }}>
+              {saveError}
+            </span>
+          )}
+          {!saving && !saveSuccess && !saveError && hasUnsavedChanges && (
+            <span className="text-xs flex items-center gap-2" style={{ color: '#facc15' }}>
+              <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+              Unsaved changes
+            </span>
+          )}
+          {!saving && !saveSuccess && !saveError && !hasUnsavedChanges && code.trim().length > 0 && (
+            <span className="text-xs flex items-center gap-2" style={{ color: 'rgba(74,222,128,0.6)' }}>
+              <span>✓</span>
+              Saved
+            </span>
+          )}
+        </div>
+        
+        <button
+          onClick={handleSave}
+          disabled={saving || !hasUnsavedChanges}
+          className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{ backgroundColor: 'rgb(var(--accent))' }}>
+          {saving ? 'Saving...' : 'Save Code'}
         </button>
       </div>
 

@@ -183,7 +183,8 @@ CREATE TABLE IF NOT EXISTS responses (
   hidden_cases_passed  int,
   hidden_cases_total   int,
   behavioral_meta      jsonb,
-  time_spent_seconds   int
+  time_spent_seconds   int,
+  UNIQUE(attempt_id, question_id)  -- One response per question per attempt
 );
 
 -- 12. results

@@ -144,6 +144,12 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
   async function loadAttempt(aid: string) {
     try {
       const { data } = await api.get(`/attempts/${aid}`);
+      console.log('📊 Loaded attempt data:', { 
+        status: data.status, 
+        time_remaining_seconds: data.time_remaining_seconds,
+        started_at: data.started_at,
+        duration_mins: data.duration_mins 
+      });
 
       if (['submitted', 'auto_submitted'].includes(data.status)) {
         // Already submitted - open results and close this window
@@ -177,10 +183,16 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
 
       setPhase('active');
       
+      // Lock and maximize window
       if (windowId) {
         lockWindow(windowId);
+        // Maximize the window using the store method
+        const store = useOSStore.getState();
+        store.maximizeWindow(windowId);
+        console.log('🪟 Window locked and maximized:', windowId);
       }
     } catch (err) {
+      console.error('❌ Failed to load attempt:', err);
       setError('Could not load attempt. It may have expired or been submitted.');
     } finally {
       setLoading(false);
@@ -203,25 +215,47 @@ export default function TestSessionApp({ id: windowId, testId, attemptId: initia
 
   // Countdown timer — only start if there's actually time remaining
   useEffect(() => {
-    if (phase !== 'active') return;
-    // Don't auto-submit immediately — only if timer genuinely runs out during the session
-    if (timeLeft <= 0) return; // test may have expired, let server handle it on submit
+    console.log('⏱️ Timer effect triggered:', { phase, timeLeft });
+    
+    if (phase !== 'active') {
+      console.log('⏱️ Timer not starting: phase not active');
+      return;
+    }
+    
+    if (timeLeft <= 0) {
+      console.log('⏱️ Timer not starting: timeLeft is 0 or negative');
+      console.log('⏱️ Check server response for time_remaining_seconds');
+      return;
+    }
+    
+    console.log('⏱️ Starting countdown timer from', timeLeft, 'seconds');
+    
     const id = setInterval(() => {
       setTimeLeft(prev => {
         const next = prev - 1;
         if (next <= 0) {
+          console.log('⏱️ Timer reached 0 - auto-submitting');
           clearInterval(id);
           handleAutoSubmit();
           return 0;
         }
+        if (next % 60 === 0) {
+          console.log('⏱️ Timer:', next, 'seconds remaining');
+        }
         return next;
       });
+      
+      // Update elapsed minutes
       if (startedAtRef.current) {
         setElapsedMins((Date.now() - startedAtRef.current.getTime()) / 60000);
       }
     }, 1000);
-    return () => clearInterval(id);
-  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+    
+    return () => {
+      console.log('⏱️ Cleaning up timer interval');
+      clearInterval(id);
+    };
+  }, [phase, timeLeft]); // Depend on both phase AND timeLeft to restart if timeLeft changes
 
   // Phase 6: Automated Focus Mode
   useEffect(() => {

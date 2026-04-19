@@ -7,7 +7,7 @@ import GlassSelect from './GlassSelect';
 
 interface TestCase { input: string; expected_output: string; is_hidden: boolean; }
 
-interface Props { onSuccess?: () => void; }
+interface Props { onSuccess?: (id?: string) => void; }
 
 const inputCls = 'w-full px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500';
 const inputStyle = {
@@ -65,6 +65,8 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
       if (validTc.length > 0) {
         await api.post(`/questions/debug/${qid}/test-cases`, { test_cases: validTc });
       }
+      
+      // DON'T call onSuccess yet - wait until user clicks "Done"
     } catch (e: any) {
       setError(e.response?.data?.error ?? 'Save failed');
     } finally {
@@ -76,32 +78,72 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
     if (!savedQuestionId) { setError('Save the question first'); return; }
     setError('');
     setGenerating(true);
+    setVariants([]); // Clear existing variants
+    
     try {
-      const { data } = await api.post('/ai/generate-variants', {
-        question_id: savedQuestionId,
-        correct_code: correctCode,
-        language,
-        bug_count: bugCount,
-        count: 5,
+      // Get auth token from Supabase
+      const { data: { session } } = await (await import('../../lib/supabase')).supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api'}/ai/generate-variants-stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          question_id: savedQuestionId,
+          correct_code: correctCode,
+          language,
+          bug_count: bugCount,
+          count: 5,
+        }),
       });
-      const raw = data.variants ?? [];
-      const formatted = raw.map((v: any, i: number) => ({
-        id: v.id ?? `temp-${Date.now()}-${i}`,
-        buggy_code: v.buggy_code ?? v.code ?? '',
-        diff_json: Array.isArray(v.diff_json) ? v.diff_json
-          : Array.isArray(v.diff) ? v.diff.map((d: any) => ({
-              line_number: d.line ?? d.line_number ?? 0,
-              original_line: d.original ?? d.original_line ?? '',
-              buggy_line: d.buggy ?? d.buggy_line ?? '',
-            }))
-          : [{ explanation: v.explanation ?? '' }],
-        is_approved: v.is_approved ?? false,
-        generated_by: v.generated_by ?? 'ai',
-      }));
-      setVariants(formatted);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('No reader available');
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6));
+            
+            if (data.error) {
+              setError(data.error);
+              setGenerating(false);
+              return;
+            }
+            
+            if (data.done) {
+              setGenerating(false);
+              return;
+            }
+            
+            // Add variant as it arrives
+            setVariants(prev => [...prev, data]);
+          }
+        }
+      }
     } catch (e: any) {
-      setError(e.response?.data?.error ?? 'Generation failed');
-    } finally {
+      setError(e.message ?? 'Generation failed');
       setGenerating(false);
     }
   }
@@ -251,7 +293,7 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
             <button type="submit" disabled={saving || !!savedQuestionId}
               className="px-5 py-2 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50"
               style={{ backgroundColor: 'rgb(var(--accent))' }}>
-              {saving ? 'Saving...' : savedQuestionId ? '✓ Saved' : 'Save Question'}
+              {saving ? 'Saving...' : savedQuestionId ? '✓ Saved' : 'Save & Continue'}
             </button>
             {savedQuestionId && (
               <button type="button" onClick={handleGenerate} disabled={generating}
@@ -354,14 +396,14 @@ export default function DebugQuestionForm({ onSuccess }: Props) {
                   {variants.filter(v => v.is_approved).length} variant{variants.filter(v => v.is_approved).length !== 1 ? 's' : ''} approved
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: 'rgb(var(--text-secondary))' }}>
-                  Question is ready to be added to tests
+                  Question is ready to be added to test
                 </p>
               </div>
               <button
-                onClick={onSuccess}
+                onClick={() => onSuccess?.(savedQuestionId ?? undefined)}
                 className="px-6 py-2.5 rounded-lg text-sm font-semibold text-white"
                 style={{ backgroundColor: '#4ade80', color: '#000' }}>
-                ✓ Done — Back to Questions
+                ✓ Done — Add to Test
               </button>
             </div>
           )}
