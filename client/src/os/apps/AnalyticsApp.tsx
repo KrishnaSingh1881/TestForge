@@ -223,25 +223,28 @@ export default function AnalyticsApp({ attemptId: initialAttemptId }: { attemptI
     if (view === 'detail' && !initialAttemptId) {
       setView('list');
       setSelectedAttemptId(null);
-    } else {
-      openWindow('tests');
     }
+    // On list view, back button does nothing (top-level for students)
   };
+
+  const showBackButton = view === 'detail';
 
   return (
     <div className="h-full flex flex-col bg-transparent animate-in fade-in duration-500 overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-4 p-6 border-b border-white/5 bg-white/[0.02] backdrop-blur-md shrink-0">
-        <button onClick={handleBack} className="p-2.5 rounded-xl hover:bg-white/10 transition-colors border border-white/5 active:scale-95">
-          <FiArrowLeft className="text-secondary" />
-        </button>
+        {showBackButton && (
+          <button onClick={handleBack} className="p-2.5 rounded-xl hover:bg-white/10 transition-colors border border-white/5 active:scale-95">
+            <FiArrowLeft className="text-secondary" />
+          </button>
+        )}
         <div className="flex-1">
           <h1 className="text-xl font-black text-primary tracking-tight flex items-center gap-3">
             <FiBarChart2 className="text-accent" />
-            {view === 'list' ? 'Diagnostics Registry' : 'Performance Analytics'}
+            {view === 'list' ? 'Analytics' : 'Performance Analytics'}
           </h1>
           <p className="text-[10px] font-black uppercase text-secondary tracking-widest mt-0.5 opacity-40">
-            {view === 'list' ? 'Select a concluded trial to view analytics' : 'Your full academic performance trajectory'}
+            {view === 'list' ? 'Select a test to view your analytics' : 'Your full academic performance trajectory'}
           </p>
         </div>
 
@@ -250,7 +253,7 @@ export default function AnalyticsApp({ attemptId: initialAttemptId }: { attemptI
             <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
             <input
               type="text"
-              placeholder="Search trials..."
+              placeholder="Search tests..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full pl-11 pr-4 py-2.5 bg-black/10 border border-white/10 rounded-2xl text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all placeholder:text-white/10 font-bold"
@@ -269,7 +272,7 @@ export default function AnalyticsApp({ attemptId: initialAttemptId }: { attemptI
             ) : filteredHistory.length === 0 ? (
               <div className="py-24 text-center glass no-shadow border-dashed border-white/10 rounded-[2.5rem]">
                 <FiBarChart2 className="mx-auto text-4xl text-white/10 mb-4" />
-                <p className="text-[10px] font-black text-white/20 tracking-[0.5em] uppercase">No concluded trials found</p>
+                <p className="text-[10px] font-black text-white/20 tracking-[0.5em] uppercase">No results yet</p>
                 <p className="text-[9px] text-white/10 font-bold mt-2 uppercase tracking-widest">Complete a test to see your analytics</p>
               </div>
             ) : (

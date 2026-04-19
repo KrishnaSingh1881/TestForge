@@ -167,60 +167,83 @@ router.post('/start', async (req, res) => {
 
 // ── GET /api/attempts/my ─── MUST be before /:id wildcard ────
 router.get('/my', async (req, res) => {
-  const { id: userId, year, division } = req.user;
+  try {
+    const { id: userId, year, division } = req.user;
 
-  const { data: attempts, error: aErr } = await supabase
-    .from('attempts')
-    .select(`
-      id, test_id, status, started_at, submitted_at,
-      tests ( id, title, subject, end_time, total_marks ),
-      results ( total_score, total_marks, percentage, rank )
-    `)
-    .eq('user_id', userId)
-    .in('status', ['submitted', 'auto_submitted'])
-    .order('submitted_at', { ascending: false });
+    const { data: attempts, error: aErr } = await supabase
+      .from('attempts')
+      .select(`
+        id, test_id, status, started_at, submitted_at,
+        tests ( id, title, subject, end_time, total_marks ),
+        results ( total_score, total_marks, percentage, rank )
+      `)
+      .eq('user_id', userId)
+      .in('status', ['submitted', 'auto_submitted'])
+      .order('submitted_at', { ascending: false });
 
-  if (aErr) return res.status(500).json({ error: aErr.message });
+    if (aErr) {
+      console.error('[/attempts/my] Supabase error:', aErr);
+      return res.status(500).json({ error: aErr.message });
+    }
 
-  const attemptedTestIds = (attempts ?? []).map(a => a.test_id);
+    // If no attempts, return empty array immediately
+    if (!attempts || attempts.length === 0) {
+      return res.json({ attempts: [] });
+    }
 
-  let missedQuery = supabase
-    .from('tests')
-    .select('id, title, subject, end_time, total_marks')
-    .eq('year', year)
-    .in('division', [division, 'ALL'])
-    .eq('status', 'ended');
+    const attemptedTestIds = (attempts ?? []).map(a => a.test_id);
 
-  if (attemptedTestIds.length > 0) {
-    missedQuery = missedQuery.not('id', 'in', `(${attemptedTestIds.map(id => `'${id}'`).join(',')})`);
+    // Only fetch missed tests if student has year + division set
+    let missedTests = [];
+    if (year && division) {
+      // Fetch all ended tests for this year/division
+      const { data: allTests, error: allErr } = await supabase
+        .from('tests')
+        .select('id, title, subject, end_time, total_marks')
+        .eq('year', year)
+        .in('division', [division, 'ALL'])
+        .eq('status', 'ended');
+
+      if (allErr) {
+        console.error('[/attempts/my] All tests error:', allErr);
+        return res.status(500).json({ error: allErr.message });
+      }
+
+      // Filter out attempted tests client-side
+      if (attemptedTestIds.length > 0) {
+        missedTests = (allTests ?? []).filter(t => !attemptedTestIds.includes(t.id));
+      } else {
+        missedTests = allTests ?? [];
+      }
+    }
+
+    const submittedHistory = (attempts ?? []).map(a => {
+      const result = Array.isArray(a.results) ? a.results[0] : a.results;
+      const test   = Array.isArray(a.tests)   ? a.tests[0]   : a.tests;
+      return {
+        id: a.id, test_id: a.test_id, test_title: test?.title ?? 'Unknown',
+        test_subject: test?.subject ?? null, status: a.status,
+        submitted_at: a.submitted_at,
+        total_score: result?.total_score ?? 0,
+        total_marks: result?.total_marks ?? test?.total_marks ?? 0,
+        percentage: result?.percentage ?? 0,
+      };
+    });
+
+    const absentHistory = missedTests.map(t => ({
+      id: null, test_id: t.id, test_title: t.title, test_subject: t.subject,
+      status: 'absent', submitted_at: t.end_time, total_score: 0,
+      total_marks: t.total_marks ?? 0, percentage: 0,
+    }));
+
+    const history = [...submittedHistory, ...absentHistory]
+      .sort((a, b) => new Date(b.submitted_at ?? 0).getTime() - new Date(a.submitted_at ?? 0).getTime());
+
+    return res.json({ attempts: history });
+  } catch (err) {
+    console.error('[/attempts/my] Unexpected error:', err);
+    return res.status(500).json({ error: 'Internal server error', details: err.message });
   }
-
-  const { data: missedTests, error: mErr } = await missedQuery;
-  if (mErr) return res.status(500).json({ error: mErr.message });
-
-  const submittedHistory = (attempts ?? []).map(a => {
-    const result = Array.isArray(a.results) ? a.results[0] : a.results;
-    const test   = Array.isArray(a.tests)   ? a.tests[0]   : a.tests;
-    return {
-      id: a.id, test_id: a.test_id, test_title: test?.title ?? 'Unknown',
-      test_subject: test?.subject ?? null, status: a.status,
-      submitted_at: a.submitted_at,
-      total_score: result?.total_score ?? 0,
-      total_marks: result?.total_marks ?? test?.total_marks ?? 0,
-      percentage: result?.percentage ?? 0,
-    };
-  });
-
-  const absentHistory = (missedTests ?? []).map(t => ({
-    id: null, test_id: t.id, test_title: t.title, test_subject: t.subject,
-    status: 'absent', submitted_at: t.end_time, total_score: 0,
-    total_marks: t.total_marks ?? 0, percentage: 0,
-  }));
-
-  const history = [...submittedHistory, ...absentHistory]
-    .sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
-
-  return res.json({ attempts: history });
 });
 
 // ── GET /api/attempts/:id — fetch attempt state ───────────────
@@ -718,77 +741,6 @@ router.get('/test/:testId/integrity/me', async (req, res) => {
     total_marks: result?.total_marks,
     percentage: result?.percentage,
   });
-});
-
-// ── GET /api/attempts/my — student's past attempts + absentees ────
-router.get('/my', async (req, res) => {
-  const { id: userId, year, division } = req.user;
-
-  // 1. Fetch all submitted attempts with joined test + result data
-  const { data: attempts, error: aErr } = await supabase
-    .from('attempts')
-    .select(`
-      id, test_id, status, started_at, submitted_at,
-      tests ( id, title, subject, end_time, total_marks ),
-      results ( total_score, total_marks, percentage, rank )
-    `)
-    .eq('user_id', userId)
-    .in('status', ['submitted', 'auto_submitted'])
-    .order('submitted_at', { ascending: false });
-
-  if (aErr) return res.status(500).json({ error: aErr.message });
-
-  const attemptedTestIds = (attempts ?? []).map(a => a.test_id);
-
-  // 2. Fetch ENDED tests assigned to this student that they MISSED
-  let missedQuery = supabase
-    .from('tests')
-    .select('id, title, subject, end_time, total_marks')
-    .eq('year', year)
-    .in('division', [division, 'ALL'])
-    .eq('status', 'ended');
-
-  // Exclude tests already attempted — use array filter (safe for empty arrays)
-  if (attemptedTestIds.length > 0) {
-    missedQuery = missedQuery.not('id', 'in', `(${attemptedTestIds.map(id => `'${id}'`).join(',')})`);
-  }
-
-  const { data: missedTests, error: mErr } = await missedQuery;
-  if (mErr) return res.status(500).json({ error: mErr.message });
-
-  // 3. Build unified history — submitted attempts + absent records
-  const submittedHistory = (attempts ?? []).map(a => {
-    const result = Array.isArray(a.results) ? a.results[0] : a.results;
-    const test   = Array.isArray(a.tests)   ? a.tests[0]   : a.tests;
-    return {
-      id:           a.id,
-      test_id:      a.test_id,
-      test_title:   test?.title   ?? 'Unknown',
-      test_subject: test?.subject ?? null,
-      status:       a.status,
-      submitted_at: a.submitted_at,
-      total_score:  result?.total_score  ?? 0,
-      total_marks:  result?.total_marks  ?? test?.total_marks ?? 0,
-      percentage:   result?.percentage   ?? 0,
-    };
-  });
-
-  const absentHistory = (missedTests ?? []).map(t => ({
-    id:           null,
-    test_id:      t.id,
-    test_title:   t.title,
-    test_subject: t.subject,
-    status:       'absent',
-    submitted_at: t.end_time,
-    total_score:  0,
-    total_marks:  t.total_marks ?? 0,
-    percentage:   0,
-  }));
-
-  const history = [...submittedHistory, ...absentHistory]
-    .sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
-
-  return res.json({ attempts: history });
 });
 
 // ── POST /api/attempts/:id/submit ────────────────────────────

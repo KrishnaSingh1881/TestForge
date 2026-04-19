@@ -5,12 +5,13 @@ export type AppType =
   | 'test-session'
   | 'results'
   | 'analytics'
+  | 'integrity'
   | 'question-bank'
   | 'test-manager'
-  | 'integrity'
+  | 'admin-results'
+  | 'admin-integrity'
   | 'admin-analytics'
   | 'code-editor'
-  | 'test-settings'
   | 'test-settings';
 
 export type ResponsiveMode = 'desktop' | 'tablet' | 'mobile';
@@ -56,36 +57,38 @@ interface OSStore {
 
 // Default sizes and positions per app type
 const APP_DEFAULTS: Record<AppType, { size: { width: number; height: number }; position: { x: number; y: number } }> = {
-  'tests':           { size: { width: 760,  height: 560 }, position: { x: 80,  y: 60 } },
-  'test-session':    { size: { width: 1100, height: 720 }, position: { x: 60,  y: 40 } },
-  'results':         { size: { width: 800,  height: 600 }, position: { x: 100, y: 80 } },
-  'analytics':       { size: { width: 900,  height: 640 }, position: { x: 120, y: 70 } },
-  'question-bank':   { size: { width: 1000, height: 680 }, position: { x: 80,  y: 50 } },
-  'test-manager':    { size: { width: 960,  height: 660 }, position: { x: 100, y: 60 } },
-  'integrity':       { size: { width: 1000, height: 680 }, position: { x: 90,  y: 55 } },
-  'admin-analytics': { size: { width: 960,  height: 660 }, position: { x: 110, y: 65 } },
-  'code-editor':     { size: { width: 1100, height: 720 }, position: { x: 70,  y: 45 } },
-  'test-settings':   { size: { width: 720,  height: 580 }, position: { x: 130, y: 70 } },
-
+  'tests':             { size: { width: 760,  height: 560 }, position: { x: 80,  y: 60 } },
+  'test-session':      { size: { width: 1100, height: 720 }, position: { x: 60,  y: 40 } },
+  'results':           { size: { width: 900,  height: 640 }, position: { x: 100, y: 80 } },
+  'analytics':         { size: { width: 900,  height: 640 }, position: { x: 120, y: 70 } },
+  'integrity':         { size: { width: 900,  height: 640 }, position: { x: 90,  y: 55 } },
+  'question-bank':     { size: { width: 1000, height: 680 }, position: { x: 80,  y: 50 } },
+  'test-manager':      { size: { width: 960,  height: 660 }, position: { x: 100, y: 60 } },
+  'admin-results':     { size: { width: 1000, height: 680 }, position: { x: 95,  y: 75 } },
+  'admin-integrity':   { size: { width: 1100, height: 720 }, position: { x: 85,  y: 50 } },
+  'admin-analytics':   { size: { width: 960,  height: 660 }, position: { x: 110, y: 65 } },
+  'code-editor':       { size: { width: 1100, height: 720 }, position: { x: 70,  y: 45 } },
+  'test-settings':     { size: { width: 720,  height: 580 }, position: { x: 130, y: 70 } },
 };
 
 const APP_TITLES: Record<AppType, string> = {
-  'tests':           'Tests',
-  'test-session':    'Test Session',
-  'results':         'Results',
-  'analytics':       'Analytics',
-  'question-bank':   'Question Bank',
-  'test-manager':    'Test Manager',
-  'integrity':       'Integrity',
-  'admin-analytics': 'Analytics',
-  'code-editor':     'Code Editor',
-  'test-settings':   'Test Settings',
-
+  'tests':             'Tests',
+  'test-session':      'Test Session',
+  'results':           'Results',
+  'analytics':         'Analytics',
+  'integrity':         'Integrity',
+  'question-bank':     'Question Bank',
+  'test-manager':      'Test Manager',
+  'admin-results':     'Results',
+  'admin-integrity':   'Integrity Monitor',
+  'admin-analytics':   'Analytics',
+  'code-editor':       'Code Editor',
+  'test-settings':     'Test Settings',
 };
 
 // Singleton app types — only one instance allowed
 const SINGLETON_APPS: Set<AppType> = new Set([
-  'tests', 'analytics', 'question-bank', 'test-manager', 'admin-analytics', 'results', 'integrity', 'code-editor', 'test-settings',
+  'tests', 'results', 'analytics', 'integrity', 'question-bank', 'test-manager', 'admin-results', 'admin-integrity', 'admin-analytics', 'code-editor', 'test-settings',
 ]);
 
 export const useOSStore = create<OSStore>((set, get) => ({

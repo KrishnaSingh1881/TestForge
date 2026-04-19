@@ -4,28 +4,31 @@ import type { AppType } from './store/useOSStore';
 
 import TestsApp from './apps/TestsApp';
 import TestSessionApp from './apps/TestSessionApp';
-import ResultsApp from './apps/ResultsApp';
-import AnalyticsApp from './apps/AnalyticsApp';
+import StudentResultsApp from './apps/StudentResultsApp';
+import StudentAnalyticsApp from './apps/StudentAnalyticsApp';
+import StudentIntegrityApp from './apps/StudentIntegrityApp';
 import QuestionBankApp from './apps/QuestionBankApp';
 import TestManagerApp from './apps/TestManagerApp';
-import IntegrityApp from './apps/IntegrityApp';
+import ResultsApp from './apps/ResultsApp';
+import AdminIntegrityApp from './apps/AdminIntegrityApp';
 import AdminAnalyticsApp from './apps/AdminAnalyticsApp';
 import CodeEditorApp from './apps/CodeEditorApp';
 import TestSettingsApp from './apps/TestSettingsApp';
 
 
 const APP_COMPONENTS: Record<AppType, React.ComponentType<any>> = {
-  'tests':           TestsApp,
-  'test-session':    TestSessionApp,
-  'results':         ResultsApp,
-  'analytics':       AnalyticsApp,
-  'question-bank':   QuestionBankApp,
-  'test-manager':    TestManagerApp,
-  'integrity':       IntegrityApp,
-  'admin-analytics': AdminAnalyticsApp,
-  'code-editor':     CodeEditorApp,
-  'test-settings':   TestSettingsApp,
-
+  'tests':             TestsApp,
+  'test-session':      TestSessionApp,
+  'results':           StudentResultsApp,
+  'analytics':         StudentAnalyticsApp,
+  'integrity':         StudentIntegrityApp,
+  'question-bank':     QuestionBankApp,
+  'test-manager':      TestManagerApp,
+  'admin-results':     ResultsApp,
+  'admin-integrity':   AdminIntegrityApp,
+  'admin-analytics':   AdminAnalyticsApp,
+  'code-editor':       CodeEditorApp,
+  'test-settings':     TestSettingsApp,
 };
 
 export default function WindowManager() {

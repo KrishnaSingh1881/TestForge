@@ -126,19 +126,22 @@ export function IconSettings() {
 }
 
 export const APP_ICONS: Record<string, React.FC> = {
-  'tests':           IconTests,
-  'test-session':    IconTests,
-  'results':         IconResults,
-  'analytics':       IconAnalytics,
-  'question-bank':   IconQuestionBank,
-  'test-manager':    IconTestManager,
-  'integrity':       IconIntegrity,
-  'admin-analytics': IconAdminAnalytics,
-  'code-editor':     IconCodeEditor,
-  'settings':        IconSettings,
-  'folder':          IconTestManager,
-  'shield':          IconIntegrity,
-  'prism':           IconResults,
+  'tests':             IconTests,
+  'test-session':      IconTests,
+  'results':           IconResults,
+  'analytics':         IconAnalytics,
+  'integrity':         IconIntegrity,
+  'question-bank':     IconQuestionBank,
+  'test-manager':      IconTestManager,
+  'admin-results':     IconResults,
+  'admin-integrity':   IconIntegrity,
+  'admin-analytics':   IconAdminAnalytics,
+  'code-editor':       IconCodeEditor,
+  'test-settings':     IconSettings,
+  'settings':          IconSettings,
+  'folder':            IconTestManager,
+  'shield':            IconIntegrity,
+  'prism':             IconResults,
 };
 
 export function GlassIcon({ id, size = 'md' }: { id: string; size?: 'sm' | 'md' | 'lg' }) {
