@@ -1,4 +1,4 @@
-﻿# TestForge — Next-Generation Academic Testing Platform
+# TestForge — Next-Generation Academic Testing Platform
 
 TestForge is not a standard web application. It is a **macOS-replicated desktop environment running entirely inside the browser**, purpose-built for college examinations that combine MCQs and code-debugging challenges. It achieves state-of-the-art **anti-cheat without surveillance** — relying entirely on architectural design, generative AI variants, and behavioral fingerprinting rather than invasive webcams or screen recording.
 
@@ -20,6 +20,7 @@ TestForge is not a standard web application. It is a **macOS-replicated desktop 
 7. [Bulk Import Format](#bulk-import-format)
 8. [Supabase Migrations](#supabase-migrations)
 9. [Credentials (Seed Data)](#credentials-seed-data)
+10. [Engineering Deep Dive (Liquid OS)](#engineering-deep-dive-liquid-os)
 
 ---
 
@@ -989,3 +990,20 @@ For issues or questions about the behavioral tracking system:
 4. See troubleshooting section in `SETUP_CHECKLIST.md`
 
 ---
+
+## Engineering Deep Dive (Liquid OS)
+
+For developers and system architects looking to explore the advanced internals of the platform, the following documentation suite provides forensic-grade details on the **Liquid OS** ecosystem:
+
+| Resource | Description |
+|----------|-------------|
+| **[Master Index](./documentation/MASTER_INDEX_v1.md)** | Start here for a centralized guide to all engineering docs. |
+| **[System Architecture](./documentation/SYSTEM_ARCHITECTURE_v1.md)** | Deep dive into the Virtual Shell, Window Manager, and API Service layer. |
+| **[Database Guide](./documentation/DATABASE_GUIDE_v1.md)** | Relational schema, window functions for ranking, and procedural triggers. |
+| **[Integrity Engine](./documentation/INTEGRITY_ENGINE_v1.md)** | The forensics of anti-cheat: behavioral fingerprinting and AI suspicion auditing. |
+| **[AI Engine](./documentation/AI_ENGINE_v1.md)** | Documentation of NVIDIA NIM variant generation and Ollama audit pipelines. |
+| **[Technical Diagrams](./documentation/TECHNICAL_DIAGRAMS_v1.md)** | **Mermaid** visualizations for architecture, auth flows, and integrity scoring. |
+| **[Knowledge Graph](./documentation/KNOWLEDGE_GRAPH_LOG_v1.md)** | Codemap analysis of "God Nodes" and dependency clusters. |
+
+---
+*Liquid OS — Precision Evaluation. Forensic Integrity.*
