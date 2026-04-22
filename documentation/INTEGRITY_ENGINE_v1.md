@@ -15,7 +15,7 @@ The `test-session` application utilizes specialized React hooks to capture telem
 #### Integrity Score Deductions
 | Event | Weight | Justification |
 |-------|--------|---------------|
-| **Tab Switch** | -5 points | High probability of AI or search engine usage. |
+| **Tab Switch** | -30 points | High probability of AI or search engine usage. |
 | **Focus Lost** | -2 points | Distraction or peripheral communication check. |
 | **Similarity Flag** | -15 points| Strong evidence of peer-to-peer code sharing. |
 
